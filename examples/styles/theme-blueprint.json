@@ -1,0 +1,83 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "layout": "LR",
+  "title": "Theme: Blueprint",
+  "description": "White stroke on cyan-blue. Dashed edges, square corners.",
+  "nodes": [
+    {
+      "id": "in",
+      "kind": "trigger",
+      "title": "Input",
+      "style": {
+        "fill": "#0c4a6e",
+        "stroke": "#e0f2fe",
+        "textColor": "#f0f9ff",
+        "borderRadius": 0,
+        "strokeWidth": 1.5
+      }
+    },
+    {
+      "id": "proc",
+      "kind": "ai",
+      "title": "Process",
+      "style": {
+        "fill": "#0c4a6e",
+        "stroke": "#e0f2fe",
+        "textColor": "#f0f9ff",
+        "borderRadius": 0,
+        "strokeWidth": 1.5
+      }
+    },
+    {
+      "id": "valid",
+      "kind": "guardrail",
+      "title": "Validate",
+      "style": {
+        "fill": "#0c4a6e",
+        "stroke": "#e0f2fe",
+        "textColor": "#f0f9ff",
+        "borderRadius": 0,
+        "strokeWidth": 1.5
+      }
+    },
+    {
+      "id": "out",
+      "kind": "end",
+      "title": "Output",
+      "style": {
+        "fill": "#0c4a6e",
+        "stroke": "#e0f2fe",
+        "textColor": "#f0f9ff",
+        "borderRadius": 0,
+        "strokeWidth": 1.5
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "in",
+      "to": "proc",
+      "style": {
+        "stroke": "#bae6fd",
+        "strokeDasharray": "4 3"
+      }
+    },
+    {
+      "from": "proc",
+      "to": "valid",
+      "style": {
+        "stroke": "#bae6fd",
+        "strokeDasharray": "4 3"
+      }
+    },
+    {
+      "from": "valid",
+      "to": "out",
+      "style": {
+        "stroke": "#bae6fd",
+        "strokeDasharray": "4 3"
+      }
+    }
+  ]
+}

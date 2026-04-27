@@ -1,0 +1,64 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "layout": "TB",
+  "title": "Theme: Pastel (vertical)",
+  "nodes": [
+    {
+      "id": "start",
+      "kind": "trigger",
+      "title": "User asks",
+      "style": {
+        "fill": "#fce7f3",
+        "stroke": "#f9a8d4",
+        "textColor": "#831843",
+        "borderRadius": 24,
+        "shadow": true,
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "think",
+      "kind": "ai",
+      "title": "Think it through",
+      "from": "start",
+      "style": {
+        "fill": "#ede9fe",
+        "stroke": "#c4b5fd",
+        "textColor": "#4c1d95",
+        "borderRadius": 24,
+        "shadow": true,
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "tool",
+      "kind": "tool",
+      "title": "Look up data",
+      "from": "think",
+      "style": {
+        "fill": "#dbeafe",
+        "stroke": "#93c5fd",
+        "textColor": "#1e3a8a",
+        "borderRadius": 24,
+        "shadow": true,
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "answer",
+      "kind": "action",
+      "title": "Answer",
+      "from": "tool",
+      "style": {
+        "fill": "#dcfce7",
+        "stroke": "#86efac",
+        "textColor": "#14532d",
+        "borderRadius": 24,
+        "shadow": true,
+        "strokeWidth": 2
+      }
+    }
+  ],
+  "edges": []
+}

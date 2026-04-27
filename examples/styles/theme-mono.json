@@ -1,0 +1,61 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "layout": "LR",
+  "title": "Theme: Mono",
+  "description": "Stroke-only nodes, dashed borders, single-weight typography.",
+  "nodes": [
+    {
+      "id": "a",
+      "kind": "trigger",
+      "title": "Trigger",
+      "style": {
+        "fill": "#ffffff",
+        "stroke": "#18181b",
+        "textColor": "#18181b",
+        "strokeWidth": 1.5,
+        "strokeDasharray": "3 2"
+      }
+    },
+    {
+      "id": "b",
+      "kind": "ai",
+      "title": "Reason",
+      "from": "a",
+      "style": {
+        "fill": "#ffffff",
+        "stroke": "#18181b",
+        "textColor": "#18181b",
+        "strokeWidth": 1.5,
+        "strokeDasharray": "3 2"
+      }
+    },
+    {
+      "id": "c",
+      "kind": "action",
+      "title": "Act",
+      "from": "b",
+      "style": {
+        "fill": "#ffffff",
+        "stroke": "#18181b",
+        "textColor": "#18181b",
+        "strokeWidth": 1.5,
+        "strokeDasharray": "3 2"
+      }
+    },
+    {
+      "id": "d",
+      "kind": "end",
+      "title": "End",
+      "from": "c",
+      "style": {
+        "fill": "#ffffff",
+        "stroke": "#18181b",
+        "textColor": "#18181b",
+        "strokeWidth": 1.5,
+        "strokeDasharray": "3 2"
+      }
+    }
+  ],
+  "edges": []
+}

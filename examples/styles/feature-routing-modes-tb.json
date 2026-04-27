@@ -1,0 +1,64 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "layout": "TB",
+  "title": "Feature: edge routing modes (vertical)",
+  "description": "Source on top, four targets below — one per routing mode.",
+  "nodes": [
+    {
+      "id": "src",
+      "kind": "trigger",
+      "title": "Source"
+    },
+    {
+      "id": "p1",
+      "kind": "action",
+      "title": "bezier",
+      "tone": "info"
+    },
+    {
+      "id": "p2",
+      "kind": "action",
+      "title": "smoothstep",
+      "tone": "success"
+    },
+    {
+      "id": "p3",
+      "kind": "action",
+      "title": "step",
+      "tone": "warning"
+    },
+    {
+      "id": "p4",
+      "kind": "action",
+      "title": "straight",
+      "tone": "error"
+    }
+  ],
+  "edges": [
+    {
+      "from": "src",
+      "to": "p1",
+      "routing": "bezier",
+      "label": "bezier"
+    },
+    {
+      "from": "src",
+      "to": "p2",
+      "routing": "smoothstep",
+      "label": "smoothstep"
+    },
+    {
+      "from": "src",
+      "to": "p3",
+      "routing": "step",
+      "label": "step"
+    },
+    {
+      "from": "src",
+      "to": "p4",
+      "routing": "straight",
+      "label": "straight"
+    }
+  ]
+}

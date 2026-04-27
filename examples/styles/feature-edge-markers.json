@@ -1,0 +1,71 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "layout": "LR",
+  "title": "Feature: edge markers",
+  "description": "End-cap variants. Each edge sets its own markerEnd.",
+  "nodes": [
+    {
+      "id": "src",
+      "kind": "trigger",
+      "title": "Source"
+    },
+    {
+      "id": "a",
+      "kind": "action",
+      "title": "arrow"
+    },
+    {
+      "id": "b",
+      "kind": "action",
+      "title": "circle"
+    },
+    {
+      "id": "c",
+      "kind": "action",
+      "title": "diamond"
+    },
+    {
+      "id": "d",
+      "kind": "action",
+      "title": "none"
+    }
+  ],
+  "edges": [
+    {
+      "from": "src",
+      "to": "a",
+      "style": {
+        "markerEnd": "arrow"
+      },
+      "label": "arrow"
+    },
+    {
+      "from": "src",
+      "to": "b",
+      "style": {
+        "markerEnd": "circle",
+        "stroke": "#16a34a"
+      },
+      "label": "circle"
+    },
+    {
+      "from": "src",
+      "to": "c",
+      "style": {
+        "markerEnd": "diamond",
+        "stroke": "#dc2626"
+      },
+      "label": "diamond"
+    },
+    {
+      "from": "src",
+      "to": "d",
+      "style": {
+        "markerEnd": "none",
+        "stroke": "#6b7280"
+      },
+      "label": "none"
+    }
+  ]
+}

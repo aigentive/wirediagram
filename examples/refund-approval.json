@@ -1,0 +1,19 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "id": "refund-approval",
+  "title": "Refund approval flow",
+  "description": "Customer-initiated refund routed through guardrail + human review when amount exceeds threshold.",
+  "layout": "LR",
+  "nodes": [
+    { "id": "request", "kind": "trigger", "title": "Refund requested" },
+    { "id": "verify", "kind": "guardrail", "title": "Verify policy", "from": "request" },
+    { "id": "amount-check", "kind": "condition", "title": "Amount > $200?", "from": "verify", "branches": ["yes", "no"] },
+    { "id": "agent-review", "kind": "human", "title": "Agent review", "from": "amount-check.yes" },
+    { "id": "auto-approve", "kind": "ai", "title": "Auto-approve", "from": "amount-check.no", "model": "gpt-4.1", "tone": "success" },
+    { "id": "stripe-refund", "kind": "tool", "title": "Stripe refund", "from": ["agent-review", "auto-approve"], "ref": "stripe.refunds.create" },
+    { "id": "log", "kind": "memory", "title": "Log decision", "from": "stripe-refund" },
+    { "id": "notify", "kind": "action", "title": "Notify customer", "from": "stripe-refund", "tone": "info" }
+  ],
+  "edges": []
+}

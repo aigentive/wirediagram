@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm install
+      - run: npm run build
+      - run: npm test
+      - run: |
+          echo "validate examples"
+          for f in examples/*.json; do
+            echo "  - $f"
+            node -e "
+              import('./packages/wire-core/dist/index.js').then(m => {
+                const d = m.parseWireDiagram(JSON.parse(require('fs').readFileSync('$f','utf8')));
+                const r = m.validate(d);
+                if (!r.valid) { console.error(r.issues); process.exit(1); }
+              });
+            "
+          done

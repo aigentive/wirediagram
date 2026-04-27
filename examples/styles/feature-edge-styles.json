@@ -1,0 +1,81 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "layout": "LR",
+  "title": "Feature: edge styles",
+  "description": "Color, stroke width, dasharray, curvature combinations.",
+  "nodes": [
+    {
+      "id": "src",
+      "kind": "trigger",
+      "title": "Source"
+    },
+    {
+      "id": "a",
+      "kind": "action",
+      "title": "thin solid"
+    },
+    {
+      "id": "b",
+      "kind": "action",
+      "title": "thick solid"
+    },
+    {
+      "id": "c",
+      "kind": "action",
+      "title": "dashed"
+    },
+    {
+      "id": "d",
+      "kind": "action",
+      "title": "dotted"
+    },
+    {
+      "id": "e",
+      "kind": "action",
+      "title": "low curve"
+    }
+  ],
+  "edges": [
+    {
+      "from": "src",
+      "to": "a",
+      "style": {
+        "stroke": "#0ea5e9",
+        "strokeWidth": 1
+      }
+    },
+    {
+      "from": "src",
+      "to": "b",
+      "style": {
+        "stroke": "#16a34a",
+        "strokeWidth": 4
+      }
+    },
+    {
+      "from": "src",
+      "to": "c",
+      "style": {
+        "stroke": "#dc2626",
+        "strokeDasharray": "6 3"
+      }
+    },
+    {
+      "from": "src",
+      "to": "d",
+      "style": {
+        "stroke": "#9333ea",
+        "strokeDasharray": "1 3"
+      }
+    },
+    {
+      "from": "src",
+      "to": "e",
+      "style": {
+        "stroke": "#f59e0b",
+        "curvature": 0.1
+      }
+    }
+  ]
+}

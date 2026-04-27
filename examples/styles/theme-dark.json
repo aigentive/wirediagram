@@ -1,0 +1,89 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "layout": "LR",
+  "title": "Theme: Dark",
+  "description": "Dark canvas with cyan accents. Style is applied per-node so the JSON is portable.",
+  "nodes": [
+    {
+      "id": "trig",
+      "kind": "trigger",
+      "title": "Webhook",
+      "style": {
+        "fill": "#1e293b",
+        "stroke": "#22d3ee",
+        "textColor": "#e2e8f0",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "ai",
+      "kind": "ai",
+      "title": "Classify intent",
+      "from": "trig",
+      "style": {
+        "fill": "#1e293b",
+        "stroke": "#a78bfa",
+        "textColor": "#e2e8f0",
+        "strokeWidth": 2,
+        "shadow": true
+      }
+    },
+    {
+      "id": "cond",
+      "kind": "condition",
+      "title": "Route",
+      "from": "ai",
+      "branches": [
+        "a",
+        "b"
+      ],
+      "style": {
+        "fill": "#1e293b",
+        "stroke": "#f59e0b",
+        "textColor": "#e2e8f0",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "act-a",
+      "kind": "action",
+      "title": "Path A",
+      "from": "cond.a",
+      "style": {
+        "fill": "#022c22",
+        "stroke": "#34d399",
+        "textColor": "#d1fae5",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "act-b",
+      "kind": "action",
+      "title": "Path B",
+      "from": "cond.b",
+      "style": {
+        "fill": "#3b0a0a",
+        "stroke": "#fb7185",
+        "textColor": "#fecdd3",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "end",
+      "kind": "end",
+      "title": "Done",
+      "from": [
+        "act-a",
+        "act-b"
+      ],
+      "style": {
+        "fill": "#0f172a",
+        "stroke": "#22d3ee",
+        "textColor": "#e2e8f0",
+        "strokeWidth": 2
+      }
+    }
+  ],
+  "edges": []
+}

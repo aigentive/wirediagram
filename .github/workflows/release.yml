@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@aigentive"
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+      - name: Pack workspace packages
+        run: |
+          mkdir -p dist-packages
+          for pkg in packages/wire-core packages/wire-renderers packages/wire-react packages/wire-mcp packages/wire-cli; do
+            npm pack "./$pkg" --pack-destination dist-packages
+          done
+
+      - name: Publish to GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for pkg in packages/wire-core packages/wire-renderers packages/wire-react packages/wire-mcp packages/wire-cli; do
+            npm publish "./$pkg" --registry=https://npm.pkg.github.com --access public
+          done
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist-packages/*.tgz \
+            --title "Wire ${GITHUB_REF_NAME}" \
+            --notes "Initial Wire ${GITHUB_REF_NAME} release." \
+            --verify-tag

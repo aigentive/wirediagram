@@ -1,0 +1,24 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "id": "agent-router",
+  "title": "Agent router",
+  "description": "Webhook → classify → route to sales / support / fallback.",
+  "layout": "LR",
+  "nodes": [
+    { "id": "webhook", "kind": "trigger", "title": "Webhook fires" },
+    { "id": "classify", "kind": "ai", "title": "Classify intent", "from": "webhook", "model": "gpt-4.1" },
+    {
+      "id": "route",
+      "kind": "condition",
+      "title": "Route request",
+      "from": "classify",
+      "branches": ["sales", "support", "other"]
+    },
+    { "id": "notify-sales", "kind": "action", "title": "Notify sales", "from": "route.sales", "tone": "success" },
+    { "id": "open-ticket", "kind": "action", "title": "Open support ticket", "from": "route.support", "tone": "warning" },
+    { "id": "fallback", "kind": "action", "title": "Send fallback reply", "from": "route.other" },
+    { "id": "risk-note", "kind": "note", "title": "Routing risk", "attachedTo": "classify", "body": "Check confidence before routing." }
+  ],
+  "edges": []
+}

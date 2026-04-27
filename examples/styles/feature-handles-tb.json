@@ -1,0 +1,68 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "layout": "TB",
+  "title": "Feature: handle anchors (vertical)",
+  "description": "TB defaults to bottom→top; per-edge fromHandle/toHandle pin specific edges to other sides.",
+  "nodes": [
+    {
+      "id": "hub",
+      "kind": "ai",
+      "title": "Hub"
+    },
+    {
+      "id": "n",
+      "kind": "action",
+      "title": "north",
+      "tone": "info"
+    },
+    {
+      "id": "s",
+      "kind": "action",
+      "title": "south",
+      "tone": "warning"
+    },
+    {
+      "id": "e",
+      "kind": "action",
+      "title": "east",
+      "tone": "success"
+    },
+    {
+      "id": "w",
+      "kind": "action",
+      "title": "west",
+      "tone": "error"
+    }
+  ],
+  "edges": [
+    {
+      "from": "hub",
+      "to": "n",
+      "fromHandle": "top",
+      "toHandle": "bottom",
+      "label": "top→bottom"
+    },
+    {
+      "from": "hub",
+      "to": "s",
+      "fromHandle": "bottom",
+      "toHandle": "top",
+      "label": "bottom→top"
+    },
+    {
+      "from": "hub",
+      "to": "e",
+      "fromHandle": "right",
+      "toHandle": "left",
+      "label": "right→left"
+    },
+    {
+      "from": "hub",
+      "to": "w",
+      "fromHandle": "left",
+      "toHandle": "right",
+      "label": "left→right"
+    }
+  ]
+}

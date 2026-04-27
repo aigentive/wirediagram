@@ -1,0 +1,37 @@
+{
+  "name": "@aigentive/wire-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Wire — LLM-first diagram library with MCP. Agent-operable diagrams.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aigentive/wire.git"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @aigentive/wire-core && npm run build --workspace @aigentive/wire-renderers && npm run build --workspace @aigentive/wire-react && npm run build --workspace @aigentive/wire-mcp && npm run build --workspace @aigentive/wire-cli",
+    "build:core": "npm run build --workspace @aigentive/wire-core",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run build:core && vitest run",
+    "test:watch": "npm run build:core && vitest",
+    "dev:mcp": "npm run dev --workspace @aigentive/wire-mcp",
+    "dev:mcp:http": "npm run dev:http --workspace @aigentive/wire-mcp",
+    "dev:playground": "npm run dev --workspace @aigentive/wire-playground",
+    "start:mcp": "npm run start --workspace @aigentive/wire-mcp",
+    "start:mcp:http": "npm run start:http --workspace @aigentive/wire-mcp",
+    "lint": "npm run typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

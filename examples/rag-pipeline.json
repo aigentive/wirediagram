@@ -1,0 +1,21 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "id": "rag-pipeline",
+  "title": "RAG pipeline with critique loop",
+  "description": "Retrieve, generate, self-critique, retry once if confidence is low.",
+  "layout": "LR",
+  "nodes": [
+    { "id": "query", "kind": "trigger", "title": "User query" },
+    { "id": "embed", "kind": "ai", "title": "Embed query", "from": "query", "model": "text-embedding-3-large" },
+    { "id": "search", "kind": "retrieval", "title": "Vector search", "from": "embed" },
+    { "id": "rerank", "kind": "ai", "title": "Rerank", "from": "search", "model": "rerank-1" },
+    { "id": "answer", "kind": "ai", "title": "Generate answer", "from": "rerank", "model": "gpt-4.1" },
+    { "id": "critique", "kind": "ai", "title": "Self-critique", "from": "answer", "model": "gpt-4.1", "tone": "ai" },
+    { "id": "confident", "kind": "condition", "title": "Confident?", "from": "critique", "branches": ["yes", "no"] },
+    { "id": "respond", "kind": "action", "title": "Respond", "from": "confident.yes", "tone": "success" },
+    { "id": "retry", "kind": "ai", "title": "Retry with hint", "from": "confident.no", "model": "gpt-4.1" },
+    { "id": "respond-retry", "kind": "action", "title": "Respond", "from": "retry", "tone": "warning" }
+  ],
+  "edges": []
+}
