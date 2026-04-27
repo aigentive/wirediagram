@@ -34,7 +34,7 @@ export function WireNodeList({
   return (
     <div
       className={cx(
-        "grid content-start gap-2 overflow-auto rounded-lg border border-slate-200 bg-white p-2.5",
+        "grid content-start gap-2 overflow-auto rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900",
         className
       )}
       style={style}
@@ -46,8 +46,10 @@ export function WireNodeList({
             key={node.id}
             type="button"
             className={cx(
-              "grid gap-0.5 rounded-lg border bg-slate-50 px-2.5 py-2 text-left",
-              selected ? "border-blue-600 ring-2 ring-blue-600/15" : "border-slate-200"
+              "grid gap-0.5 rounded-lg border bg-slate-50 px-2.5 py-2 text-left transition-colors hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700/70",
+              selected
+                ? "border-blue-600 ring-2 ring-blue-600/15 dark:border-blue-400 dark:ring-blue-400/20"
+                : "border-slate-200 dark:border-slate-700"
             )}
             onClick={() => {
               events.emit({ type: "node.click", source: "node-list", nodeId: node.id });
@@ -61,8 +63,8 @@ export function WireNodeList({
           >
             {renderItem ? renderItem({ node, selected }) : (
               <>
-                <strong className="text-[13px] leading-snug text-slate-950">{node.title}</strong>
-                <span className="text-xs text-slate-500">{node.kind}</span>
+                <strong className="text-[13px] leading-snug text-slate-950 dark:text-slate-50">{node.title}</strong>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{node.kind}</span>
               </>
             )}
           </button>

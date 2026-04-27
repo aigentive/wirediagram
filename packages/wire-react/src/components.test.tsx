@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import { emptyDiagram } from "@aigentive/wire-core";
 import { WirePalette } from "./components/WirePalette.js";
 import { WireOptionPanel } from "./components/WireOptionPanel.js";
+import { WireNodeCardView, wireCardContentForNode } from "./components/WireNodeCardView.js";
 import { WireNodeList } from "./components/WireNodeList.js";
 import { WireToolbar } from "./components/WireToolbar.js";
 import { WireValidationPanel } from "./components/WireValidationPanel.js";
 import { WireProvider } from "./provider/WireProvider.js";
+import type { WireNodeRenderContext } from "./canvas/nodeTypes.js";
 
 describe("shared editor components", () => {
   it("renders the complete default node palette with library styling", () => {
@@ -101,4 +103,74 @@ describe("shared editor components", () => {
     expect(markup).not.toContain("Stage");
     expect(markup).toContain("rounded-lg");
   });
+
+  it("renders serializable custom card content from node data", () => {
+    const node = {
+      id: "qa-reviewed",
+      kind: "human" as const,
+      title: "Switch default to reviewed mode and make QA fail-closed",
+      data: {
+        card: {
+          description: "Change default reviewMode from fast to reviewed in config.",
+          badges: [{ label: "Regular" }],
+          progress: { value: 1, max: 1, steps: 8, showPercent: true }
+        }
+      }
+    };
+
+    const markup = renderToStaticMarkup(
+      <WireNodeCardView {...renderContextFor(node)} />
+    );
+
+    expect(wireCardContentForNode(node)?.badges?.length).toBe(1);
+    expect(markup).toContain("Switch default to reviewed mode");
+    expect(markup).toContain("Regular");
+    expect(markup).toContain("100%");
+    expect(markup).toContain("width:100%");
+  });
+
+  it("allows React-only card body slots while keeping the default card shell", () => {
+    const node = {
+      id: "custom",
+      kind: "ai" as const,
+      title: "Custom body",
+      model: "gpt-4.1"
+    };
+
+    const markup = renderToStaticMarkup(
+      <WireNodeCardView
+        {...renderContextFor(node)}
+        content={<div data-testid="card-body">Runtime content slot</div>}
+        footer="Runtime footer"
+      />
+    );
+
+    expect(markup).toContain("Runtime content slot");
+    expect(markup).toContain("Runtime footer");
+    expect(markup).toContain("rounded-lg");
+  });
 });
+
+function renderContextFor(node: WireNodeRenderContext["node"]): WireNodeRenderContext {
+  return {
+    node,
+    data: {
+      title: node.title,
+      description: node.description,
+      kind: node.kind,
+      wire: node
+    },
+    kind: node.kind,
+    tone: node.tone ?? "default",
+    theme: {
+      border: "#cbd5e1",
+      background: "#ffffff",
+      accent: "#475569"
+    },
+    selected: false,
+    width: 240,
+    height: 160,
+    options: {},
+    optionSpecs: []
+  };
+}

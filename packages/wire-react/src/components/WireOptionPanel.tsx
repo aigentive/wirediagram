@@ -42,9 +42,9 @@ export function WireOptionPanel({
 
   if (!node) {
     return (
-      <aside className={cx("grid gap-2.5 rounded-lg border border-slate-200 bg-white p-3 shadow-sm", className)} style={style}>
-        <div className="text-xs font-extrabold uppercase tracking-normal text-slate-600">{title}</div>
-        <div className="text-[13px] leading-snug text-slate-500">No node selected</div>
+      <aside className={cx("grid gap-2.5 rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900", className)} style={style}>
+        <div className="text-xs font-extrabold uppercase tracking-normal text-slate-600 dark:text-slate-300">{title}</div>
+        <div className="text-[13px] leading-snug text-slate-500 dark:text-slate-400">No node selected</div>
       </aside>
     );
   }
@@ -52,9 +52,9 @@ export function WireOptionPanel({
   const specs = wireOptionSpecsForNode(catalog, node);
 
   return (
-    <aside className={cx("grid gap-2.5 rounded-lg border border-slate-200 bg-white p-3 shadow-sm", className)} style={style}>
-      <div className="text-xs font-extrabold uppercase tracking-normal text-slate-600">{title}</div>
-      {specs.length === 0 ? <div className="text-[13px] leading-snug text-slate-500">No options</div> : null}
+    <aside className={cx("grid gap-2.5 rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900", className)} style={style}>
+      <div className="text-xs font-extrabold uppercase tracking-normal text-slate-600 dark:text-slate-300">{title}</div>
+      {specs.length === 0 ? <div className="text-[13px] leading-snug text-slate-500 dark:text-slate-400">No options</div> : null}
       {specs.map((spec) => (
         <OptionField
           key={`${spec.storage ?? "data.options"}:${spec.key}`}
@@ -85,10 +85,10 @@ function OptionField({
   const type = inferOptionType(spec);
   const rawValue = readWireOption(node, spec) ?? spec.defaultValue;
   const label = spec.label ?? labelFromKey(spec.key);
-  const controlClass = "min-h-8 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[13px] font-medium text-slate-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15";
+  const controlClass = "min-h-8 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[13px] font-medium text-slate-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-50 dark:focus:border-blue-400 dark:focus:ring-blue-400/20";
 
   return (
-    <label className="grid gap-1 text-[13px] font-bold text-slate-800">
+    <label className="grid gap-1 text-[13px] font-bold text-slate-800 dark:text-slate-200">
       <span>{label}</span>
       {type === "textarea" ? (
         <textarea
@@ -136,7 +136,7 @@ function OptionField({
           className={controlClass}
         />
       )}
-      {spec.description ? <span className="text-[11px] font-medium leading-snug text-slate-500">{spec.description}</span> : null}
+      {spec.description ? <span className="text-[11px] font-medium leading-snug text-slate-500 dark:text-slate-400">{spec.description}</span> : null}
     </label>
   );
 }

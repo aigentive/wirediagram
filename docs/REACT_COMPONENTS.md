@@ -7,6 +7,33 @@ and event handlers. It should not need React Flow nodes, hooks, or state.
 
 For design examples, run the playground and open `/components`.
 
+## At a glance
+
+| Component | Category | Role |
+|---|---|---|
+| [`WireWorkspace`](#wireworkspace) | Shell | Editor shell — provider, sidebar, canvas, inspector |
+| [`WireCanvas`](#wirecanvas) | Canvas | Canvas primitive — used inside `WireWorkspace` or directly |
+| [`WireNodeCardView`](#cards-and-groups) | Renderer | Default node card — kind chip, title, options summary |
+| [`WireGroupFrame`](#cards-and-groups) | Renderer | Default group frame — child count and selection ring |
+| [`WireOptionPanel`](#wireoptionpanel) | Panel | Typed option form generated from `WireOptionCatalog` |
+| [`WireNodeList`](#wirenodelist) | Panel | Selectable node index — emits clicks and selection changes |
+| `WireValidationPanel` | Panel | Validation status — reads from provider context |
+
+## Capabilities
+
+| Capability | How |
+|---|---|
+| Light & dark theme | Add `@variant dark` and toggle `<html class="dark">` (Tailwind v4) |
+| Custom node card | `renderNodeCard={fn}` — receives `WireNodeRenderContext` |
+| Custom group frame | `renderGroup={fn}` |
+| Structured card content | `node.data.card` — badges, meta, progress, footer |
+| Custom list rows | `<WireNodeList renderItem={({ node, selected }) => …} />` |
+| Read-only canvas | `<WireCanvas mode="view" />` |
+| Controlled inspector | `inspectNodeId` + `onInspectNodeChange` |
+| Click behavior | `inspectOnClick`, `selectOnClick`, `clearSelectionOnPaneClick` |
+| Validation observer | `<WireValidationPanel />` (or read `useWireValidation()`) |
+| Decoupled events | `onEvent={fn}` — five event types listed in [Events](#events) |
+
 ## Tailwind CSS v4
 
 The playground uses Tailwind CSS v4 with `tailwindcss@^4.1.18` and
@@ -120,8 +147,48 @@ Use `WireCanvas` when building a custom screen around `WireProvider`.
 
 ## Cards And Groups
 
-`WireNodeCardView` and `WireGroupFrame` are default renderers. Custom renderers
-receive `WireNodeRenderContext`.
+`WireNodeCardView` and `WireGroupFrame` are default renderers. The default card
+can render serializable custom content from `node.data.card`:
+
+```json
+{
+  "id": "review-mode",
+  "kind": "human",
+  "title": "Review default",
+  "data": {
+    "card": {
+      "title": "Switch default to reviewed mode and make QA fail-closed",
+      "description": "Change default reviewMode from fast to reviewed.",
+      "badges": [{ "label": "Regular" }],
+      "progress": { "value": 1, "max": 1, "steps": 8, "showPercent": true }
+    }
+  }
+}
+```
+
+`node.data.card` is optional and intentionally small:
+
+| Field | Type | Notes |
+|---|---|---|
+| `title` | `string` | Overrides display title without changing `node.title`. |
+| `description` | `string` | Body copy below the title. |
+| `badges` | `(string | { label, tone })[]` | Inline chips. Tone is `default`, `info`, `success`, `warning`, or `error`. |
+| `meta` | `(primitive | { label, value })[]` | Small facts rendered as text rows. |
+| `progress` | `number | { value, max, label, steps, showPercent }` | Bar plus optional step dots and percent. |
+| `footer` | `string` | Short text after card content. |
+
+React-only composition can pass `content`, `children`, or `footer` to
+`WireNodeCardView` from a custom `renderNodeCard` callback:
+
+```tsx
+function AgentCard(ctx: WireNodeRenderContext) {
+  return (
+    <WireNodeCardView {...ctx} content={<RuntimeStatus nodeId={ctx.node.id} />} />
+  );
+}
+```
+
+For fully custom surfaces, render callbacks receive `WireNodeRenderContext`.
 
 ```tsx
 import type { WireNodeRenderContext } from "@aigentive/wire-react";
@@ -221,12 +288,16 @@ Events are small and app-level. They decouple card/list clicks from sidebars.
 | `pane.click` | `{ type, source }` |
 | `selection.change` | `{ type, source, selection }` |
 
-Sources are `"canvas"`, `"node-card"`, `"node-list"`, `"option-panel"`,
-`"validation-panel"`, `"workspace"`, or `"api"`.
+Source labels are `"canvas"`, `"node-card"`, `"node-list"`, `"option-panel"`,
+`"validation-panel"`, `"workspace"`, or `"api"`. Built-in components currently
+emit from `canvas` (`WireCanvas`) and `node-list` (`WireNodeList`). The other
+labels are reserved for app-owned wrappers, custom panels, workspace-level
+handlers, or programmatic integrations.
 
 ## Related Docs
 
-- [`REACT_EXTENSIBILITY.md`](./REACT_EXTENSIBILITY.md) explains the extension
-  pattern for LLM-ready apps.
-- The playground `/components` route shows the component system and style guide.
+- The playground `/components` route shows the live component system, capability
+  matrix, custom renderer variants, and event recipes.
 - The playground `/samples/agent-chain` route shows a full app screen.
+- The package README (`packages/wire-react/README.md`) covers the JSX facade
+  (`<Flow>`, node components) and Tailwind setup.
