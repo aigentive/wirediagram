@@ -33,6 +33,8 @@ export interface ReactFlowNode {
   width?: number;
   height?: number;
   parentId?: string;
+  extent?: "parent";
+  zIndex?: number;
   /** First entry of node.handles.source. Defaults to layout-direction. */
   sourcePosition?: Side;
   /** First entry of node.handles.target. Defaults to layout-direction. */
@@ -90,6 +92,18 @@ export interface ToReactFlowOptions {
 }
 
 const DEFAULT_NODE_TYPE_FOR = (kind: WireNode["kind"]): string => `wire-${kind}`;
+const GROUP_PADDING_X = 32;
+const GROUP_PADDING_TOP = 56;
+const GROUP_PADDING_BOTTOM = 32;
+const GROUP_MIN_WIDTH = 320;
+const GROUP_MIN_HEIGHT = 200;
+
+interface NodeFrame {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 function defaultSidesFor(direction: WireDiagram["layout"]): { source: Side; target: Side } {
   switch (direction) {
@@ -160,23 +174,26 @@ export function toReactFlow(
   opts: ToReactFlowOptions = {}
 ): ToReactFlowResult {
   const layout = layoutDiagram(diagram);
-  const positionsById = new Map<string, LayoutNodePosition>();
+  const framesById = new Map<string, NodeFrame>();
   for (const pos of layout.nodes) {
-    positionsById.set(pos.id, pos);
+    framesById.set(pos.id, pos);
   }
+  fitGroupFrames(diagram, framesById);
 
   const toneClasses = { ...DEFAULT_TONE_CLASSES, ...(opts.toneClasses ?? {}) };
   const nodeTypeFor = opts.nodeTypeFor ?? DEFAULT_NODE_TYPE_FOR;
   const animate = opts.animate ?? true;
   const fallbackSides = defaultSidesFor(layout.direction);
+  const orderedNodes = orderParentsBeforeChildren(diagram.nodes);
 
-  const nodes: ReactFlowNode[] = diagram.nodes.map((node) => {
-    const pos = positionsById.get(node.id) ?? { x: 0, y: 0, width: 220, height: 80 };
+  const nodes: ReactFlowNode[] = orderedNodes.map((node) => {
+    const pos = framesById.get(node.id) ?? { x: 0, y: 0, width: 220, height: 80 };
+    const parent = node.parent ? framesById.get(node.parent) : undefined;
     const tone = (node.tone ?? "default") as NonNullable<Tone>;
     const rfNode: ReactFlowNode = {
       id: node.id,
       type: nodeTypeFor(node.kind),
-      position: { x: pos.x, y: pos.y },
+      position: parent ? { x: pos.x - parent.x, y: pos.y - parent.y } : { x: pos.x, y: pos.y },
       data: {
         title: node.title,
         description: node.description,
@@ -186,9 +203,13 @@ export function toReactFlow(
         wire: node
       },
       width: pos.width,
-      height: pos.height
+      height: pos.height,
+      zIndex: node.kind === "group" ? 0 : node.parent ? 2 : 1
     };
-    if (node.parent) rfNode.parentId = node.parent;
+    if (node.parent) {
+      rfNode.parentId = node.parent;
+      rfNode.extent = "parent";
+    }
 
     const sourcePos = node.handles?.source?.[0] ?? fallbackSides.source;
     const targetPos = node.handles?.target?.[0] ?? fallbackSides.target;
@@ -247,5 +268,54 @@ export function toReactFlow(
     return rfEdge;
   });
 
-  return { nodes, edges, bounds: layout.bounds };
+  return { nodes, edges, bounds: boundsFromFrames(framesById) };
+}
+
+function fitGroupFrames(diagram: WireDiagram, framesById: Map<string, NodeFrame>): void {
+  const childrenByParent = new Map<string, WireNode[]>();
+  for (const node of diagram.nodes) {
+    if (!node.parent) continue;
+    const children = childrenByParent.get(node.parent) ?? [];
+    children.push(node);
+    childrenByParent.set(node.parent, children);
+  }
+
+  for (const group of diagram.nodes) {
+    if (group.kind !== "group") continue;
+    const childIds = new Set([...(group.children ?? []), ...(childrenByParent.get(group.id) ?? []).map((node) => node.id)]);
+    const childFrames = [...childIds]
+      .map((id) => framesById.get(id))
+      .filter((frame): frame is NodeFrame => Boolean(frame));
+    if (childFrames.length === 0) continue;
+
+    const minX = Math.min(...childFrames.map((frame) => frame.x));
+    const minY = Math.min(...childFrames.map((frame) => frame.y));
+    const maxX = Math.max(...childFrames.map((frame) => frame.x + frame.width));
+    const maxY = Math.max(...childFrames.map((frame) => frame.y + frame.height));
+    const x = group.position?.x ?? minX - GROUP_PADDING_X;
+    const y = group.position?.y ?? minY - GROUP_PADDING_TOP;
+    const width = group.size?.width ?? Math.max(GROUP_MIN_WIDTH, maxX - minX + GROUP_PADDING_X * 2);
+    const height = group.size?.height ?? Math.max(GROUP_MIN_HEIGHT, maxY - minY + GROUP_PADDING_TOP + GROUP_PADDING_BOTTOM);
+    framesById.set(group.id, { x, y, width, height });
+  }
+}
+
+function orderParentsBeforeChildren(nodes: WireNode[]): WireNode[] {
+  return [...nodes].sort((a, b) => {
+    if (a.parent && !b.parent) return 1;
+    if (!a.parent && b.parent) return -1;
+    if (a.parent === b.id) return 1;
+    if (b.parent === a.id) return -1;
+    return 0;
+  });
+}
+
+function boundsFromFrames(framesById: Map<string, NodeFrame>): { width: number; height: number } {
+  let width = 1;
+  let height = 1;
+  for (const frame of framesById.values()) {
+    width = Math.max(width, frame.x + frame.width);
+    height = Math.max(height, frame.y + frame.height);
+  }
+  return { width, height };
 }

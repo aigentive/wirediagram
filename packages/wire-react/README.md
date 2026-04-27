@@ -98,7 +98,7 @@ export function MyDiagram() {
   );
   const { nodes, edges } = toReactFlow(diagram);
   return (
-    <div style={{ height: 600 }}>
+    <div className="h-[600px]">
       <ReactFlow nodes={nodes} edges={edges} fitView>
         <Background />
         <Controls />
@@ -107,6 +107,48 @@ export function MyDiagram() {
   );
 }
 ```
+
+## LLM-friendly editor extensions
+
+Most apps should extend the built-in canvas with Wire-level props instead of
+importing React Flow directly:
+
+```tsx
+import {
+  WireWorkspace,
+  type WireOptionCatalog
+} from "@aigentive/wire-react";
+
+const options: WireOptionCatalog = {
+  ai: [
+    { key: "model", storage: "node", type: "select", options: ["gpt-4.1", "gpt-4.1-mini"] },
+    { key: "temperature", type: "number", min: 0, max: 2, step: 0.1 }
+  ]
+};
+
+export function AgentEditor({ diagram, onChange }) {
+  return (
+    <WireWorkspace
+      diagram={diagram}
+      onChange={onChange}
+      optionCatalog={options}
+      title="Agent workflow"
+      subtitle={`${diagram.nodes.length} nodes`}
+    />
+  );
+}
+```
+
+Option values are serializable Wire data. Runtime render callbacks are React-only
+and are never stored in canonical JSON.
+
+Cards, node lists, and canvas clicks emit Wire events such as `node.inspect`;
+the option panel can follow selection or receive a controlled `nodeId`. This
+keeps card rendering decoupled from the sidebar.
+
+See the root docs for the full component prop surface:
+[`docs/REACT_COMPONENTS.md`](../../docs/REACT_COMPONENTS.md). The playground
+route `/components` showcases the reusable component system and style guide.
 
 ## Manual compilation
 

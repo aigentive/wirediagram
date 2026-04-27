@@ -39,15 +39,23 @@ import {
   wireActionsFromSelectionDelete
 } from "./changeActions.js";
 import { DEFAULT_NODE_TYPES } from "./nodeTypes.js";
+import type { WireNodeRenderer } from "./nodeTypes.js";
 import { asSide, SIDE_TO_POSITION } from "./positions.js";
+import type { WireOptionCatalog } from "../options.js";
 
 export interface WireCanvasProps {
   mode?: "view" | "edit";
+  selectOnNodeClick?: boolean;
+  inspectOnNodeClick?: boolean;
+  clearSelectionOnPaneClick?: boolean;
   fitView?: boolean;
   fitViewPadding?: number;
   showBackground?: boolean;
   showControls?: boolean;
   showMiniMap?: boolean;
+  optionCatalog?: WireOptionCatalog;
+  renderNodeCard?: WireNodeRenderer;
+  renderGroup?: WireNodeRenderer;
   nodeTypes?: NodeTypes;
   edgeTypes?: EdgeTypes;
   className?: string;
@@ -64,11 +72,17 @@ export function WireCanvas(props: WireCanvasProps): ReactElement {
 
 function WireCanvasInner({
   mode,
+  selectOnNodeClick = true,
+  inspectOnNodeClick = true,
+  clearSelectionOnPaneClick = true,
   fitView = true,
   fitViewPadding = 0.08,
   showBackground = true,
   showControls = true,
   showMiniMap = false,
+  optionCatalog,
+  renderNodeCard,
+  renderGroup,
   nodeTypes,
   edgeTypes,
   className,
@@ -84,12 +98,18 @@ function WireCanvasInner({
     return {
       nodes: converted.nodes.map((node) => ({
         ...node,
+        data: {
+          ...node.data,
+          optionCatalog,
+          renderNodeCard,
+          renderGroup
+        },
         sourcePosition: node.sourcePosition ? SIDE_TO_POSITION[node.sourcePosition] : undefined,
         targetPosition: node.targetPosition ? SIDE_TO_POSITION[node.targetPosition] : undefined
       })) as Node[],
       edges: converted.edges as unknown as Edge[]
     };
-  }, [ctx.diagram]);
+  }, [ctx.diagram, optionCatalog, renderGroup, renderNodeCard]);
   const [nodes, setNodes] = useState<Node[]>(reactFlowState.nodes);
   const [edges, setEdges] = useState<Edge[]>(reactFlowState.edges);
   const selectionRef = useRef<WireSelection>(ctx.selection);
@@ -121,11 +141,12 @@ function WireCanvasInner({
   );
 
   const setWireSelection = useCallback(
-    (selection: WireSelection) => {
+    (selection: WireSelection, source: "canvas" | "api" = "canvas") => {
       selectionRef.current = selection;
       ctx.selectionActions.setSelection(selection);
+      ctx.eventActions.emit({ type: "selection.change", source, selection });
     },
-    [ctx.selectionActions]
+    [ctx.eventActions, ctx.selectionActions]
   );
 
   const clearWireSelection = useCallback(() => {
@@ -135,12 +156,12 @@ function WireCanvasInner({
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       setNodes((currentNodes) => applyNodeChanges(changes, currentNodes));
-      const nextActions: WireAction[] = wireActionsFromNodeChanges(changes);
+      const nextActions: WireAction[] = wireActionsFromNodeChanges(changes, ctx.diagram, nodes);
       const nextSelection = selectionFromNodeChanges(selectionRef.current, changes);
       if (nextSelection !== selectionRef.current) setWireSelection(nextSelection as WireSelection);
       dispatchMany(nextActions);
     },
-    [dispatchMany, setWireSelection]
+    [ctx.diagram, dispatchMany, nodes, setWireSelection]
   );
 
   const handleEdgesChange = useCallback(
@@ -173,29 +194,37 @@ function WireCanvasInner({
   const handleNodeClick = useCallback(
     (_event: ReactMouseEvent, node: Node) => {
       if (!editable) return;
+      ctx.eventActions.emit({ type: "node.click", source: "canvas", nodeId: node.id });
+      if (inspectOnNodeClick) {
+        ctx.eventActions.emit({ type: "node.inspect", source: "canvas", nodeId: node.id });
+      }
+      if (!selectOnNodeClick) return;
       setWireSelection({ nodeIds: [node.id], edgeIds: [] });
       setNodes((currentNodes) => currentNodes.map((candidate) => ({ ...candidate, selected: candidate.id === node.id })));
       setEdges((currentEdges) => currentEdges.map((candidate) => ({ ...candidate, selected: false })));
     },
-    [editable, setWireSelection]
+    [ctx.eventActions, editable, inspectOnNodeClick, selectOnNodeClick, setWireSelection]
   );
 
   const handleEdgeClick = useCallback(
     (_event: ReactMouseEvent, edge: Edge) => {
       if (!editable) return;
+      ctx.eventActions.emit({ type: "edge.click", source: "canvas", edgeId: edge.id });
       setWireSelection({ nodeIds: [], edgeIds: [edge.id] });
       setNodes((currentNodes) => currentNodes.map((candidate) => ({ ...candidate, selected: false })));
       setEdges((currentEdges) => currentEdges.map((candidate) => ({ ...candidate, selected: candidate.id === edge.id })));
     },
-    [editable, setWireSelection]
+    [ctx.eventActions, editable, setWireSelection]
   );
 
   const handlePaneClick = useCallback(() => {
     if (!editable) return;
+    ctx.eventActions.emit({ type: "pane.click", source: "canvas" });
+    if (!clearSelectionOnPaneClick) return;
     clearWireSelection();
     setNodes((currentNodes) => currentNodes.map((candidate) => ({ ...candidate, selected: false })));
     setEdges((currentEdges) => currentEdges.map((candidate) => ({ ...candidate, selected: false })));
-  }, [clearWireSelection, editable]);
+  }, [clearWireSelection, clearSelectionOnPaneClick, ctx.eventActions, editable]);
 
   useEffect(() => {
     if (!editable) return undefined;

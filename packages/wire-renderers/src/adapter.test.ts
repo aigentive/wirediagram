@@ -60,12 +60,21 @@ describe("toReactFlow", () => {
   it("threads parent id through for grouped nodes", () => {
     const diagram = parseWireDiagram({
       nodes: [
-        { id: "g", kind: "group", title: "Pipeline" },
-        { id: "a", kind: "trigger", title: "A", parent: "g" }
+        { id: "g", kind: "group", title: "Pipeline", children: ["a"] },
+        { id: "a", kind: "trigger", title: "A", parent: "g" },
+        { id: "b", kind: "action", title: "B", from: "a", parent: "g" }
       ]
     });
     const rf = toReactFlow(diagram);
+    const group = rf.nodes.find((n) => n.id === "g")!;
     const a = rf.nodes.find((n) => n.id === "a")!;
+
+    expect(rf.nodes[0]?.id).toBe("g");
     expect(a.parentId).toBe("g");
+    expect(a.extent).toBe("parent");
+    expect(a.position.x).toBeGreaterThanOrEqual(0);
+    expect(a.position.y).toBeGreaterThanOrEqual(0);
+    expect(group.width).toBeGreaterThanOrEqual(320);
+    expect(group.height).toBeGreaterThanOrEqual(200);
   });
 });

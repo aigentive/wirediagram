@@ -26,6 +26,7 @@ export function WireProvider({
   defaultDiagram,
   onChange,
   onAction,
+  onEvent,
   validateOnChange = true,
   history = true,
   children
@@ -86,6 +87,13 @@ export function WireProvider({
     [commit, commitMany, currentDiagram]
   );
 
+  const eventActions = useMemo(
+    () => ({
+      emit: onEvent ?? (() => undefined)
+    }),
+    [onEvent]
+  );
+
   const historyActions = useMemo(
     () => ({
       canUndo: undoStack.length > 0,
@@ -125,6 +133,7 @@ export function WireProvider({
         clearSelection: () => setSelection(EMPTY_SELECTION)
       },
       viewportActions: { setViewport },
+      eventActions,
       historyActions,
       setMode
     }),
@@ -132,6 +141,7 @@ export function WireProvider({
       actions,
       currentDiagram,
       dirty,
+      eventActions,
       historyActions,
       mode,
       redoStack,

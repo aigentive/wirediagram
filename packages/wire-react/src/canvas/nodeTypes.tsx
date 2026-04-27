@@ -1,5 +1,33 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { Tone, WireNode } from "@aigentive/wire-core";
+import type { ReactNode } from "react";
+import {
+  wireNodeOptions,
+  wireOptionSpecsForNode,
+  type WireOptionCatalog,
+  type WireOptionSpec
+} from "../options.js";
+
+export interface WireNodeTheme {
+  border: string;
+  background: string;
+  accent: string;
+}
+
+export interface WireNodeRenderContext {
+  node: WireNode;
+  data: WireNodeData;
+  kind: WireNode["kind"];
+  tone: NonNullable<Tone>;
+  theme: WireNodeTheme;
+  selected: boolean;
+  width: number;
+  height: number;
+  options: Record<string, unknown>;
+  optionSpecs: WireOptionSpec[];
+}
+
+export type WireNodeRenderer = (context: WireNodeRenderContext) => ReactNode;
 
 export interface WireNodeData {
   title: string;
@@ -7,6 +35,9 @@ export interface WireNodeData {
   kind: WireNode["kind"];
   tone?: NonNullable<WireNode["tone"]>;
   wire: WireNode;
+  renderNodeCard?: WireNodeRenderer;
+  renderGroup?: WireNodeRenderer;
+  optionCatalog?: WireOptionCatalog;
   [key: string]: unknown;
 }
 
@@ -27,7 +58,7 @@ const KIND_LABEL: Record<WireNode["kind"], string> = {
 
 const HANDLE_STYLE = { background: "#64748b", width: 10, height: 10 } as const;
 
-const TONE_STYLES: Record<NonNullable<Tone>, { border: string; background: string; accent: string }> = {
+const TONE_STYLES: Record<NonNullable<Tone>, WireNodeTheme> = {
   default: { border: "#cbd5e1", background: "#ffffff", accent: "#475569" },
   success: { border: "#86efac", background: "#f0fdf4", accent: "#15803d" },
   warning: { border: "#facc15", background: "#fefce8", accent: "#a16207" },
@@ -45,10 +76,24 @@ export function WireNodeCard({ data, sourcePosition, targetPosition, width, heig
   const theme = TONE_STYLES[tone];
   const cardWidth = typeof width === "number" && width > 0 ? width : d.kind === "note" ? 220 : 220;
   const cardHeight = typeof height === "number" && height > 0 ? height : d.kind === "note" ? 88 : 80;
+  const customRenderer = d.kind === "group" ? d.renderGroup ?? d.renderNodeCard : d.renderNodeCard;
+  const customCard = customRenderer?.({
+    node: d.wire,
+    data: d,
+    kind: d.kind,
+    tone,
+    theme,
+    selected: Boolean(selected),
+    width: cardWidth,
+    height: cardHeight,
+    options: wireNodeOptions(d.wire),
+    optionSpecs: wireOptionSpecsForNode(d.optionCatalog, d.wire)
+  });
 
   return (
     <>
       <Handle type="target" position={targetPos} style={HANDLE_STYLE} />
+      {customRenderer ? customCard : (
       <div
         aria-selected={selected}
         style={{
@@ -108,6 +153,7 @@ export function WireNodeCard({ data, sourcePosition, targetPosition, width, heig
           </div>
         ) : null}
       </div>
+      )}
       <Handle type="source" position={sourcePos} style={HANDLE_STYLE} />
     </>
   );

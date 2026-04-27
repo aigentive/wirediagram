@@ -1,21 +1,90 @@
-import type { Edge, EdgeChange, NodeChange } from "@xyflow/react";
-import type { WireAction } from "@aigentive/wire-core";
+import type { Edge, EdgeChange, Node, NodeChange } from "@xyflow/react";
+import type { WireAction, WireDiagram, WireNode } from "@aigentive/wire-core";
 
 export interface SelectionLike {
   nodeIds: readonly string[];
   edgeIds: readonly string[];
 }
 
-export function wireActionsFromNodeChanges(changes: NodeChange[]): WireAction[] {
+export function wireActionsFromNodeChanges(
+  changes: NodeChange[],
+  diagram?: WireDiagram,
+  currentNodes?: Node[]
+): WireAction[] {
   const nextActions: WireAction[] = [];
   for (const change of changes) {
     if (change.type === "remove") {
       nextActions.push({ type: "node.remove", id: change.id });
-    } else if (change.type === "position" && change.position && change.dragging === false) {
+    }
+  }
+
+  const moveChanges = changes.filter(
+    (change): change is NodeChange & { type: "position"; position: { x: number; y: number } } =>
+      change.type === "position" && Boolean(change.position) && change.dragging === false
+  );
+
+  if (diagram && currentNodes && moveChanges.length > 0) {
+    const rfNodeById = new Map(currentNodes.map((node) => [node.id, node]));
+    const diagramNodeById = new Map(diagram.nodes.map((node) => [node.id, node]));
+    const positionChangeById = new Map(moveChanges.map((change) => [change.id, change.position]));
+    const movedIds = new Set<string>();
+
+    for (const change of moveChanges) {
+      const position = absoluteReactFlowPosition(change.id, rfNodeById, positionChangeById);
+      if (!position) continue;
+      nextActions.push({ type: "node.move", id: change.id, position });
+      movedIds.add(change.id);
+
+      const node = diagramNodeById.get(change.id);
+      if (node?.kind !== "group") continue;
+
+      for (const child of descendantsOfGroup(change.id, diagram.nodes)) {
+        if (movedIds.has(child.id) || positionChangeById.has(child.id)) continue;
+        const childPosition = absoluteReactFlowPosition(child.id, rfNodeById, positionChangeById);
+        if (!childPosition) continue;
+        nextActions.push({ type: "node.move", id: child.id, position: childPosition });
+        movedIds.add(child.id);
+      }
+    }
+    return nextActions;
+  }
+
+  for (const change of changes) {
+    if (change.type === "position" && change.position && change.dragging === false) {
       nextActions.push({ type: "node.move", id: change.id, position: change.position });
     }
   }
   return nextActions;
+}
+
+function absoluteReactFlowPosition(
+  id: string,
+  rfNodeById: ReadonlyMap<string, Node>,
+  positionChangeById: ReadonlyMap<string, { x: number; y: number }>
+): { x: number; y: number } | undefined {
+  const node = rfNodeById.get(id);
+  if (!node) return undefined;
+  const position = positionChangeById.get(id) ?? node.position;
+  if (!node.parentId) return position;
+  const parentPosition = absoluteReactFlowPosition(node.parentId, rfNodeById, positionChangeById);
+  if (!parentPosition) return position;
+  return {
+    x: parentPosition.x + position.x,
+    y: parentPosition.y + position.y
+  };
+}
+
+function descendantsOfGroup(groupId: string, nodes: WireNode[]): WireNode[] {
+  const descendants: WireNode[] = [];
+  const visit = (parentId: string) => {
+    for (const node of nodes) {
+      if (node.parent !== parentId) continue;
+      descendants.push(node);
+      if (node.kind === "group") visit(node.id);
+    }
+  };
+  visit(groupId);
+  return descendants;
 }
 
 export function selectionFromNodeChanges(selection: SelectionLike, changes: NodeChange[]): SelectionLike {

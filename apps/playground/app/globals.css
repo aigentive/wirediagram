@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@source "../../../packages/wire-react/src";
+
+@layer base {
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    @apply m-0 bg-slate-50 text-slate-950 antialiased;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  }
+}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Edge, EdgeChange, NodeChange } from "@xyflow/react";
+import type { Edge, EdgeChange, Node, NodeChange } from "@xyflow/react";
+import type { WireDiagram } from "@aigentive/wire-core";
 import {
   selectionFromEdgeChanges,
   selectionFromNodeChanges,
@@ -24,6 +25,62 @@ describe("wireActionsFromNodeChanges", () => {
 
     expect(wireActionsFromNodeChanges(changes)).toEqual([
       { type: "node.move", id: "node-1", position: { x: 120, y: 80 } }
+    ]);
+  });
+
+  it("converts child moves from React Flow parent-relative positions to Wire absolute positions", () => {
+    const diagram: WireDiagram = {
+      version: 1,
+      layout: "LR",
+      nodes: [
+        { id: "group", kind: "group", title: "Group", children: ["child"] },
+        { id: "child", kind: "action", title: "Child", parent: "group" }
+      ],
+      edges: []
+    };
+    const nodes: Node[] = [
+      { id: "group", position: { x: 100, y: 40 }, data: {}, type: "wire-group" },
+      { id: "child", parentId: "group", position: { x: 20, y: 30 }, data: {}, type: "wire-action" }
+    ];
+
+    expect(
+      wireActionsFromNodeChanges(
+        [{ type: "position", id: "child", position: { x: 50, y: 70 }, dragging: false }],
+        diagram,
+        nodes
+      )
+    ).toEqual([
+      { type: "node.move", id: "child", position: { x: 150, y: 110 } }
+    ]);
+  });
+
+  it("moves group descendants with the group so children remain visually attached", () => {
+    const diagram: WireDiagram = {
+      version: 1,
+      layout: "LR",
+      nodes: [
+        { id: "group", kind: "group", title: "Group", children: ["a", "b"] },
+        { id: "a", kind: "trigger", title: "A", parent: "group" },
+        { id: "b", kind: "action", title: "B", parent: "group" }
+      ],
+      edges: []
+    };
+    const nodes: Node[] = [
+      { id: "group", position: { x: 100, y: 40 }, data: {}, type: "wire-group" },
+      { id: "a", parentId: "group", position: { x: 20, y: 30 }, data: {}, type: "wire-trigger" },
+      { id: "b", parentId: "group", position: { x: 260, y: 30 }, data: {}, type: "wire-action" }
+    ];
+
+    expect(
+      wireActionsFromNodeChanges(
+        [{ type: "position", id: "group", position: { x: 100, y: 10 }, dragging: false }],
+        diagram,
+        nodes
+      )
+    ).toEqual([
+      { type: "node.move", id: "group", position: { x: 100, y: 10 } },
+      { type: "node.move", id: "a", position: { x: 120, y: 40 } },
+      { type: "node.move", id: "b", position: { x: 360, y: 40 } }
     ]);
   });
 });

@@ -11,6 +11,7 @@ LLMs and agents struggle with diagrams: they emit Mermaid blobs that almost rend
 - **Canonical JSON** — `from`, `branch`, `attachedTo`, `tone`, `handles`, style, routing, and metadata semantics designed to be unambiguous to LLMs.
 - **Shared actions** — every human, hosted editor, CLI, and MCP edit flows through the `WireAction` reducer in `wire-core`.
 - **React library** — `WireEditor`, `WireViewer`, `WireCanvas`, palette, toolbar, inspector, validation panel, and JSX authoring.
+- **LLM-friendly React extensibility** — option catalogs, custom node cards, and custom group renderers without requiring app code to import React Flow.
 - **Static renderers** — SVG, PNG, Mermaid, and React Flow conversion without pulling React into server-only consumers.
 - **MCP server** — diagram CRUD, direct action tools, atomic `apply_actions`, resources, prompts, render tools, and `v1_get_agent_guide` over stdio or HTTP.
 - **Hosted parity** — the playground/editor uses `@aigentive/wire-react`, stores canonical JSON, and renders from the same model as MCP.
@@ -110,6 +111,42 @@ export function ProductEditor({ diagram, onChange }) {
   );
 }
 ```
+
+LLM-friendly custom cards and options:
+
+```tsx
+import {
+  WireWorkspace,
+  type WireOptionCatalog
+} from "@aigentive/wire-react";
+
+const options: WireOptionCatalog = {
+  ai: [
+    { key: "model", storage: "node", type: "select", options: ["gpt-4.1", "gpt-4.1-mini"] },
+    { key: "temperature", type: "number", min: 0, max: 2, step: 0.1 }
+  ]
+};
+
+export function AgentEditor({ diagram, onChange }) {
+  return (
+    <WireWorkspace
+      diagram={diagram}
+      onChange={onChange}
+      optionCatalog={options}
+      title="Agent workflow"
+      subtitle={`${diagram.nodes.length} nodes`}
+    />
+  );
+}
+```
+
+`WireWorkspace` uses a decoupled event model: card/list clicks emit
+`node.inspect` and update selection; option panels can follow selection by
+default or receive an explicit `inspectNodeId` for fully controlled sidebars.
+
+See [`docs/REACT_COMPONENTS.md`](docs/REACT_COMPONENTS.md),
+[`docs/REACT_EXTENSIBILITY.md`](docs/REACT_EXTENSIBILITY.md), the playground
+route `/components`, and the playground route `/samples/agent-chain`.
 
 JSX authoring remains supported:
 

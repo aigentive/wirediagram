@@ -41,3 +41,7 @@ export function useWireDispatch() {
   const ctx = useWireContext();
   return (action: WireAction) => ctx.actions.dispatch(action);
 }
+
+export function useWireEvents() {
+  return useWireContext().eventActions;
+}

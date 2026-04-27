@@ -6,13 +6,13 @@ export const dynamic = "force-static";
 export default function HomePage() {
   const templateNames = Object.keys(TEMPLATES);
   return (
-    <main style={{ padding: "48px 32px", maxWidth: 880, margin: "0 auto" }}>
-      <header style={{ marginBottom: 32 }}>
-        <h1 style={{ margin: 0, fontSize: 36, letterSpacing: -0.5 }}>Wire playground</h1>
-        <p style={{ color: "#475569", marginTop: 8, fontSize: 16 }}>
+    <main className="mx-auto max-w-[880px] px-8 py-12">
+      <header className="mb-8">
+        <h1 className="m-0 text-4xl font-bold tracking-normal text-slate-950">Wire playground</h1>
+        <p className="mt-2 text-base text-slate-600">
           Inline-render <code>@aigentive/wire</code> diagrams in your browser. Pick a template, view
           a stored diagram, or POST canonical Wire JSON to{" "}
-          <code style={{ background: "#f1f5f9", padding: "2px 6px", borderRadius: 4 }}>
+          <code className="rounded bg-slate-100 px-1.5 py-0.5">
             /api/render
           </code>
           .
@@ -20,34 +20,24 @@ export default function HomePage() {
       </header>
 
       <section>
-        <h2 style={{ fontSize: 18, color: "#0f172a", marginBottom: 12 }}>Templates</h2>
-        <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 12 }}>
+        <h2 className="mb-3 text-lg font-semibold text-slate-950">Templates</h2>
+        <ul className="grid list-none gap-3 p-0">
           {templateNames.map((name) => (
             <li
               key={name}
-              style={{
-                background: "white",
-                border: "1px solid #e2e8f0",
-                borderRadius: 8,
-                padding: "16px 20px"
-              }}
+              className="rounded-lg border border-slate-200 bg-white px-5 py-4"
             >
               <Link
                 href={`/preview/template/${name}`}
-                style={{
-                  fontSize: 15,
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  color: "#1e3a8a"
-                }}
+                className="text-[15px] font-semibold text-blue-900 no-underline"
               >
                 {name}
               </Link>
-              <div style={{ color: "#64748b", fontSize: 13, marginTop: 4 }}>
+              <div className="mt-1 text-[13px] text-slate-500">
                 {TEMPLATES[name]?.title} · {TEMPLATES[name]?.nodes.length ?? 0} nodes ·{" "}
                 <Link
                   href={`/edit/template/${name}`}
-                  style={{ color: "#1e3a8a", textDecoration: "none" }}
+                  className="text-blue-900 no-underline"
                 >
                   edit ↗
                 </Link>
@@ -57,9 +47,37 @@ export default function HomePage() {
         </ul>
       </section>
 
-      <section style={{ marginTop: 40 }}>
-        <h2 style={{ fontSize: 18 }}>API endpoints</h2>
-        <ul style={{ color: "#475569", lineHeight: 1.7 }}>
+      <section className="mt-10">
+        <h2 className="mb-3 text-lg font-semibold text-slate-950">React samples</h2>
+        <ul className="grid list-none gap-3 p-0">
+          <li className="rounded-lg border border-slate-200 bg-white px-5 py-4">
+            <Link
+              href="/components"
+              className="text-[15px] font-semibold text-blue-900 no-underline"
+            >
+              Component system
+            </Link>
+            <div className="mt-1 text-[13px] text-slate-500">
+              Components, style guide, option panels, cards, groups, and event patterns.
+            </div>
+          </li>
+          <li className="rounded-lg border border-slate-200 bg-white px-5 py-4">
+            <Link
+              href="/samples/agent-chain"
+              className="text-[15px] font-semibold text-blue-900 no-underline"
+            >
+              Agent chain
+            </Link>
+            <div className="mt-1 text-[13px] text-slate-500">
+              Wire-level card, group, and option rendering with no React Flow app code.
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold text-slate-950">API endpoints</h2>
+        <ul className="leading-7 text-slate-600">
           <li>
             <code>POST /api/render</code> — body: canonical Wire JSON; returns SVG.
           </li>

@@ -7,6 +7,7 @@ import type {
 } from "@aigentive/wire-core";
 import type {
   WireHistoryActions,
+  WireEventActions,
   WireMode,
   WireReactState,
   WireSelection,
@@ -25,6 +26,7 @@ export interface WireContextValue extends WireReactState {
   actions: WireActions;
   selectionActions: WireSelectionActions;
   viewportActions: WireViewportActions;
+  eventActions: WireEventActions;
   historyActions: WireHistoryActions;
   setMode(mode: WireMode): void;
 }
