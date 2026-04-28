@@ -8,7 +8,7 @@ JSX facade for Wire diagrams. Author diagrams as React components, compile to ca
 npm install @aigentive/wire-react react react-dom
 ```
 
-`<Flow>` renders as inline SVG by default — no `@xyflow/react` peer dep needed. For pan/zoom, install `@xyflow/react` and use the `useWireDiagram` hook + `toReactFlow` (see "Pan/zoom with React Flow" below).
+`<Flow>` renders as inline SVG by default. `<WireCanvas>` provides the native interactive canvas; no separate canvas-engine package is required.
 
 ## Use
 
@@ -73,21 +73,20 @@ All components accept the common base props: `id`, `title`, `description`, `tone
 </Flow>
 ```
 
-## Pan/zoom with React Flow
+## Native pan/zoom canvas
 
-For interactive canvases, install `@xyflow/react` and compose your own component with the `useWireDiagram` hook + `toReactFlow` adapter.
+For interactive canvases, compile JSX to a Wire diagram and render it through the built-in provider and canvas.
 
 ```tsx
 "use client";
-import { ReactFlow, Background, Controls } from "@xyflow/react";
-import { toReactFlow } from "@aigentive/wire-renderers";
 import {
   Flow,
   TriggerNode,
   AINode,
-  useWireDiagram
+  useWireDiagram,
+  WireProvider,
+  WireCanvas
 } from "@aigentive/wire-react";
-import "@xyflow/react/dist/style.css";
 
 export function MyDiagram() {
   const diagram = useWireDiagram(
@@ -96,13 +95,11 @@ export function MyDiagram() {
       <AINode id="plan" title="Plan" from="t" model="gpt-4.1" />
     </Flow>
   );
-  const { nodes, edges } = toReactFlow(diagram);
   return (
     <div className="h-[600px]">
-      <ReactFlow nodes={nodes} edges={edges} fitView>
-        <Background />
-        <Controls />
-      </ReactFlow>
+      <WireProvider diagram={diagram}>
+        <WireCanvas mode="edit" />
+      </WireProvider>
     </div>
   );
 }
@@ -111,7 +108,7 @@ export function MyDiagram() {
 ## LLM-friendly editor extensions
 
 Most apps should extend the built-in canvas with Wire-level props instead of
-importing React Flow directly:
+importing a third-party graph canvas directly:
 
 ```tsx
 import {
@@ -148,7 +145,8 @@ keeps card rendering decoupled from the sidebar.
 
 See the root docs for the full component prop surface:
 [`docs/REACT_COMPONENTS.md`](../../docs/REACT_COMPONENTS.md). The playground
-route `/components` showcases the reusable component system and style guide.
+routes `/docs` and `/samples/agent-chain` showcase the reusable component
+system, docs, and full app sample.
 
 ## Manual compilation
 

@@ -1,0 +1,141 @@
+import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+
+test("wire-native canvas renders and edits without xyflow DOM", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+
+  await gotoOk(page, "/quickstart");
+  await page.getByRole("button", { name: "Preview" }).nth(2).click();
+  await expect(page.locator("[data-wire-node]").first()).toBeVisible();
+  await expect.poll(() => page.locator("[data-wire-edge]").count()).toBeGreaterThan(0);
+  await expect(page.locator(".react-flow")).toHaveCount(0);
+
+  const sourceHandle = page.locator("button[data-wire-source-handle='true']:not([disabled])").first();
+  await expect(sourceHandle).toBeVisible();
+  const sourceNodeId = await sourceHandle.getAttribute("data-wire-node-id");
+  expect(sourceNodeId).toBeTruthy();
+
+  const firstNode = sourceHandle.locator("xpath=ancestor::*[@data-wire-node][1]");
+  await firstNode.click();
+  await expect(firstNode.locator("[aria-selected='true']")).toHaveCount(1);
+
+  const beforeDrag = await firstNode.boundingBox();
+  expect(beforeDrag).toBeTruthy();
+  await page.mouse.move(beforeDrag!.x + beforeDrag!.width / 2, beforeDrag!.y + beforeDrag!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    beforeDrag!.x + beforeDrag!.width / 2 + 80,
+    beforeDrag!.y + beforeDrag!.height / 2 + 32,
+    { steps: 8 }
+  );
+  await page.mouse.up();
+  await page.waitForTimeout(250);
+  const afterDrag = await firstNode.boundingBox();
+  expect(afterDrag).toBeTruthy();
+  expect(Math.abs(afterDrag!.x - beforeDrag!.x) + Math.abs(afterDrag!.y - beforeDrag!.y)).toBeGreaterThan(20);
+
+  const targetHandle = page.locator(
+    `button[data-wire-target-handle='true'][data-wire-node-id]:not([data-wire-node-id='${sourceNodeId}'])`
+  ).last();
+  await expect(targetHandle).toBeVisible();
+  const beforeEdges = await page.locator("[data-wire-edge]").count();
+  const sourceBox = await sourceHandle.boundingBox();
+  const targetBox = await targetHandle.boundingBox();
+  expect(sourceBox).toBeTruthy();
+  expect(targetBox).toBeTruthy();
+  await page.mouse.move(sourceBox!.x + sourceBox!.width / 2, sourceBox!.y + sourceBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2, { steps: 12 });
+  await page.mouse.up();
+  await expect.poll(() => page.locator("[data-wire-edge]").count()).toBeGreaterThan(beforeEdges);
+
+  expect(errors).toEqual([]);
+});
+
+test("install docs show single package install", async ({ page }) => {
+  await gotoOk(page, "/install");
+  await expect(page.getByText("npm install @aigentive/wire-react")).toBeVisible();
+  await expect(page.getByText("@xyflow/react")).toHaveCount(0);
+});
+
+test("view-mode layout previews can zoom and pan", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+
+  await gotoOk(page, "/examples/layouts");
+
+  const canvas = page.locator("[data-wire-canvas]").first();
+  const node = canvas.locator("[data-wire-node]").first();
+  await expect(canvas.getByRole("button", { name: "Zoom in" })).toBeVisible();
+  await expect(canvas.getByRole("button", { name: "Zoom out" })).toBeVisible();
+  await expect(node).toBeVisible();
+
+  const beforeZoom = await node.boundingBox();
+  expect(beforeZoom).toBeTruthy();
+  await canvas.getByRole("button", { name: "Zoom in" }).click();
+  await expect.poll(async () => {
+    const box = await node.boundingBox();
+    return box?.width ?? 0;
+  }).toBeGreaterThan(beforeZoom!.width + 5);
+
+  const beforeWheel = await node.boundingBox();
+  const wheelCanvasBox = await canvas.boundingBox();
+  expect(beforeWheel).toBeTruthy();
+  expect(wheelCanvasBox).toBeTruthy();
+  const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
+  const wheelPoint = visibleCanvasPoint(wheelCanvasBox!, viewport);
+  const scrollBeforeWheel = await page.evaluate(() => window.scrollY);
+  await page.mouse.move(wheelPoint.x, wheelPoint.y);
+  await page.mouse.wheel(0, -120);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollBeforeWheel);
+  await expect.poll(async () => {
+    const box = await node.boundingBox();
+    return box?.width ?? 0;
+  }).toBeGreaterThan(beforeWheel!.width * 1.05);
+  const afterWheel = await node.boundingBox();
+  expect(afterWheel).toBeTruthy();
+  expect(afterWheel!.width).toBeLessThan(beforeWheel!.width * 1.15);
+
+  const beforePan = await node.boundingBox();
+  const canvasBox = await canvas.boundingBox();
+  expect(beforePan).toBeTruthy();
+  expect(canvasBox).toBeTruthy();
+  const panStart = visibleCanvasPoint(canvasBox!, viewport);
+
+  await page.mouse.move(panStart.x, panStart.y);
+  await page.mouse.down();
+  await page.mouse.move(panStart.x + 90, panStart.y + 24, { steps: 8 });
+  await page.mouse.up();
+
+  await expect.poll(async () => {
+    const afterPan = await node.boundingBox();
+    if (!afterPan) return 0;
+    return Math.abs(afterPan.x - beforePan!.x) + Math.abs(afterPan.y - beforePan!.y);
+  }).toBeGreaterThan(30);
+
+  expect(errors).toEqual([]);
+});
+
+async function gotoOk(page: Page, path: string): Promise<void> {
+  await expect.poll(async () => {
+    const response = await page.goto(path);
+    return response?.status() ?? 0;
+  }, { timeout: 20_000 }).toBe(200);
+}
+
+function visibleCanvasPoint(
+  box: { x: number; y: number; width: number; height: number },
+  viewport: { width: number; height: number }
+): { x: number; y: number } {
+  return {
+    x: Math.min(Math.max(box.x + 120, box.x + 24), box.x + box.width - 24),
+    y: Math.min(Math.max(box.y + 140, 80), Math.min(box.y + box.height - 80, viewport.height - 80))
+  };
+}

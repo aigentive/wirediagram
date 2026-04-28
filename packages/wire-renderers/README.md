@@ -2,41 +2,16 @@
 
 Render Wire diagrams. Two surfaces:
 
-1. **`toReactFlow(diagram)`** — convert to `@xyflow/react` `nodes` + `edges`. Use in browsers / Next.js apps.
-2. **`renderToSvg(diagram)`** — pure server-side SVG renderer. No React, no DOM. Used by the MCP server for `render_svg` and by the CLI for `wire export`.
+1. **`renderToSvg(diagram)`** — pure server-side SVG renderer. No React, no DOM. Used by the MCP server for `render_svg` and by the CLI for `wire export`.
+2. **`toReactFlow(diagram)`** — compatibility adapter that returns React Flow-shaped `nodes` + `edges` for apps that still maintain their own third-party graph canvas.
 
 ## Install
 
 ```bash
-npm install @aigentive/wire-renderers @xyflow/react
+npm install @aigentive/wire-renderers
 ```
 
 ## Use
-
-```tsx
-import { ReactFlow, Background, Controls } from "@xyflow/react";
-import { toReactFlow } from "@aigentive/wire-renderers";
-import { parseWireDiagram } from "@aigentive/wire-core";
-import "@xyflow/react/dist/style.css";
-
-const diagram = parseWireDiagram(/* … */);
-const { nodes, edges } = toReactFlow(diagram);
-
-export default function DiagramView() {
-  return (
-    <div style={{ height: 600 }}>
-      <ReactFlow nodes={nodes} edges={edges} fitView>
-        <Background />
-        <Controls />
-      </ReactFlow>
-    </div>
-  );
-}
-```
-
-To customize node rendering, pass your own `nodeTypes` to `<ReactFlow>` keyed by `wire-trigger`, `wire-ai`, `wire-action`, etc. Each node receives `data: { title, description, kind, tone, toneClass, wire }`.
-
-### Server-side SVG export
 
 ```ts
 import { renderToSvg } from "@aigentive/wire-renderers";
@@ -45,6 +20,8 @@ import { writeFileSync } from "node:fs";
 const svg = renderToSvg(diagram, { padding: 24, background: "#fafafa" });
 writeFileSync("./diagram.svg", svg);
 ```
+
+For React apps, prefer the native `<WireCanvas>` from `@aigentive/wire-react`. Use `toReactFlow` only as an interop adapter for an app that already owns a React Flow-compatible canvas.
 
 ## License
 

@@ -55,5 +55,5 @@ export default async function EditPage({ params, searchParams }: Props) {
     notFound();
   }
 
-  return <EditCanvas diagram={diagram} label={label} />;
+  return <EditCanvas diagram={JSON.parse(JSON.stringify(diagram))} label={label} />;
 }

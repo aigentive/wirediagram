@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { Edge, EdgeChange, Node, NodeChange } from "@xyflow/react";
 import type { WireDiagram } from "@aigentive/wire-core";
 import {
   selectionFromEdgeChanges,
   selectionFromNodeChanges,
+  type WireCanvasEdge,
+  type WireCanvasNode,
+  type WireEdgeChange,
+  type WireNodeChange,
   wireActionsFromEdgeChanges,
   wireActionsFromNodeChanges,
   wireActionsFromSelectionDelete
@@ -11,7 +14,7 @@ import {
 
 describe("wireActionsFromNodeChanges", () => {
   it("does not commit a node move while the node is still dragging", () => {
-    const changes: NodeChange[] = [
+    const changes: WireNodeChange[] = [
       { type: "position", id: "node-1", position: { x: 120, y: 80 }, dragging: true }
     ];
 
@@ -19,7 +22,7 @@ describe("wireActionsFromNodeChanges", () => {
   });
 
   it("commits one node move when dragging finishes", () => {
-    const changes: NodeChange[] = [
+    const changes: WireNodeChange[] = [
       { type: "position", id: "node-1", position: { x: 120, y: 80 }, dragging: false }
     ];
 
@@ -28,7 +31,7 @@ describe("wireActionsFromNodeChanges", () => {
     ]);
   });
 
-  it("converts child moves from React Flow parent-relative positions to Wire absolute positions", () => {
+  it("converts child moves from parent-relative positions to Wire absolute positions", () => {
     const diagram: WireDiagram = {
       version: 1,
       layout: "LR",
@@ -38,9 +41,9 @@ describe("wireActionsFromNodeChanges", () => {
       ],
       edges: []
     };
-    const nodes: Node[] = [
-      { id: "group", position: { x: 100, y: 40 }, data: {}, type: "wire-group" },
-      { id: "child", parentId: "group", position: { x: 20, y: 30 }, data: {}, type: "wire-action" }
+    const nodes: WireCanvasNode[] = [
+      { id: "group", position: { x: 100, y: 40 } },
+      { id: "child", parentId: "group", position: { x: 20, y: 30 } }
     ];
 
     expect(
@@ -65,10 +68,10 @@ describe("wireActionsFromNodeChanges", () => {
       ],
       edges: []
     };
-    const nodes: Node[] = [
-      { id: "group", position: { x: 100, y: 40 }, data: {}, type: "wire-group" },
-      { id: "a", parentId: "group", position: { x: 20, y: 30 }, data: {}, type: "wire-trigger" },
-      { id: "b", parentId: "group", position: { x: 260, y: 30 }, data: {}, type: "wire-action" }
+    const nodes: WireCanvasNode[] = [
+      { id: "group", position: { x: 100, y: 40 } },
+      { id: "a", parentId: "group", position: { x: 20, y: 30 } },
+      { id: "b", parentId: "group", position: { x: 260, y: 30 } }
     ];
 
     expect(
@@ -87,14 +90,13 @@ describe("wireActionsFromNodeChanges", () => {
 
 describe("wireActionsFromEdgeChanges", () => {
   it("disconnects synthesized edges by endpoints and branch", () => {
-    const edge: Edge = {
+    const edge: WireCanvasEdge = {
       id: "route->notify:sales",
       source: "route",
       target: "notify",
-      data: { branch: "sales" },
-      position: { x: 0, y: 0 }
+      data: { branch: "sales" }
     };
-    const changes: EdgeChange[] = [{ type: "remove", id: edge.id }];
+    const changes: WireEdgeChange[] = [{ type: "remove", id: edge.id }];
 
     expect(wireActionsFromEdgeChanges(changes, new Map([[edge.id, edge]]), new Set())).toEqual([
       { type: "edge.disconnect", from: "route", to: "notify", branch: "sales" }
@@ -102,13 +104,12 @@ describe("wireActionsFromEdgeChanges", () => {
   });
 
   it("removes explicit edges by id", () => {
-    const edge: Edge = {
+    const edge: WireCanvasEdge = {
       id: "a-to-b",
       source: "a",
-      target: "b",
-      position: { x: 0, y: 0 }
+      target: "b"
     };
-    const changes: EdgeChange[] = [{ type: "remove", id: edge.id }];
+    const changes: WireEdgeChange[] = [{ type: "remove", id: edge.id }];
 
     expect(wireActionsFromEdgeChanges(changes, new Map([[edge.id, edge]]), new Set([edge.id]))).toEqual([
       { type: "edge.remove", id: "a-to-b" }
@@ -126,19 +127,17 @@ describe("wireActionsFromSelectionDelete", () => {
     ]);
   });
 
-  it("removes selected edges using the same explicit/synthesized rules as React Flow changes", () => {
-    const explicit: Edge = {
+  it("removes selected edges using the same explicit/synthesized rules as canvas changes", () => {
+    const explicit: WireCanvasEdge = {
       id: "a-to-b",
       source: "a",
-      target: "b",
-      position: { x: 0, y: 0 }
+      target: "b"
     };
-    const synthesized: Edge = {
+    const synthesized: WireCanvasEdge = {
       id: "route->notify:sales",
       source: "route",
       target: "notify",
-      data: { branch: "sales" },
-      position: { x: 0, y: 0 }
+      data: { branch: "sales" }
     };
     const edgeById = new Map([
       [explicit.id, explicit],
@@ -158,11 +157,10 @@ describe("wireActionsFromSelectionDelete", () => {
   });
 
   it("skips selected edges that will be pruned by a selected node removal", () => {
-    const edge: Edge = {
+    const edge: WireCanvasEdge = {
       id: "a-to-b",
       source: "a",
-      target: "b",
-      position: { x: 0, y: 0 }
+      target: "b"
     };
 
     expect(

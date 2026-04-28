@@ -14,5 +14,5 @@ export default async function TemplateEdit({ params }: Props) {
   const tpl = TEMPLATES[name];
   if (!tpl) notFound();
   const diagram = parseWireDiagram(tpl);
-  return <EditCanvas diagram={diagram} label={tpl.title ?? name} />;
+  return <EditCanvas diagram={JSON.parse(JSON.stringify(diagram))} label={tpl.title ?? name} />;
 }

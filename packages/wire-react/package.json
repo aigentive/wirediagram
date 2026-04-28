@@ -25,9 +25,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@aigentive/wire-core": "^1.0.0",
-    "@aigentive/wire-renderers": "^1.0.0",
-    "@xyflow/react": "^12.3.6"
+    "@aigentive/wire-core": "^1.0.0"
   },
   "peerDependencies": {
     "react": ">=18",

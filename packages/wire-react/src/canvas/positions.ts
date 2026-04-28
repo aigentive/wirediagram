@@ -1,18 +1,26 @@
-import { Position } from "@xyflow/react";
 import type { Side } from "@aigentive/wire-core";
 
-export const SIDE_TO_POSITION: Record<Side, Position> = {
-  top: Position.Top,
-  bottom: Position.Bottom,
-  left: Position.Left,
-  right: Position.Right
+export type WireCanvasPosition = Side;
+
+export const WirePosition = {
+  Top: "top",
+  Bottom: "bottom",
+  Left: "left",
+  Right: "right"
+} as const satisfies Record<string, WireCanvasPosition>;
+
+export const SIDE_TO_POSITION: Record<Side, WireCanvasPosition> = {
+  top: WirePosition.Top,
+  bottom: WirePosition.Bottom,
+  left: WirePosition.Left,
+  right: WirePosition.Right
 };
 
 export const POSITION_TO_SIDE: Record<string, Side> = {
-  [Position.Top]: "top",
-  [Position.Bottom]: "bottom",
-  [Position.Left]: "left",
-  [Position.Right]: "right"
+  [WirePosition.Top]: "top",
+  [WirePosition.Bottom]: "bottom",
+  [WirePosition.Left]: "left",
+  [WirePosition.Right]: "right"
 };
 
 export function asSide(value: string | null | undefined): Side | undefined {

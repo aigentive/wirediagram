@@ -50,7 +50,7 @@ describe("shared editor components", () => {
     expect(markup).toContain("rounded-lg");
   });
 
-  it("renders declarative node options without React Flow app code", () => {
+  it("renders declarative node options without graph-canvas app code", () => {
     const diagram = {
       ...emptyDiagram(),
       nodes: [

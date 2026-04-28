@@ -1,5 +1,29 @@
-import type { Edge, EdgeChange, Node, NodeChange } from "@xyflow/react";
 import type { WireAction, WireDiagram, WireNode } from "@aigentive/wire-core";
+
+export interface WireCanvasNode {
+  id: string;
+  position: { x: number; y: number };
+  parentId?: string;
+}
+
+export interface WireCanvasEdge {
+  id: string;
+  source: string;
+  target: string;
+  data?: {
+    branch?: unknown;
+    [key: string]: unknown;
+  };
+}
+
+export type WireNodeChange =
+  | { type: "remove"; id: string }
+  | { type: "position"; id: string; position?: { x: number; y: number }; dragging?: boolean }
+  | { type: "select"; id: string; selected: boolean };
+
+export type WireEdgeChange =
+  | { type: "remove"; id: string }
+  | { type: "select"; id: string; selected: boolean };
 
 export interface SelectionLike {
   nodeIds: readonly string[];
@@ -7,9 +31,9 @@ export interface SelectionLike {
 }
 
 export function wireActionsFromNodeChanges(
-  changes: NodeChange[],
+  changes: WireNodeChange[],
   diagram?: WireDiagram,
-  currentNodes?: Node[]
+  currentNodes?: WireCanvasNode[]
 ): WireAction[] {
   const nextActions: WireAction[] = [];
   for (const change of changes) {
@@ -19,7 +43,7 @@ export function wireActionsFromNodeChanges(
   }
 
   const moveChanges = changes.filter(
-    (change): change is NodeChange & { type: "position"; position: { x: number; y: number } } =>
+    (change): change is Extract<WireNodeChange, { type: "position" }> & { position: { x: number; y: number } } =>
       change.type === "position" && Boolean(change.position) && change.dragging === false
   );
 
@@ -30,7 +54,7 @@ export function wireActionsFromNodeChanges(
     const movedIds = new Set<string>();
 
     for (const change of moveChanges) {
-      const position = absoluteReactFlowPosition(change.id, rfNodeById, positionChangeById);
+      const position = absoluteCanvasPosition(change.id, rfNodeById, positionChangeById);
       if (!position) continue;
       nextActions.push({ type: "node.move", id: change.id, position });
       movedIds.add(change.id);
@@ -40,7 +64,7 @@ export function wireActionsFromNodeChanges(
 
       for (const child of descendantsOfGroup(change.id, diagram.nodes)) {
         if (movedIds.has(child.id) || positionChangeById.has(child.id)) continue;
-        const childPosition = absoluteReactFlowPosition(child.id, rfNodeById, positionChangeById);
+        const childPosition = absoluteCanvasPosition(child.id, rfNodeById, positionChangeById);
         if (!childPosition) continue;
         nextActions.push({ type: "node.move", id: child.id, position: childPosition });
         movedIds.add(child.id);
@@ -57,16 +81,16 @@ export function wireActionsFromNodeChanges(
   return nextActions;
 }
 
-function absoluteReactFlowPosition(
+function absoluteCanvasPosition(
   id: string,
-  rfNodeById: ReadonlyMap<string, Node>,
+  rfNodeById: ReadonlyMap<string, WireCanvasNode>,
   positionChangeById: ReadonlyMap<string, { x: number; y: number }>
 ): { x: number; y: number } | undefined {
   const node = rfNodeById.get(id);
   if (!node) return undefined;
   const position = positionChangeById.get(id) ?? node.position;
   if (!node.parentId) return position;
-  const parentPosition = absoluteReactFlowPosition(node.parentId, rfNodeById, positionChangeById);
+  const parentPosition = absoluteCanvasPosition(node.parentId, rfNodeById, positionChangeById);
   if (!parentPosition) return position;
   return {
     x: parentPosition.x + position.x,
@@ -87,7 +111,7 @@ function descendantsOfGroup(groupId: string, nodes: WireNode[]): WireNode[] {
   return descendants;
 }
 
-export function selectionFromNodeChanges(selection: SelectionLike, changes: NodeChange[]): SelectionLike {
+export function selectionFromNodeChanges(selection: SelectionLike, changes: WireNodeChange[]): SelectionLike {
   const selectedNodeIds = new Set(selection.nodeIds);
   let changedSelection = false;
   let selectedNode = false;
@@ -110,7 +134,7 @@ export function selectionFromNodeChanges(selection: SelectionLike, changes: Node
   };
 }
 
-export function selectionFromEdgeChanges(selection: SelectionLike, changes: EdgeChange[]): SelectionLike {
+export function selectionFromEdgeChanges(selection: SelectionLike, changes: WireEdgeChange[]): SelectionLike {
   const selectedEdgeIds = new Set(selection.edgeIds);
   let changedSelection = false;
   let selectedEdge = false;
@@ -134,8 +158,8 @@ export function selectionFromEdgeChanges(selection: SelectionLike, changes: Edge
 }
 
 export function wireActionsFromEdgeChanges(
-  changes: EdgeChange[],
-  edgeById: ReadonlyMap<string, Edge>,
+  changes: WireEdgeChange[],
+  edgeById: ReadonlyMap<string, WireCanvasEdge>,
   explicitEdgeIds: ReadonlySet<string>
 ): WireAction[] {
   const nextActions: WireAction[] = [];
@@ -155,11 +179,11 @@ export function wireActionsFromEdgeChanges(
 
 export function wireActionsFromSelectionDelete(
   selection: SelectionLike,
-  edgeById: ReadonlyMap<string, Edge>,
+  edgeById: ReadonlyMap<string, WireCanvasEdge>,
   explicitEdgeIds: ReadonlySet<string>
 ): WireAction[] {
   const selectedNodeIds = new Set(selection.nodeIds);
-  const edgeChanges: EdgeChange[] = [];
+  const edgeChanges: WireEdgeChange[] = [];
   for (const edgeId of selection.edgeIds) {
     const edge = edgeById.get(edgeId);
     if (!edge) continue;

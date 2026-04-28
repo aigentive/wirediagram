@@ -1,10 +1,10 @@
 import { useMemo, type ReactElement, type ReactNode } from "react";
-import { renderToSvg } from "@aigentive/wire-renderers";
+import { renderToSvg } from "@aigentive/wire-core";
 import { compile, type FlowProps } from "./compile.js";
 import type { WireDiagram, LayoutDirection } from "@aigentive/wire-core";
 
 export interface FlowComponentProps extends FlowProps {
-  /** Render mode. Default "svg" (always works, server-renderable). For pan/zoom use `<WireReactFlow>` separately. */
+  /** Render mode. Default "svg" (always works, server-renderable). */
   mode?: "svg" | "json";
   /** Class name applied to the outer container. */
   className?: string;
@@ -20,9 +20,6 @@ const DEFAULT_STYLE: React.CSSProperties = { width: "100%", height: 600 };
  * `<Flow>` compiles its JSX children into a canonical Wire diagram and
  * renders it as inline SVG by default (works in any React tree — server
  * components, static export, RSC, plain SPA).
- *
- * For pan/zoom/edit, install `@xyflow/react` and pass the compiled
- * diagram to your own `<ReactFlow>` (see wire-renderers `toReactFlow`).
  *
  * - mode="svg" (default) — server-renderable inline SVG
  * - mode="json" — invisible; use `onCompile` to capture the JSON
@@ -60,13 +57,11 @@ export function Flow({
 
 /**
  * Hook: compile a JSX `<Flow>` tree into canonical Wire JSON. Useful when
- * you want to render with `@xyflow/react` directly:
+ * you want to feed the diagram into `<WireProvider>` / `<WireCanvas>`:
  *
  * ```tsx
  * "use client";
- * import { ReactFlow, Background, Controls } from "@xyflow/react";
- * import { toReactFlow } from "@aigentive/wire-renderers";
- * import { useWireDiagram, TriggerNode, AINode } from "@aigentive/wire-react";
+ * import { useWireDiagram, WireProvider, WireCanvas, TriggerNode, AINode } from "@aigentive/wire-react";
  *
  * export function MyDiagram() {
  *   const diagram = useWireDiagram(
@@ -75,8 +70,7 @@ export function Flow({
  *       <AINode id="plan" title="Plan" from="t" />
  *     </Flow>
  *   );
- *   const { nodes, edges } = toReactFlow(diagram);
- *   return <ReactFlow nodes={nodes} edges={edges} fitView>...</ReactFlow>;
+ *   return <WireProvider diagram={diagram}><WireCanvas mode="view" /></WireProvider>;
  * }
  * ```
  */

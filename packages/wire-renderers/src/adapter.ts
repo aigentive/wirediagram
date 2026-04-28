@@ -14,8 +14,8 @@ import { DEFAULT_TONE_CLASSES } from "./tone.js";
 
 /**
  * Minimal subset of the React Flow node/edge shape so we don't
- * pull `@xyflow/react` into the type signature when consumers
- * only want the JSON. Compatible with `import { Node, Edge } from '@xyflow/react'`.
+ * pull a third-party graph canvas into the type signature when consumers
+ * only want the JSON. Compatible with React Flow-style node and edge objects.
  */
 export interface ReactFlowNode {
   id: string;

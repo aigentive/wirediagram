@@ -1,0 +1,319 @@
+import { DocsPage } from "../_components/DocsPage";
+import { Prose, InlineCode } from "../_components/Prose";
+import { CodeBlock, Shell } from "../_components/CodeBlock";
+import { Callout } from "../_components/Callout";
+
+export const metadata = { title: "MCP server · Wire docs" };
+
+const ENV_VARS: Array<{ name: string; default: string; purpose: string }> = [
+  { name: "WIRE_STORAGE_DIR", default: "~/.wire/diagrams", purpose: "Directory for *.json diagram files" },
+  { name: "WIRE_HTTP_PORT", default: "3860", purpose: "HTTP transport port" },
+  { name: "WIRE_HTTP_HOST", default: "127.0.0.1", purpose: "HTTP transport host" },
+  { name: "WIRE_AUDIT_LOG", default: "(stderr only)", purpose: "JSONL audit log file path" },
+  { name: "WIRE_DEFAULT_LAYOUT", default: "LR", purpose: "Default layout direction" },
+  { name: "WIRE_PREVIEW_BASE", default: "http://localhost:3870", purpose: "Base URL for preview links" },
+  { name: "WIRE_PNG_ENABLED", default: "false", purpose: "Enable PNG rasterization (requires @resvg/resvg-js)" },
+  { name: "WIRE_AGENT_ID", default: "wire-mcp", purpose: "Audit log actor id" }
+];
+
+const TOOL_GROUPS: Array<{ title: string; tools: Array<{ name: string; purpose: string }> }> = [
+  {
+    title: "Diagram lifecycle",
+    tools: [
+      { name: "create_diagram", purpose: "Create a new diagram, optionally seeded from a template (agent-workflow, approval-flow, rag-pipeline)." },
+      { name: "load_diagram", purpose: "Load a stored diagram by id." },
+      { name: "save_diagram", purpose: "Overwrite a diagram with full JSON; validates before write." },
+      { name: "patch_diagram", purpose: "Patch top-level diagram fields (`null` clears a field)." },
+      { name: "list_diagrams", purpose: "List stored diagrams (recency-sorted)." },
+      { name: "get_diagram_json", purpose: "Return raw canonical JSON." }
+    ]
+  },
+  {
+    title: "Nodes",
+    tools: [
+      { name: "add_node", purpose: "Append a node (any kind), optionally wired via `from` / `branch`." },
+      { name: "update_node", purpose: "Patch fields on a node (`null` to clear)." },
+      { name: "remove_node", purpose: "Remove a node and prune incoming refs." },
+      { name: "move_node", purpose: "Persist node position." },
+      { name: "resize_node", purpose: "Persist node size." }
+    ]
+  },
+  {
+    title: "Edges",
+    tools: [
+      { name: "connect", purpose: "Connect two nodes; supports edge ids, branches, labels, handles, style, label style, routing, and data." },
+      { name: "disconnect", purpose: "Remove a connection (branch-aware sweep when `branch` omitted)." },
+      { name: "update_edge", purpose: "Patch an explicit edge by id (handles, style, labelStyle, routing, etc.)." },
+      { name: "remove_edge", purpose: "Remove an explicit edge by id." }
+    ]
+  },
+  {
+    title: "Structure",
+    tools: [
+      { name: "add_note", purpose: "Add an annotation; `attachedTo` for visual association." },
+      { name: "add_group", purpose: "Add a group node and optionally parent existing children." },
+      { name: "ungroup", purpose: "Clear children/parent links for a group." },
+      { name: "set_layout", purpose: "Change layout direction/engine." },
+      { name: "patch_metadata", purpose: "Patch diagram.metadata keys." }
+    ]
+  },
+  {
+    title: "Bulk + validation",
+    tools: [
+      { name: "apply_actions", purpose: "Apply a batch of WireAction mutations atomically." },
+      { name: "validate", purpose: "Run schema + structural validation; returns issue codes + repair hints." }
+    ]
+  },
+  {
+    title: "Render + export",
+    tools: [
+      { name: "render_svg", purpose: "Server-side SVG render." },
+      { name: "render_png", purpose: "PNG via @resvg/resvg-js (falls back to SVG when not installed)." },
+      { name: "render_preview", purpose: "Return a browser preview URL using WIRE_PREVIEW_BASE." },
+      { name: "summarize_diagram", purpose: "Plain-text summary (counts by kind, triggers, ends, branches)." },
+      { name: "export_mermaid", purpose: "Convert to Mermaid `flowchart` syntax." }
+    ]
+  },
+  {
+    title: "Agent guidance",
+    tools: [
+      { name: "v1_get_agent_guide", purpose: "Return the concise MCP agent operating guide for live instructions." }
+    ]
+  }
+];
+
+const RESOURCES: Array<{ uri: string; purpose: string }> = [
+  { uri: "wire://diagrams/{id}.json", purpose: "Canonical JSON for a stored diagram." },
+  { uri: "wire://diagrams/{id}.svg", purpose: "Server-rendered SVG." },
+  { uri: "wire://diagrams/{id}.png", purpose: "PNG rasterization (or SVG fallback)." },
+  { uri: "wire://diagrams/{id}.mermaid", purpose: "Mermaid `flowchart` syntax." },
+  { uri: "wire://diagrams/{id}/preview", purpose: "Browser preview URL." },
+  { uri: "wire://templates/", purpose: "List available templates." },
+  { uri: "wire://templates/{name}", purpose: "Fetch a single template." },
+  { uri: "wire://schemas/wire-diagram", purpose: "JSON schema info." }
+];
+
+const PROMPTS: Array<{ name: string; purpose: string }> = [
+  { name: "diagram_from_codebase", purpose: "Generate an architecture diagram from a repo." },
+  { name: "diagram_from_logs", purpose: "Reconstruct a workflow from log lines." },
+  { name: "diagram_from_workflow_description", purpose: "Convert prose into a diagram." },
+  { name: "review_diagram_for_clarity", purpose: "Critique an existing diagram." },
+  { name: "simplify_diagram", purpose: "Refactor for clarity." }
+];
+
+export default function McpPage() {
+  return (
+    <DocsPage
+      eyebrow="Tooling"
+      title="Wire MCP server"
+      description="Model Context Protocol server for Wire. Lets any MCP-compatible agent (Claude Desktop, Claude Code, Cursor, custom CUA) author and edit Wire diagrams as structured graphs — and render them to SVG or PNG. Stdio + streamable-HTTP transports out of the box."
+      crumbs={[{ href: "/", label: "Docs" }, { label: "Tooling" }, { label: "MCP server" }]}
+      next={{ href: "/cli", label: "Wire CLI" }}
+    >
+      <Prose>
+        <h2 id="install">Install</h2>
+        <p>
+          The MCP server ships as <InlineCode>@aigentive/wire-mcp</InlineCode>. PNG output is opt-in through{" "}
+          <InlineCode>@resvg/resvg-js</InlineCode>.
+        </p>
+      </Prose>
+      <Shell>{`npm install @aigentive/wire-mcp
+# optional — for PNG output
+npm install @resvg/resvg-js`}</Shell>
+
+      <Prose>
+        <h2 id="run">Run</h2>
+        <p>
+          Pick a transport. <InlineCode>stdio</InlineCode> is the default for desktop agents (Claude Desktop, Claude
+          Code, Cursor). <InlineCode>--http</InlineCode> exposes a streamable-HTTP endpoint on port{" "}
+          <InlineCode>3860</InlineCode> for cloud agents and remote MCP clients.
+        </p>
+      </Prose>
+      <Shell>{`# stdio — local IDE / desktop clients
+node node_modules/@aigentive/wire-mcp/dist/server.js
+
+# streamable HTTP — cloud / network clients
+node node_modules/@aigentive/wire-mcp/dist/server.js --http
+
+# When installed globally
+wire-mcp           # stdio
+wire-mcp --http    # http on port 3860`}</Shell>
+
+      <Prose>
+        <h2 id="env">Environment variables</h2>
+      </Prose>
+
+      <div className="not-prose overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
+          <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            <tr className="border-b border-slate-200 dark:border-slate-700">
+              <th className="px-4 py-2.5 font-extrabold">Variable</th>
+              <th className="px-4 py-2.5 font-extrabold">Default</th>
+              <th className="px-4 py-2.5 font-extrabold">Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ENV_VARS.map((row) => (
+              <tr key={row.name} className="border-t border-slate-100 first:border-t-0 dark:border-slate-800">
+                <td className="px-4 py-2.5 font-mono text-[12px] font-bold text-slate-950 dark:text-slate-50">
+                  {row.name}
+                </td>
+                <td className="px-4 py-2.5 font-mono text-[12px] text-slate-600 dark:text-slate-400">
+                  {row.default}
+                </td>
+                <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{row.purpose}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Prose>
+        <h2 id="tools">Tools</h2>
+        <p>
+          27 tools cover the full diagram CRUD surface plus rendering and validation. They&rsquo;re grouped here for
+          orientation; agents discover them through the standard MCP tool list.
+        </p>
+      </Prose>
+
+      <div className="not-prose grid gap-4">
+        {TOOL_GROUPS.map((group) => (
+          <section key={group.title} className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <header className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+              {group.title}
+            </header>
+            <table className="w-full border-collapse text-left text-[13px]">
+              <tbody>
+                {group.tools.map((tool) => (
+                  <tr key={tool.name} className="border-t border-slate-100 first:border-t-0 dark:border-slate-800">
+                    <td className="w-[220px] px-4 py-2.5 align-top font-mono text-[12px] font-bold text-slate-950 dark:text-slate-50">
+                      {tool.name}
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{tool.purpose}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        ))}
+      </div>
+
+      <Prose>
+        <h3 id="edges-handles">Edge handles and explicit edges</h3>
+        <p>
+          Use <InlineCode>from</InlineCode> on the target node for ordinary agent-friendly connections. Use an
+          explicit <InlineCode>connect</InlineCode> call (returning an edge id) when you need stable identity for
+          labels, branches, handles, style, label style, routing, markers, or future edits via{" "}
+          <InlineCode>update_edge</InlineCode>.
+        </p>
+      </Prose>
+      <CodeBlock language="json">
+        {`{
+  "diagramId": "agent-router",
+  "id": "route-sales",
+  "from": "route.sales",
+  "to": "notify-sales",
+  "label": "sales",
+  "fromHandle": "right",
+  "toHandle": "left",
+  "routing": "smoothstep",
+  "style": { "markerEnd": "arrow", "strokeWidth": 2 },
+  "labelStyle": { "background": "#ffffff", "fontSize": 12 }
+}`}
+      </CodeBlock>
+
+      <Callout tone="info" title="Allowed values">
+        Handles: <InlineCode>left</InlineCode>, <InlineCode>right</InlineCode>, <InlineCode>top</InlineCode>,{" "}
+        <InlineCode>bottom</InlineCode>. Routing: <InlineCode>bezier</InlineCode>,{" "}
+        <InlineCode>smoothstep</InlineCode>, <InlineCode>step</InlineCode>, <InlineCode>straight</InlineCode>. Use{" "}
+        <InlineCode>disconnect</InlineCode> for node <InlineCode>from</InlineCode> references and{" "}
+        <InlineCode>remove_edge</InlineCode> for explicit edge ids.
+      </Callout>
+
+      <Prose>
+        <h2 id="resources">Resources</h2>
+        <p>
+          Stored diagrams are exposed as MCP resources, addressable by URI. Agents can read them directly without
+          calling a tool.
+        </p>
+      </Prose>
+
+      <div className="not-prose overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
+          <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            <tr className="border-b border-slate-200 dark:border-slate-700">
+              <th className="px-4 py-2.5 font-extrabold">URI</th>
+              <th className="px-4 py-2.5 font-extrabold">Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            {RESOURCES.map((row) => (
+              <tr key={row.uri} className="border-t border-slate-100 first:border-t-0 dark:border-slate-800">
+                <td className="px-4 py-2.5 font-mono text-[12px] font-bold text-slate-950 dark:text-slate-50">
+                  {row.uri}
+                </td>
+                <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{row.purpose}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Prose>
+        <h2 id="prompts">Prompts</h2>
+        <p>
+          The server bundles five prompts that frame common diagram-authoring tasks. Clients with prompt support
+          (Claude Desktop, Cursor) surface them as templates.
+        </p>
+      </Prose>
+
+      <div className="not-prose overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
+          <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            <tr className="border-b border-slate-200 dark:border-slate-700">
+              <th className="px-4 py-2.5 font-extrabold">Name</th>
+              <th className="px-4 py-2.5 font-extrabold">Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            {PROMPTS.map((row) => (
+              <tr key={row.name} className="border-t border-slate-100 first:border-t-0 dark:border-slate-800">
+                <td className="px-4 py-2.5 font-mono text-[12px] font-bold text-slate-950 dark:text-slate-50">
+                  {row.name}
+                </td>
+                <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">{row.purpose}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Prose>
+        <h2 id="claude-desktop">Claude Desktop config</h2>
+        <p>
+          Drop this into <InlineCode>~/Library/Application Support/Claude/claude_desktop_config.json</InlineCode> (or
+          the equivalent on Windows / Linux), restart Claude Desktop, and the Wire tools appear in the tool picker.
+        </p>
+      </Prose>
+      <CodeBlock language="json">
+        {`{
+  "mcpServers": {
+    "wire": {
+      "command": "node",
+      "args": ["/absolute/path/to/wire/packages/wire-mcp/dist/server.js"],
+      "env": {
+        "WIRE_STORAGE_DIR": "/Users/me/Documents/wire-diagrams"
+      }
+    }
+  }
+}`}
+      </CodeBlock>
+
+      <Callout tone="tip" title="Live preview">
+        Set <InlineCode>WIRE_PREVIEW_BASE</InlineCode> to your playground URL (default{" "}
+        <InlineCode>http://localhost:3870</InlineCode>) and the <InlineCode>render_preview</InlineCode> tool returns a
+        click-to-open URL the agent can hand the user.
+      </Callout>
+    </DocsPage>
+  );
+}

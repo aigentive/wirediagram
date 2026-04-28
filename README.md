@@ -2,7 +2,7 @@
 
 > The diagram library agents can reliably create, edit, validate, and explain.
 
-`@aigentive/wire` is an LLM-first diagram library with native MCP support. It pairs a canonical JSON schema for agent-friendly diagrams with a shared reducer, a reusable React editor/viewer built on `@xyflow/react`, static SVG/PNG/Mermaid renderers, and an MCP server so any MCP-compatible agent can author and edit diagrams as structured graphs, not pixels.
+`@aigentive/wire` is an LLM-first diagram library with native MCP support. It pairs a canonical JSON schema for agent-friendly diagrams with a shared reducer, a reusable Wire-native React editor/viewer, static SVG/PNG/Mermaid renderers, and an MCP server so any MCP-compatible agent can author and edit diagrams as structured graphs, not pixels.
 
 ## Why Wire
 
@@ -11,8 +11,8 @@ LLMs and agents struggle with diagrams: they emit Mermaid blobs that almost rend
 - **Canonical JSON** — `from`, `branch`, `attachedTo`, `tone`, `handles`, style, routing, and metadata semantics designed to be unambiguous to LLMs.
 - **Shared actions** — every human, hosted editor, CLI, and MCP edit flows through the `WireAction` reducer in `wire-core`.
 - **React library** — `WireEditor`, `WireViewer`, `WireCanvas`, palette, toolbar, inspector, validation panel, and JSX authoring.
-- **LLM-friendly React extensibility** — option catalogs, custom node cards, and custom group renderers without requiring app code to import React Flow.
-- **Static renderers** — SVG, PNG, Mermaid, and React Flow conversion without pulling React into server-only consumers.
+- **LLM-friendly React extensibility** — option catalogs, custom node cards, custom edge renderers, and custom group renderers without requiring app code to import a graph-canvas package.
+- **Static renderers** — SVG, PNG, Mermaid, and optional React Flow conversion without pulling React into server-only consumers.
 - **MCP server** — diagram CRUD, direct action tools, atomic `apply_actions`, resources, prompts, render tools, and `v1_get_agent_guide` over stdio or HTTP.
 - **Hosted parity** — the playground/editor uses `@aigentive/wire-react`, stores canonical JSON, and renders from the same model as MCP.
 
@@ -21,7 +21,7 @@ LLMs and agents struggle with diagrams: they emit Mermaid blobs that almost rend
 | Package | Description |
 |---|---|
 | [`@aigentive/wire-core`](packages/wire-core) | Schema, validation, IDs, graph normalization, layout, pure `WireAction` reducer |
-| [`@aigentive/wire-renderers`](packages/wire-renderers) | Static renderers and adapters: SVG, PNG helpers, Mermaid, React Flow conversion |
+| [`@aigentive/wire-renderers`](packages/wire-renderers) | Static renderers and adapters: SVG, PNG helpers, Mermaid, optional React Flow conversion |
 | [`@aigentive/wire-react`](packages/wire-react) | Reusable React editor/viewer components and JSX authoring facade |
 | [`@aigentive/wire-mcp`](packages/wire-mcp) | MCP server (stdio + streamable-HTTP) |
 | [`@aigentive/wire-cli`](packages/wire-cli) | `wire` CLI (init, add, export) |
@@ -144,9 +144,8 @@ export function AgentEditor({ diagram, onChange }) {
 `node.inspect` and update selection; option panels can follow selection by
 default or receive an explicit `inspectNodeId` for fully controlled sidebars.
 
-See [`docs/REACT_COMPONENTS.md`](docs/REACT_COMPONENTS.md),
-[`docs/REACT_EXTENSIBILITY.md`](docs/REACT_EXTENSIBILITY.md), the playground
-route `/components`, and the playground route `/samples/agent-chain`.
+See [`docs/REACT_COMPONENTS.md`](docs/REACT_COMPONENTS.md), the playground
+route `/docs`, and the playground route `/samples/agent-chain`.
 
 JSX authoring remains supported:
 
@@ -194,8 +193,8 @@ export function Example() {
 
 ## Canonical Data And Actions
 
-Wire JSON is the source of truth. `@xyflow/react` is the canvas engine inside
-`@aigentive/wire-react`, not the storage format.
+Wire JSON is the source of truth. The React canvas in `@aigentive/wire-react`
+renders directly from that model and emits `WireAction` updates back into it.
 
 Minimum shape:
 

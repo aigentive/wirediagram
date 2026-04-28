@@ -3,9 +3,11 @@
 This is the props reference for the reusable `@aigentive/wire-react` component
 surface. These components are intended for product apps and LLM-authored React
 screens. App code should pass Wire diagrams, option catalogs, render callbacks,
-and event handlers. It should not need React Flow nodes, hooks, or state.
+and event handlers. It should not need third-party graph-canvas nodes, hooks,
+or state.
 
-For design examples, run the playground and open `/components`.
+For design examples, run the playground and open `/docs` or
+`/samples/agent-chain`.
 
 ## At a glance
 
@@ -23,14 +25,14 @@ For design examples, run the playground and open `/components`.
 
 | Capability | How |
 |---|---|
-| Light & dark theme | Add `@variant dark` and toggle `<html class="dark">` (Tailwind v4) |
+| Light & dark theme | Add `@custom-variant dark` and toggle `<html class="dark">` (Tailwind v4) |
 | Custom node card | `renderNodeCard={fn}` — receives `WireNodeRenderContext` |
 | Custom group frame | `renderGroup={fn}` |
 | Structured card content | `node.data.card` — badges, meta, progress, footer |
 | Custom list rows | `<WireNodeList renderItem={({ node, selected }) => …} />` |
 | Read-only canvas | `<WireCanvas mode="view" />` |
 | Controlled inspector | `inspectNodeId` + `onInspectNodeChange` |
-| Click behavior | `inspectOnClick`, `selectOnClick`, `clearSelectionOnPaneClick` |
+| Click behavior | `inspectOnClick`, `selectOnClick`, `selectOnEdgeClick`, `clearSelectionOnPaneClick` |
 | Validation observer | `<WireValidationPanel />` (or read `useWireValidation()`) |
 | Decoupled events | `onEvent={fn}` — five event types listed in [Events](#events) |
 
@@ -128,20 +130,27 @@ Use `WireCanvas` when building a custom screen around `WireProvider`.
 
 | Prop | Type | Default | Notes |
 |---|---|---|---|
-| `mode` | `"view" | "edit"` | provider mode | Controls edit gestures. |
-| `selectOnNodeClick` | `boolean` | `true` | Selects clicked nodes. |
+| `mode` | `"view" | "edit"` | provider mode | Controls edit gestures. View mode still emits click events. |
+| `selectOnNodeClick` | `boolean` | `true` in edit, `false` in view | Selects clicked nodes. |
+| `selectOnEdgeClick` | `boolean` | `true` in edit, `false` in view | Selects clicked edges. |
 | `inspectOnNodeClick` | `boolean` | `true` | Emits `node.inspect` from node clicks. |
-| `clearSelectionOnPaneClick` | `boolean` | `true` | Clears canvas selection on pane click. |
+| `clearSelectionOnPaneClick` | `boolean` | `true` in edit, `false` in view | Clears canvas selection on pane click. |
 | `fitView` | `boolean` | `true` | Fits diagram in viewport. |
 | `fitViewPadding` | `number` | `0.08` | Fit-view padding. |
+| `panOnDrag` | `boolean` | `true` | Enables canvas drag panning in view and edit mode. |
+| `zoomOnScroll` | `boolean` | `true` | Enables wheel/trackpad zoom in view and edit mode. |
+| `zoomStep` | `number` | `1.1` | Zoom multiplier used by wheel gestures and controls. |
+| `minZoom` | `number` | `0.15` | Lower zoom bound. |
+| `maxZoom` | `number` | `4` | Upper zoom bound. |
 | `showBackground` | `boolean` | `true` | Shows the dotted background. |
 | `showControls` | `boolean` | `true` | Shows zoom controls. |
 | `showMiniMap` | `boolean` | `false` | Shows minimap. |
 | `optionCatalog` | `WireOptionCatalog` | - | Passed into render context. |
 | `renderNodeCard` | `WireNodeRenderer` | default card | Runtime card renderer. |
 | `renderGroup` | `WireNodeRenderer` | default group | Runtime group renderer. |
-| `nodeTypes` | `NodeTypes` | built-ins | Low-level escape hatch. |
-| `edgeTypes` | `EdgeTypes` | - | Low-level edge renderer escape hatch. |
+| `renderEdge` | `WireEdgeRenderer` | default edge | Runtime edge renderer. |
+| `edgeStyle` | `EdgeStyle` | default stroke | Diagram-level edge style override. |
+| `edgeRouting` | `EdgeRouting` | `bezier` | Diagram-level edge routing override. |
 | `className` | `string` | - | Root classes. |
 | `style` | `CSSProperties` | - | Root inline styles. |
 
@@ -296,8 +305,9 @@ handlers, or programmatic integrations.
 
 ## Related Docs
 
-- The playground `/components` route shows the live component system, capability
-  matrix, custom renderer variants, and event recipes.
+- The playground `/docs` route is the canonical component guide.
+- The playground `/docs/customize/cards` route shows custom renderer variants.
+- The playground `/docs/listen` route shows event recipes and source labels.
 - The playground `/samples/agent-chain` route shows a full app screen.
 - The package README (`packages/wire-react/README.md`) covers the JSX facade
   (`<Flow>`, node components) and Tailwind setup.
