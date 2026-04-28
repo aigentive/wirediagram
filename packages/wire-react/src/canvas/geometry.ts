@@ -533,16 +533,12 @@ function edgePath(
 }
 
 function defaultLabelPoint(start: Point, end: Point, direction: LayoutDirection): Point {
+  const midX = (start.x + end.x) / 2;
+  const midY = (start.y + end.y) / 2;
   if (direction === "LR" || direction === "RL") {
-    return {
-      x: start.x + (end.x - start.x) * 0.18,
-      y: start.y + (end.y - start.y) * 0.18 - 6
-    };
+    return { x: midX, y: midY - 6 };
   }
-  return {
-    x: start.x + (end.x - start.x) * 0.18 + 8,
-    y: start.y + (end.y - start.y) * 0.18
-  };
+  return { x: midX + 8, y: midY };
 }
 
 function initialBounds(framesById: Map<string, WireCanvasFrame>): WireCanvasBounds {

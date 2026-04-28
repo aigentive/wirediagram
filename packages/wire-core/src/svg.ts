@@ -769,11 +769,11 @@ export function renderToSvg(diagram: WireDiagram, opts: RenderSvgOptions = {}): 
         lx = labelPos.x;
         ly = labelPos.y;
       } else if (axis === "horizontal") {
-        lx = start.x + (end.x - start.x) * 0.18;
-        ly = start.y + (end.y - start.y) * 0.18 - 6;
+        lx = (start.x + end.x) / 2;
+        ly = (start.y + end.y) / 2 - 6;
       } else {
-        lx = start.x + (end.x - start.x) * 0.18 + 8;
-        ly = start.y + (end.y - start.y) * 0.18;
+        lx = (start.x + end.x) / 2 + 8;
+        ly = (start.y + end.y) / 2;
       }
       const labelW = label.length * (fontSize * 0.55) + 10;
       parts.push(

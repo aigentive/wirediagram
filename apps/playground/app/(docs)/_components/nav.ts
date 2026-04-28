@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Boxes,
+  Bot,
   Lightbulb,
   Radio,
   Rocket,
@@ -29,6 +30,13 @@ export const NAV: NavSection[] = [
       { href: "/", label: "Introduction" },
       { href: "/install", label: "Install & setup" },
       { href: "/quickstart", label: "Quickstart" }
+    ]
+  },
+  {
+    title: "Playground",
+    icon: Bot,
+    items: [
+      { href: "/playground", label: "Chat + canvas", badge: "new" }
     ]
   },
   {

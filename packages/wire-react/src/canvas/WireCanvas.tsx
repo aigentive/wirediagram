@@ -181,6 +181,25 @@ function WireCanvasInner({
     [ctx.diagram, dragPositions, edgeRouting, edgeStyle]
   );
 
+  const handleSlotsByFrame = useMemo(() => {
+    const map = new Map<string, Map<Side, { source: number; target: number }>>();
+    const bumpSlot = (frameId: string, side: Side, role: "source" | "target") => {
+      let perSide = map.get(frameId);
+      if (!perSide) {
+        perSide = new Map();
+        map.set(frameId, perSide);
+      }
+      const counts = perSide.get(side) ?? { source: 0, target: 0 };
+      counts[role] += 1;
+      perSide.set(side, counts);
+    };
+    for (const edge of model.edges) {
+      bumpSlot(edge.sourceNode.id, edge.sourceSide, "source");
+      bumpSlot(edge.targetNode.id, edge.targetSide, "target");
+    }
+    return map;
+  }, [model.edges]);
+
   useEffect(() => {
     viewportRef.current = ctx.viewport;
   }, [ctx.viewport]);
@@ -539,7 +558,7 @@ function WireCanvasInner({
       touchAction: "none",
       userSelect: dragPositions || connection ? "none" : undefined,
       cursor: panStateRef.current ? "grabbing" : canPan ? "grab" : "default",
-      ...gridBackground(showBackground, ctx.viewport),
+      ...gridBackground(showBackground),
       ...style,
       visibility: fitReady ? style?.visibility : "hidden"
     }),
@@ -635,6 +654,7 @@ function WireCanvasInner({
                 frame={frame}
                 direction={model.direction}
                 editable={editable}
+                slots={handleSlotsByFrame.get(frame.id)}
                 onSourcePointerDown={handleConnectionPointerDown}
                 onSourcePointerMove={handleConnectionPointerMove}
                 onSourcePointerUp={handleConnectionPointerUp}
@@ -752,6 +772,7 @@ function WireHandles({
   frame,
   direction,
   editable,
+  slots,
   onSourcePointerDown,
   onSourcePointerMove,
   onSourcePointerUp
@@ -759,6 +780,7 @@ function WireHandles({
   frame: WireCanvasFrame;
   direction: LayoutDirection;
   editable: boolean;
+  slots: Map<Side, { source: number; target: number }> | undefined;
   onSourcePointerDown: (event: ReactPointerEvent<HTMLButtonElement>, frame: WireCanvasFrame, side: Side) => void;
   onSourcePointerMove: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onSourcePointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => void;
@@ -766,17 +788,22 @@ function WireHandles({
   const sourceSides = sourceSidesForNode(frame.node, direction);
   const targetSides = targetSidesForNode(frame.node, direction);
   const sides = uniqueSides([...targetSides, ...sourceSides]);
+  const isCondition = frame.node.kind === "condition";
 
   return (
     <>
-      {sides.map((side) => {
+      {sides.flatMap((side) => {
         const isSource = sourceSides.includes(side);
         const isTarget = targetSides.includes(side);
-        return (
+        const counts = slots?.get(side);
+        const sourceCount = counts?.source ?? 0;
+        const targetCount = counts?.target ?? 0;
+        const slotCount = isCondition ? 1 : Math.max(sourceCount, targetCount, 1);
+        return Array.from({ length: slotCount }, (_, slotIndex) => (
           <button
-            key={side}
+            key={`${side}-${slotIndex}`}
             type="button"
-            aria-label={`${frame.id} ${side} handle`}
+            aria-label={`${frame.id} ${side} handle ${slotIndex + 1}`}
             data-wire-interactive
             data-wire-handle
             data-wire-node-id={frame.id}
@@ -789,7 +816,7 @@ function WireHandles({
             onPointerUp={isSource ? onSourcePointerUp : undefined}
             style={{
               position: "absolute",
-              ...handleStyleForSide(side),
+              ...handleSlotStyle(side, slotIndex, slotCount, frame.width, frame.height),
               width: HANDLE_SIZE,
               height: HANDLE_SIZE,
               borderRadius: 999,
@@ -802,7 +829,7 @@ function WireHandles({
               pointerEvents: editable || isTarget ? "auto" : "none"
             }}
           />
-        );
+        ));
       })}
     </>
   );
@@ -1129,20 +1156,31 @@ function uniqueSides(sides: Side[]): Side[] {
   return sides.filter((side, index) => sides.indexOf(side) === index);
 }
 
-function handleStyleForSide(side: Side): CSSProperties {
-  if (side === "left") return { left: -HANDLE_SIZE / 2, top: "50%", transform: "translateY(-50%)" };
-  if (side === "right") return { right: -HANDLE_SIZE / 2, top: "50%", transform: "translateY(-50%)" };
-  if (side === "top") return { top: -HANDLE_SIZE / 2, left: "50%", transform: "translateX(-50%)" };
-  return { bottom: -HANDLE_SIZE / 2, left: "50%", transform: "translateX(-50%)" };
+function handleSlotStyle(
+  side: Side,
+  slotIndex: number,
+  slotCount: number,
+  frameWidth: number,
+  frameHeight: number
+): CSSProperties {
+  const t = slotCount <= 1 ? 0.5 : 0.25 + (slotIndex / (slotCount - 1)) * 0.5;
+  if (side === "left") {
+    return { left: -HANDLE_SIZE / 2, top: t * frameHeight - HANDLE_SIZE / 2 };
+  }
+  if (side === "right") {
+    return { right: -HANDLE_SIZE / 2, top: t * frameHeight - HANDLE_SIZE / 2 };
+  }
+  if (side === "top") {
+    return { top: -HANDLE_SIZE / 2, left: t * frameWidth - HANDLE_SIZE / 2 };
+  }
+  return { bottom: -HANDLE_SIZE / 2, left: t * frameWidth - HANDLE_SIZE / 2 };
 }
 
-function gridBackground(showBackground: boolean, viewport: WireViewport): CSSProperties {
+function gridBackground(showBackground: boolean): CSSProperties {
   if (!showBackground) return {};
-  const size = GRID_SIZE * viewport.zoom;
   return {
-    backgroundImage: "radial-gradient(circle, #cbd5e1 1px, transparent 1px)",
-    backgroundSize: `${size}px ${size}px`,
-    backgroundPosition: `${viewport.x}px ${viewport.y}px`
+    backgroundImage: "radial-gradient(circle, #cbd5e1 0.75px, transparent 0.75px)",
+    backgroundSize: `${GRID_SIZE}px ${GRID_SIZE}px`
   };
 }
 

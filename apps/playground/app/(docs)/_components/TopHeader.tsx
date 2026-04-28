@@ -55,6 +55,12 @@ export function TopHeader({
 
         <div className="ml-auto flex items-center gap-2">
           <Link
+            href="/playground"
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-[13px] font-bold text-white no-underline transition-colors hover:bg-blue-500"
+          >
+            Playground
+          </Link>
+          <Link
             href="/contact"
             className="rounded-md border border-slate-200 px-3 py-1.5 text-[13px] font-bold text-slate-700 no-underline transition-colors hover:border-slate-300 hover:text-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:text-slate-50"
           >

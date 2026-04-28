@@ -194,6 +194,32 @@ export function validate(input: WireDiagram | unknown): ValidationResult {
     }
   }
 
+  // 5b. duplicate connection — more than one edge between the same source/target
+  //     (with the same branch). Branched edges from a condition to the same target
+  //     stay distinct as long as they use different branches.
+  const edgeKeyCounts = new Map<string, { count: number; from: string; to: string; branch?: string; edgeIds: string[] }>();
+  for (const edge of resolvedEdges) {
+    const key = `${edge.from}::${edge.fromBranch ?? ""}::${edge.to}`;
+    const entry = edgeKeyCounts.get(key);
+    if (entry) {
+      entry.count += 1;
+      entry.edgeIds.push(edge.id);
+    } else {
+      edgeKeyCounts.set(key, { count: 1, from: edge.from, to: edge.to, branch: edge.fromBranch, edgeIds: [edge.id] });
+    }
+  }
+  for (const entry of edgeKeyCounts.values()) {
+    if (entry.count <= 1) continue;
+    const sourceLabel = entry.branch ? `${entry.from}.${entry.branch}` : entry.from;
+    issues.push({
+      severity: ERROR,
+      code: "edge.duplicate-connection",
+      message: `Duplicate connection from "${sourceLabel}" to "${entry.to}" (${entry.count} times).`,
+      edgeId: entry.edgeIds[entry.edgeIds.length - 1],
+      hint: 'Only one edge is allowed between the same source and target. Remove the duplicate `from` ref or the explicit edge.'
+    });
+  }
+
   // 6. orphan warning — nodes with no incoming or outgoing edges (excluding triggers, ends, notes).
   const inEdges = new Map<string, number>();
   const outEdges = new Map<string, number>();
