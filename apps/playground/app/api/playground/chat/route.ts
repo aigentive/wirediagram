@@ -73,6 +73,17 @@ Expected outcome:
 - Keep summary short. Do not put the diagram JSON in summary.
 - The final visible chat answer should be short and confirm success.
 
+STYLING RULES — when the user asks to change colors:
+- Preferred: set "tone" on each node. Tones map to themed colors:
+    default = slate/gray, success = green, warning = yellow/amber, error = red, info = blue, ai = purple.
+    "Make it yellow" → set tone: "warning" on the relevant nodes.
+    "Make it red"    → tone: "error".  "Make it green" → tone: "success".
+    "Make it blue"   → tone: "info".   "Make it purple/AI" → tone: "ai".
+- For exact custom colors, set "style" on the node: { "fill": "#fde68a", "stroke": "#ca8a04", "textColor": "#0f172a" }.
+  "fill" is the background, "stroke" is the border, "textColor" is the text. All accept any CSS color.
+- If the user asks for a global color change ("all yellow", "everything blue"), apply it to every applicable node in the diagram, not just one.
+- Do not invent claims in the summary. If the diagram_json you emit doesn't actually carry the requested change, the user will see no change. Always mutate the JSON to match what your summary says.
+
 WIRING RULES (validation will reject anything that breaks these):
 - Node ids and branch names must match the slug pattern /^[A-Za-z0-9_-]+$/.
   Letters, digits, hyphen, underscore only. No spaces, dots, colons, slashes, emoji, or accented characters.
@@ -88,7 +99,11 @@ WIRING RULES (validation will reject anything that breaks these):
 - Every condition node must declare "branches" (e.g. ["yes", "no"]).
   When you reference a branch via "<nodeId>.<branch>", the branch name must appear in that condition node's "branches".
 - Do not leave orphan nodes: every non-trigger node should be reachable from a trigger via a chain of "from" references.
-- Keep ids short and descriptive (snake_case or kebab-case). Do not reuse the same id for two nodes.`;
+- Keep ids short and descriptive (snake_case or kebab-case). Do not reuse the same id for two nodes.
+- No duplicate connections. The same source-and-target pair must appear only once.
+    - If node B already has \`from: "A"\`, do not also add an explicit edge \`{ from: "A", to: "B" }\`. Pick one.
+    - For condition branches, distinct branches to the same target are allowed (e.g. "route.yes" and "route.no" both pointing to "notify"), but the exact same (source, branch, target) triple must not repeat.
+    - Validation rejects with code \`edge.duplicate-connection\`.`;
 
 const SAVE_DIAGRAM_TOOL = {
   type: "function",
@@ -270,26 +285,31 @@ function resolveMaxOutputTokens(): number {
 }
 
 function buildInput(message: string, diagram: WireDiagram, history: unknown): Array<{ role: string; content: string }> {
-  const messages: Array<{ role: string; content: string }> = [];
+  const historyLines: string[] = [];
   if (Array.isArray(history)) {
-    for (const item of history.slice(-8)) {
+    for (const item of history) {
       if (!item || typeof item !== "object") continue;
       const candidate = item as ChatMessage;
-      if ((candidate.role === "user" || candidate.role === "assistant") && typeof candidate.content === "string") {
-        messages.push({ role: candidate.role, content: candidate.content.slice(0, 1200) });
+      if ((candidate.role !== "user" && candidate.role !== "assistant") || typeof candidate.content !== "string") {
+        continue;
       }
+      historyLines.push(`[${candidate.role}] ${candidate.content}`);
     }
   }
-  messages.push({
-    role: "user",
-    content: [
-      `User request: ${message}`,
-      "",
-      "Current Wire JSON:",
-      JSON.stringify(diagram, null, 2)
-    ].join("\n")
-  });
-  return messages;
+
+  const parts: string[] = [];
+  if (historyLines.length > 0) {
+    parts.push("<previous_messages>");
+    parts.push(...historyLines);
+    parts.push("</previous_messages>");
+    parts.push("");
+  }
+  parts.push(`User request: ${message}`);
+  parts.push("");
+  parts.push("Current Wire JSON:");
+  parts.push(JSON.stringify(diagram, null, 2));
+
+  return [{ role: "user", content: parts.join("\n") }];
 }
 
 async function createOpenAIResponse({

@@ -30,3 +30,14 @@ export async function writeLocalShare(token: string, canonical: string): Promise
   await mkdir(shareDir(), { recursive: true });
   await writeFile(path, canonical, "utf8");
 }
+
+export async function resolveShareToken(token: string): Promise<unknown | null> {
+  const local = await readLocalShare(token);
+  if (local) return local;
+
+  const base = process.env.BLOB_PUBLIC_BASE_URL;
+  if (!base) return null;
+  const res = await fetch(`${base}/wires/${token}.json`, { cache: "force-cache" });
+  if (!res.ok) return null;
+  return res.json();
+}

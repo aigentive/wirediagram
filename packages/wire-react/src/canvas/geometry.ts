@@ -238,10 +238,12 @@ export function defaultSides(direction: LayoutDirection): { from: Side; to: Side
 }
 
 export function sourceSidesForNode(node: WireNode, direction: LayoutDirection): Side[] {
+  if (node.kind === "note") return [];
   return node.handles?.source?.length ? node.handles.source : [defaultSides(direction).from];
 }
 
 export function targetSidesForNode(node: WireNode, direction: LayoutDirection): Side[] {
+  if (node.kind === "note") return [];
   return node.handles?.target?.length ? node.handles.target : [defaultSides(direction).to];
 }
 

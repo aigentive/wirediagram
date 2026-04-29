@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   AlertCircle,
   Bot,
@@ -73,9 +73,16 @@ type ChatResponse = {
 
 type JsonMode = "canvas" | "json";
 
-export function PlaygroundClient({ initialDiagram }: { initialDiagram: WireDiagram }) {
+export function PlaygroundClient({
+  initialDiagram,
+  initialToken = null
+}: {
+  initialDiagram: WireDiagram;
+  initialToken?: string | null;
+}) {
   const [diagram, setDiagram] = useState<WireDiagram>(initialDiagram);
   const [jsonDraft, setJsonDraft] = useState(() => formatJson(initialDiagram));
+  const [shareToken, setShareToken] = useState<string | null>(initialToken);
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [mode, setMode] = useState<JsonMode>("canvas");
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -91,6 +98,7 @@ export function PlaygroundClient({ initialDiagram }: { initialDiagram: WireDiagr
   const [totalCostUsd, setTotalCostUsd] = useState(0);
   const [totalTokens, setTotalTokens] = useState(0);
   const [lastModel, setLastModel] = useState<string | null>(null);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   const validation = useMemo(() => validate(diagram), [diagram]);
 
@@ -124,6 +132,7 @@ export function PlaygroundClient({ initialDiagram }: { initialDiagram: WireDiagr
     setTotalCostUsd(0);
     setTotalTokens(0);
     setLastModel(null);
+    setShareToken(null);
     setMessages([
       {
         role: "assistant",
@@ -131,6 +140,20 @@ export function PlaygroundClient({ initialDiagram }: { initialDiagram: WireDiagr
       }
     ]);
   }, [acceptDiagram]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const next = shareToken ? `/playground?d=${shareToken}` : "/playground";
+    if (window.location.pathname + window.location.search !== next) {
+      window.history.replaceState(null, "", next);
+    }
+  }, [shareToken]);
+
+  useEffect(() => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, traces, busy, apiError]);
 
   const submit = useCallback(
     async (event?: FormEvent<HTMLFormElement>) => {
@@ -152,7 +175,7 @@ export function PlaygroundClient({ initialDiagram }: { initialDiagram: WireDiagr
           body: JSON.stringify({
             message: trimmed,
             diagram,
-            history: messages.slice(-8)
+            history: messages
           })
         });
         const data = await readChatResponse(res);
@@ -161,6 +184,9 @@ export function PlaygroundClient({ initialDiagram }: { initialDiagram: WireDiagr
         }
         if (data.diagram) {
           acceptDiagram(data.diagram);
+          void persistToken(data.diagram).then((token) => {
+            if (token) setShareToken(token);
+          });
         }
         setTraces(data.traces ?? []);
         const cost: CostInfo | undefined =
@@ -200,7 +226,7 @@ export function PlaygroundClient({ initialDiagram }: { initialDiagram: WireDiagr
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-100 text-slate-950">
+    <div className="flex h-dvh min-h-0 flex-col bg-slate-100 text-slate-950">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
         <Link href="/" className="flex items-center gap-2 text-slate-950 no-underline">
           <span aria-hidden className="grid h-7 w-7 place-items-center rounded-md bg-slate-950 text-white">
@@ -294,7 +320,7 @@ export function PlaygroundClient({ initialDiagram }: { initialDiagram: WireDiagr
             </span>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto px-4 py-3">
+          <div ref={chatScrollRef} className="min-h-0 flex-1 overflow-auto px-4 py-3">
             <div className="grid gap-3">
               {messages.map((message, index) => (
                 <ChatBubble key={`${message.role}-${index}`} message={message} />
@@ -505,6 +531,21 @@ function ToolTraceList({ traces }: { traces: ToolTrace[] }) {
 
 function formatJson(diagram: WireDiagram): string {
   return JSON.stringify(diagram, null, 2);
+}
+
+async function persistToken(diagram: WireDiagram): Promise<string | null> {
+  try {
+    const res = await fetch("/api/share", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(diagram)
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { token?: string };
+    return typeof data.token === "string" ? data.token : null;
+  } catch {
+    return null;
+  }
 }
 
 async function readChatResponse(res: Response): Promise<ChatResponse> {
