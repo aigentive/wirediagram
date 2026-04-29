@@ -22,13 +22,12 @@ package name.
 
 ## Option 1: stdio
 
-Use stdio when the MCP client and diagram storage are on the same machine.
+Use stdio when the MCP client runs the server process directly. The npm
+package is the default setup; cloning this repo is only needed for local
+development.
 
 ```bash
-git clone https://github.com/aigentive/wire.git
-cd wire
-npm install
-npm run build
+npx -y @aigentive/wire-mcp@latest
 ```
 
 Example MCP server config:
@@ -37,8 +36,8 @@ Example MCP server config:
 {
   "mcpServers": {
     "wire": {
-      "command": "node",
-      "args": ["/absolute/path/to/wire/packages/wire-mcp/dist/server.js"],
+      "command": "npx",
+      "args": ["-y", "@aigentive/wire-mcp@latest"],
       "env": {
         "WIRE_STORAGE_DIR": "/absolute/path/to/wire-diagrams",
         "WIRE_DEFAULT_LAYOUT": "LR",
@@ -50,8 +49,34 @@ Example MCP server config:
 }
 ```
 
-Run the playground locally if you want `render_preview` URLs to open in a
-browser:
+For cloud-backed sync with the hosted Wire workspace, generate an API key from
+`/wires` -> **Connect local MCP** and add:
+
+```json
+{
+  "mcpServers": {
+    "wire": {
+      "command": "npx",
+      "args": ["-y", "@aigentive/wire-mcp@latest"],
+      "env": {
+        "WIRE_CLOUD_URL": "https://reefagent-mcp-wire.vercel.app",
+        "WIRE_CLOUD_API_KEY": "wire_sk_live_REAL_KEY"
+      }
+    }
+  }
+}
+```
+
+Restart the MCP client after adding the server. Existing Claude Code sessions
+do not automatically gain new MCP tools.
+
+With `WIRE_CLOUD_URL` configured, `render_preview` returns Wire Cloud share URLs
+for browser viewing and raw embeds: SVG, PNG, JSON, and Mermaid. It accepts
+`scope: "view" | "edit"` and `pinRevision: true` for immutable embed links.
+`render_svg` and `render_png` return inline assets directly from the MCP server.
+
+Run the playground locally only for local-only development, where
+`render_preview` falls back to localhost:
 
 ```bash
 npm run dev:playground
@@ -61,6 +86,26 @@ npm run dev:playground
 ## Option 2: streamable HTTP
 
 Use HTTP when several agents or machines should share one Wire MCP server.
+
+From npm:
+
+```bash
+npx -y @aigentive/wire-mcp@latest --http
+# http://127.0.0.1:3860/mcp
+# http://127.0.0.1:3860/health
+```
+
+Cloud-backed local HTTP:
+
+```bash
+WIRE_CLOUD_URL='https://reefagent-mcp-wire.vercel.app' \
+WIRE_CLOUD_API_KEY='wire_sk_live_REAL_KEY' \
+npx -y @aigentive/wire-mcp@latest --http
+```
+
+Health should show `cloud.enabled: true` when cloud env vars are present.
+
+Repo-local Docker remains available for development:
 
 ```bash
 docker compose up -d --build wire-mcp
@@ -102,7 +147,7 @@ The tool surface is identical to stdio. Only the transport changes.
 | `validate` | Running structural checks and repair hints |
 | `get_diagram_json` | Reading canonical JSON |
 | `render_svg` / `render_png` | Producing image output |
-| `render_preview` | Returning a browser URL for visual review |
+| `render_preview` | Returning browser and raw asset URLs for visual review |
 | `summarize_diagram` | Returning a plain-text summary |
 | `export_mermaid` | Converting to Mermaid for docs or chat |
 
@@ -167,8 +212,9 @@ simplify_diagram
 If tools are unavailable, check the configured MCP server name, process logs,
 and whether the host exposes tools from that server.
 
-If `render_preview` URLs point to localhost in production, set
-`WIRE_PREVIEW_BASE` to your deployed playground URL.
+If `render_preview` URLs point to localhost in production, verify the MCP
+process has `WIRE_CLOUD_URL` set or explicitly set `WIRE_PREVIEW_BASE` to your
+deployed playground URL.
 
 If HTTP clients fail after reconnecting, check `/health` and server logs. The
 HTTP server supports multiple sessions, but a bad volume mount, missing storage

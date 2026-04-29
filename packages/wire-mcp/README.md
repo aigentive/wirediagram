@@ -8,18 +8,16 @@ Supports stdio (local IDE/desktop) and streamable-HTTP (cloud / network) transpo
 
 ```bash
 npm install @aigentive/wire-mcp
-# optional — needed only if you want PNG output
-npm install @resvg/resvg-js
 ```
 
 ## Run
 
 ```bash
 # stdio — for Claude Desktop, Cursor, Claude Code, and local MCP clients
-node node_modules/@aigentive/wire-mcp/dist/server.js
+npx -y @aigentive/wire-mcp@latest
 
 # streamable HTTP — for cloud agents / network clients
-node node_modules/@aigentive/wire-mcp/dist/server.js --http
+npx -y @aigentive/wire-mcp@latest --http
 ```
 
 When installed globally:
@@ -38,9 +36,76 @@ wire-mcp --http    # http on port 3860
 | `WIRE_HTTP_HOST` | `127.0.0.1` | HTTP transport host |
 | `WIRE_AUDIT_LOG` | _(stderr only)_ | JSONL audit log file path |
 | `WIRE_DEFAULT_LAYOUT` | `LR` | Default layout direction |
-| `WIRE_PREVIEW_BASE` | `http://localhost:3870` | Base URL used by preview URLs |
+| `WIRE_PREVIEW_BASE` | `WIRE_CLOUD_URL` when set, otherwise `http://localhost:3870` | Optional override for preview URLs |
 | `WIRE_PNG_ENABLED` | `false` | Enable PNG rasterization path when supported |
 | `WIRE_AGENT_ID` | `wire-mcp` | Audit log actor id |
+| `WIRE_CLOUD_URL` | _(unset)_ | Optional Wire Cloud base URL for authenticated sync |
+| `WIRE_CLOUD_API_KEY` | _(unset)_ | Optional Wire Cloud API key generated from the hosted Wires workspace |
+
+## Cloud Sync
+
+Generate an API key from the hosted app under **Wires -> Connect local MCP**.
+Then run the MCP server with both cloud env vars.
+
+With cloud sync enabled, `render_preview` mints token-scoped Wire Cloud share
+links backed by the authenticated account. It returns public view, optional
+edit, SVG, PNG, JSON, Mermaid, and workspace URLs. Customers do not need a local
+playground. The `render_svg` and `render_png` tools return inline assets
+directly from the MCP server.
+
+Claude Code:
+
+```bash
+claude mcp add wire \
+  --env WIRE_CLOUD_URL='https://reefagent-mcp-wire.vercel.app' \
+  --env WIRE_CLOUD_API_KEY='wire_sk_live_REAL_KEY' \
+  -- npx -y @aigentive/wire-mcp@latest
+```
+
+Generic MCP JSON:
+
+```json
+{
+  "mcpServers": {
+    "wire": {
+      "command": "npx",
+      "args": ["-y", "@aigentive/wire-mcp@latest"],
+      "env": {
+        "WIRE_CLOUD_URL": "https://reefagent-mcp-wire.vercel.app",
+        "WIRE_CLOUD_API_KEY": "wire_sk_live_REAL_KEY"
+      }
+    }
+  }
+}
+```
+
+Local HTTP mode:
+
+```bash
+WIRE_CLOUD_URL='https://reefagent-mcp-wire.vercel.app' \
+WIRE_CLOUD_API_KEY='wire_sk_live_REAL_KEY' \
+npx -y @aigentive/wire-mcp@latest --http
+```
+
+Health check:
+
+```bash
+curl -sS http://127.0.0.1:3860/health
+```
+
+Expected cloud-backed health includes:
+
+```json
+{
+  "cloud": {
+    "enabled": true,
+    "url": "https://reefagent-mcp-wire.vercel.app"
+  }
+}
+```
+
+Restart the MCP client after changing server config. Existing Claude Code
+sessions do not automatically gain newly added MCP tools.
 
 ## Tools
 
@@ -71,7 +136,7 @@ wire-mcp --http    # http on port 3860
 | `get_diagram_json` | Return raw canonical JSON |
 | `render_svg` | Server-side SVG render |
 | `render_png` | PNG via `@resvg/resvg-js` (falls back to SVG if not installed) |
-| `render_preview` | Return a browser preview URL using `WIRE_PREVIEW_BASE` |
+| `render_preview` | Return browser and embed URLs; cloud share URLs when cloud sync is configured, otherwise `WIRE_PREVIEW_BASE` |
 | `summarize_diagram` | Plain-text summary (counts by kind, triggers, ends, branches) |
 | `export_mermaid` | Convert to Mermaid `flowchart` syntax |
 
@@ -141,8 +206,8 @@ ids.
 {
   "mcpServers": {
     "wire": {
-      "command": "node",
-      "args": ["/absolute/path/to/wire/packages/wire-mcp/dist/server.js"],
+      "command": "npx",
+      "args": ["-y", "@aigentive/wire-mcp@latest"],
       "env": {
         "WIRE_STORAGE_DIR": "/Users/me/Documents/wire-diagrams"
       }

@@ -164,6 +164,7 @@ function WireCanvasInner({
   const [dragPositions, setDragPositions] = useState<Map<string, Point> | undefined>();
   const [connection, setConnection] = useState<ConnectionState | null>(null);
   const [fitReady, setFitReady] = useState(!fitView);
+  const [measuredSizes, setMeasuredSizes] = useState<Map<string, { width: number; height: number }> | undefined>();
 
   const effectiveMode = mode ?? ctx.mode;
   const interaction = resolveWireCanvasInteraction({
@@ -177,8 +178,8 @@ function WireCanvasInner({
   const canZoom = zoomOnScroll;
 
   const model = useMemo(
-    () => buildWireCanvasModel(ctx.diagram, { positionOverrides: dragPositions, edgeStyle, edgeRouting }),
-    [ctx.diagram, dragPositions, edgeRouting, edgeStyle]
+    () => buildWireCanvasModel(ctx.diagram, { positionOverrides: dragPositions, sizeOverrides: measuredSizes, edgeStyle, edgeRouting }),
+    [ctx.diagram, dragPositions, edgeRouting, edgeStyle, measuredSizes]
   );
 
   const handleSlotsByFrame = useMemo(() => {
@@ -211,6 +212,29 @@ function WireCanvasInner({
   useEffect(() => {
     dragPositionsRef.current = dragPositions;
   }, [dragPositions]);
+
+  useIsomorphicLayoutEffect(() => {
+    const element = containerRef.current;
+    if (!element) return undefined;
+
+    const measure = () => {
+      const next = new Map<string, { width: number; height: number }>();
+      element.querySelectorAll<HTMLElement>("[data-wire-node]").forEach((nodeElement) => {
+        const id = nodeElement.dataset.wireNodeId;
+        if (!id) return;
+        const width = Math.ceil(nodeElement.offsetWidth);
+        const height = Math.ceil(nodeElement.offsetHeight);
+        if (width > 0 && height > 0) next.set(id, { width, height });
+      });
+      setMeasuredSizes((current) => (sameMeasuredSizes(current, next) ? current : next));
+    };
+
+    measure();
+    if (typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(measure);
+    element.querySelectorAll<HTMLElement>("[data-wire-node]").forEach((nodeElement) => observer.observe(nodeElement));
+    return () => observer.disconnect();
+  }, [ctx.diagram, model.frames]);
 
   const dispatchMany = useCallback(
     (wireActions: WireAction[]) => {
@@ -1174,6 +1198,18 @@ function handleSlotStyle(
     return { top: -HANDLE_SIZE / 2, left: t * frameWidth - HANDLE_SIZE / 2 };
   }
   return { bottom: -HANDLE_SIZE / 2, left: t * frameWidth - HANDLE_SIZE / 2 };
+}
+
+function sameMeasuredSizes(
+  current: Map<string, { width: number; height: number }> | undefined,
+  next: Map<string, { width: number; height: number }>
+): boolean {
+  if (!current || current.size !== next.size) return false;
+  for (const [id, size] of next) {
+    const existing = current.get(id);
+    if (!existing || existing.width !== size.width || existing.height !== size.height) return false;
+  }
+  return true;
 }
 
 function gridBackground(showBackground: boolean): CSSProperties {

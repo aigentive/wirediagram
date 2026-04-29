@@ -13,6 +13,9 @@
  *   WIRE_AUDIT_LOG       File path for JSONL audit log (default: stderr only)
  *   WIRE_DEFAULT_LAYOUT  LR | TB | RL | BT (default LR)
  *   WIRE_AGENT_ID        Audit actor id (default wire-mcp)
+ *   WIRE_PREVIEW_BASE    Optional base URL for render_preview links
+ *   WIRE_CLOUD_URL       Optional Wire Cloud base URL for authenticated sync
+ *   WIRE_CLOUD_API_KEY   Optional Wire Cloud API key for authenticated sync
  */
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -32,7 +35,7 @@ import {
 } from "@aigentive/wire-core";
 
 import { loadConfig, type WireMcpConfig } from "./config.js";
-import { FileStorage, MemoryStorage, type StorageBackend, createDefaultDiagram } from "./storage.js";
+import { CloudStorage, FileStorage, MemoryStorage, type StorageBackend, createDefaultDiagram } from "./storage.js";
 import { AuditLogger } from "./audit.js";
 import { renderSvg, renderPng, summarizeDiagram } from "./render.js";
 import { getTemplate, listTemplates, TEMPLATES } from "./templates.js";
@@ -40,7 +43,7 @@ import { PROMPTS } from "./prompts.js";
 import { WIRE_AGENT_GUIDE } from "./agent-guide.js";
 
 // Re-exports for embedders (Next.js routes, custom servers)
-export { FileStorage, MemoryStorage, createDefaultDiagram };
+export { CloudStorage, FileStorage, MemoryStorage, createDefaultDiagram };
 export type { StorageBackend, WireMcpConfig };
 export { renderSvg, renderPng, summarizeDiagram };
 export { TEMPLATES, getTemplate, listTemplates };
@@ -248,6 +251,12 @@ const ValidateInput = z.object({
   diagramId: z.string()
 });
 
+const RenderPreviewInput = z.object({
+  diagramId: z.string(),
+  scope: z.enum(["view", "edit"]).optional(),
+  pinRevision: z.boolean().optional()
+});
+
 const RenderInput = z.object({
   diagramId: z.string()
 });
@@ -273,13 +282,16 @@ export interface ServerOptions {
 export function createServer(opts: ServerOptions = {}): ServerHandle {
   const baseConfig = loadConfig();
   const config: WireMcpConfig = { ...baseConfig, ...(opts.config ?? {}) };
+  const localStorage: StorageBackend = config.storageDir ? new FileStorage(config.storageDir) : new MemoryStorage();
   const storage: StorageBackend =
-    opts.storage ?? (config.storageDir ? new FileStorage(config.storageDir) : new MemoryStorage());
+    opts.storage ?? (config.cloudUrl && config.cloudApiKey
+      ? new CloudStorage(localStorage, { baseUrl: config.cloudUrl, apiKey: config.cloudApiKey })
+      : localStorage);
   const audit = new AuditLogger({ filePath: config.auditLog });
 
   const server = new McpServer({
     name: "@aigentive/wire-mcp",
-    version: "1.0.0"
+    version: "1.0.3"
   });
 
   // ── helpers ────────────────────────────────────────────────────────────
@@ -322,6 +334,108 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
         params
       });
       return fail(message);
+    }
+  }
+
+  function previewBaseUrl(): string {
+    return config.previewBase.replace(/\/$/, "");
+  }
+
+  function inlinePreviewUrl(diagram: WireDiagram): { previewUrl: string; bytes: number; mode: "inline" } {
+    const encoded = Buffer.from(JSON.stringify(diagram), "utf8").toString("base64url");
+    return {
+      previewUrl: `${previewBaseUrl()}/preview/inline?d=${encoded}`,
+      bytes: encoded.length,
+      mode: "inline"
+    };
+  }
+
+  async function cloudSharePreviewUrl(
+    diagramId: string,
+    options: { scope?: "view" | "edit"; pinRevision?: boolean } = {}
+  ): Promise<{
+    previewUrl: string;
+    editUrl?: string | null;
+    token?: string;
+    viewToken?: string;
+    editToken?: string | null;
+    urls?: {
+      view: string;
+      edit: string | null;
+      svg: string;
+      png: string;
+      json: string;
+      mermaid: string;
+      workspace: string | null;
+    };
+    mode: "cloud-share";
+  } | null> {
+    if (!config.cloudUrl || !config.cloudApiKey) return null;
+
+    const base = config.cloudUrl.replace(/\/$/, "");
+    try {
+      const res = await fetch(new URL(`/api/cloud/wires/${encodeURIComponent(diagramId)}/share`, `${base}/`), {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${config.cloudApiKey}`,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          scope: options.scope ?? "view",
+          pinRevision: options.pinRevision === true
+        }),
+        cache: "no-store"
+      });
+      if (!res.ok) return null;
+
+      const data = await res.json() as {
+        previewUrl?: unknown;
+        editUrl?: unknown;
+        token?: unknown;
+        viewToken?: unknown;
+        editToken?: unknown;
+        urls?: unknown;
+      };
+      if (typeof data.previewUrl !== "string") return null;
+
+      const urls = data.urls && typeof data.urls === "object" ? data.urls as {
+        view?: unknown;
+        edit?: unknown;
+        svg?: unknown;
+        png?: unknown;
+        json?: unknown;
+        mermaid?: unknown;
+        workspace?: unknown;
+      } : null;
+
+      return {
+        previewUrl: data.previewUrl,
+        ...(typeof data.editUrl === "string" || data.editUrl === null ? { editUrl: data.editUrl } : {}),
+        ...(typeof data.token === "string" ? { token: data.token } : {}),
+        ...(typeof data.viewToken === "string" ? { viewToken: data.viewToken } : {}),
+        ...(typeof data.editToken === "string" || data.editToken === null ? { editToken: data.editToken } : {}),
+        ...(urls &&
+          typeof urls.view === "string" &&
+          typeof urls.svg === "string" &&
+          typeof urls.png === "string" &&
+          typeof urls.json === "string" &&
+          typeof urls.mermaid === "string"
+          ? {
+            urls: {
+              view: urls.view,
+              edit: typeof urls.edit === "string" ? urls.edit : null,
+              svg: urls.svg,
+              png: urls.png,
+              json: urls.json,
+              mermaid: urls.mermaid,
+              workspace: typeof urls.workspace === "string" ? urls.workspace : null
+            }
+          }
+          : {}),
+        mode: "cloud-share"
+      };
+    } catch {
+      return null;
     }
   }
 
@@ -930,17 +1044,19 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
     "render_preview",
     {
       title: "Render preview URL",
-      description: "Return a URL that opens the diagram in a browser-renderable preview. Use the WIRE_PREVIEW_BASE env var (defaults to http://localhost:3870) to point at a deployed playground. The URL inlines the diagram JSON so it works without shared storage.",
-      inputSchema: ValidateInput.shape
+      description: "Return URLs that open or embed the diagram. Cloud-connected MCP servers mint token-scoped Wire Cloud share links; otherwise WIRE_PREVIEW_BASE is used, falling back to http://localhost:3870 for local development.",
+      inputSchema: RenderPreviewInput.shape
     },
     async (params) => {
-      const args = ValidateInput.parse(params);
-      return withDiagram("render_preview", args.diagramId, args, (d) => {
-        const base = (process.env.WIRE_PREVIEW_BASE ?? "http://localhost:3870").replace(/\/$/, "");
-        const json = JSON.stringify(d);
-        const encoded = Buffer.from(json, "utf8").toString("base64url");
-        const url = `${base}/preview/inline?d=${encoded}`;
-        return { previewUrl: url, diagramId: args.diagramId, bytes: encoded.length };
+      const args = RenderPreviewInput.parse(params);
+      return withDiagram("render_preview", args.diagramId, args, async (d) => {
+        const cloud = await cloudSharePreviewUrl(args.diagramId, {
+          scope: args.scope ?? "view",
+          pinRevision: args.pinRevision
+        });
+        if (cloud) return { ...cloud, diagramId: args.diagramId };
+
+        return { ...inlinePreviewUrl(d), diagramId: args.diagramId };
       });
     }
   );
@@ -1033,13 +1149,12 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
     async (uri, vars) => {
       const id = String(vars.id);
       const diagram = await storage.load(id);
-      const base = (process.env.WIRE_PREVIEW_BASE ?? "http://localhost:3870").replace(/\/$/, "");
-      const encoded = Buffer.from(JSON.stringify(diagram), "utf8").toString("base64url");
+      const cloud = await cloudSharePreviewUrl(id);
       return {
         contents: [{
           uri: uri.href,
           mimeType: "text/plain",
-          text: `${base}/preview/inline?d=${encoded}`
+          text: cloud?.previewUrl ?? inlinePreviewUrl(diagram).previewUrl
         }]
       };
     }
@@ -1123,7 +1238,8 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
 async function startStdio(handle: ServerHandle): Promise<void> {
   const transport = new StdioServerTransport();
   await handle.server.connect(transport);
-  process.stderr.write(`[wire-mcp] stdio transport ready (storage=${handle.config.storageDir})\n`);
+  const mode = handle.config.cloudUrl && handle.config.cloudApiKey ? `cloud=${handle.config.cloudUrl}` : "cloud=disabled";
+  process.stderr.write(`[wire-mcp] stdio transport ready (storage=${handle.config.storageDir}, ${mode})\n`);
 }
 
 async function startHttp(handle: ServerHandle): Promise<void> {
@@ -1176,7 +1292,16 @@ async function startHttp(handle: ServerHandle): Promise<void> {
     if (req.url.startsWith("/health")) {
       res.statusCode = 200;
       res.setHeader("content-type", "application/json");
-      res.end(JSON.stringify({ ok: true, server: "@aigentive/wire-mcp", storage: handle.config.storageDir, sessions: transports.size }));
+      res.end(JSON.stringify({
+        ok: true,
+        server: "@aigentive/wire-mcp",
+        storage: handle.config.storageDir,
+        cloud: {
+          enabled: Boolean(handle.config.cloudUrl && handle.config.cloudApiKey),
+          url: handle.config.cloudUrl ?? null
+        },
+        sessions: transports.size
+      }));
       return;
     }
     if (req.url.startsWith("/ready")) {
@@ -1236,8 +1361,9 @@ async function isDirectRun(): Promise<boolean> {
   const entry = process.argv[1];
   if (!entry) return false;
   try {
-    const { pathToFileURL } = await import("node:url");
-    return pathToFileURL(entry).href === import.meta.url;
+    const { realpathSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
   } catch {
     return false;
   }

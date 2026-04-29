@@ -163,8 +163,13 @@ review_diagram_for_clarity, simplify_diagram.
 
 ## Preview And React
 
-render_preview uses WIRE_PREVIEW_BASE and returns a browser-renderable URL.
-Set WIRE_PREVIEW_BASE to the deployed Wire playground URL in production.
+render_preview returns browser and embed URLs. With WIRE_CLOUD_URL and
+WIRE_CLOUD_API_KEY configured, it mints Wire Cloud share links and returns
+urls.view, urls.svg, urls.png, urls.json, urls.mermaid, and urls.workspace.
+Pass scope: "view" for read-only shares or scope: "edit" when public editing is
+intended. Pass pinRevision: true for immutable embed links. Otherwise it uses
+WIRE_PREVIEW_BASE, falling back to http://localhost:3870 for local development.
+render_svg and render_png return inline assets directly from the MCP server.
 
 React apps should consume @aigentive/wire-react. A hosted app may own auth,
 workspace routing, persistence, sharing links, and product chrome, but node
@@ -181,8 +186,10 @@ Current playground flow:
 2. POST /api/share validates and canonicalizes the JSON.
 3. The JSON is written to wires/{token}.json in Vercel Blob or a local
    filesystem share store.
-4. /edit/inline?d={token} and /preview/inline?d={token} load the JSON and render
-   the React editor or SVG preview from the same data.
+4. Authenticated share creation mints separate random view/edit tokens.
+5. /s/{viewToken} and /s/{viewToken}.svg/.png/.json/.mmd expose public,
+   read-only browser and raw asset views.
+6. /e/{editToken} opens public edit only when an edit-scope token exists.
 
 Production apps should use stable diagram ids plus revisions:
 diagrams(id, current_revision_id, workspace_id, title) and

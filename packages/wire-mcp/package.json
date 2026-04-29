@@ -1,6 +1,6 @@
 {
   "name": "@aigentive/wire-mcp",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Wire MCP server — agent-driven diagram editing over stdio + streamable-HTTP.",
   "license": "MIT",
   "type": "module",
@@ -32,6 +32,6 @@
   },
   "publishConfig": {
     "access": "public",
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org/"
   }
 }

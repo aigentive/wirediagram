@@ -1,23 +1,8 @@
-import { put } from "@vercel/blob";
-import { parseWireDiagram } from "@aigentive/wire-core";
-import { createHash } from "node:crypto";
 import type { NextRequest } from "next/server";
-import { writeLocalShare } from "@/lib/share-store";
+import { persistSharedDiagram } from "@/lib/wire-canonical";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return "[" + value.map(stableStringify).join(",") + "]";
-  const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj).sort();
-  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(obj[k])).join(",") + "}";
-}
-
-function tokenFor(canonical: string): string {
-  return createHash("sha256").update(canonical).digest("base64url").slice(0, 12);
-}
 
 export async function POST(req: NextRequest): Promise<Response> {
   let body: unknown;
@@ -27,9 +12,9 @@ export async function POST(req: NextRequest): Promise<Response> {
     return new Response("Body must be JSON", { status: 400 });
   }
 
-  let diagram;
+  let shared;
   try {
-    diagram = parseWireDiagram(body);
+    shared = await persistSharedDiagram(body);
   } catch (err) {
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : String(err) }),
@@ -37,29 +22,25 @@ export async function POST(req: NextRequest): Promise<Response> {
     );
   }
 
-  const canonical = stableStringify(diagram);
-  const token = tokenFor(canonical);
-
   const origin = req.nextUrl.origin;
-  let url = `${origin}/api/blob/wires/${token}.json`;
-
-  if (process.env.WIRE_SHARE_BACKEND !== "local" && process.env.BLOB_READ_WRITE_TOKEN) {
-    const blob = await put(`wires/${token}.json`, canonical, {
-      access: "public",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: "application/json"
-    });
-    url = blob.url;
-  } else {
-    await writeLocalShare(token, canonical);
-  }
+  const url = shared.blobUrl ?? `${origin}/api/blob/wires/${shared.token}.json`;
 
   return new Response(
     JSON.stringify({
-      token,
+      token: shared.token,
+      viewToken: shared.token,
       blobUrl: url,
-      previewUrl: `${origin}/preview/inline?d=${token}`
+      previewUrl: `${origin}/s/${shared.token}`,
+      legacyPreviewUrl: `${origin}/preview/inline?d=${shared.token}`,
+      urls: {
+        view: `${origin}/s/${shared.token}`,
+        edit: null,
+        svg: `${origin}/s/${shared.token}.svg`,
+        png: `${origin}/s/${shared.token}.png`,
+        json: `${origin}/s/${shared.token}.json`,
+        mermaid: `${origin}/s/${shared.token}.mmd`,
+        workspace: null
+      }
     }),
     { status: 200, headers: { "content-type": "application/json" } }
   );

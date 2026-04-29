@@ -10,10 +10,15 @@ import {
   DollarSign,
   FileJson,
   Loader2,
+  LogOut,
   MessageSquare,
   Play,
+  Plus,
   RefreshCcw,
+  Search,
   Send,
+  ShieldCheck,
+  UserCheck,
   Wrench
 } from "lucide-react";
 import {
@@ -29,6 +34,7 @@ import {
   WireValidationPanel
 } from "@aigentive/wire-react";
 import { INITIAL_PLAYGROUND_DIAGRAM } from "./initial-diagram";
+import type { WireSummary } from "@/lib/wires-store";
 
 type Usage = {
   inputTokens: number;
@@ -73,12 +79,34 @@ type ChatResponse = {
 
 type JsonMode = "canvas" | "json";
 
+type AuthenticatedUser = {
+  email: string;
+  name: string | null;
+  image: string | null;
+};
+
+type WireCreateResponse = {
+  wire?: WireSummary;
+  error?: string;
+};
+
+const FREE_CHAT_LIMIT = 3;
+const AUTH_GATE_KEY = "wire.playground.authGate.v1";
+
 export function PlaygroundClient({
   initialDiagram,
-  initialToken = null
+  initialToken = null,
+  isAuthenticated,
+  googleAuthConfigured,
+  user = null,
+  initialWires = []
 }: {
   initialDiagram: WireDiagram;
   initialToken?: string | null;
+  isAuthenticated: boolean;
+  googleAuthConfigured: boolean;
+  user?: AuthenticatedUser | null;
+  initialWires?: WireSummary[];
 }) {
   const [diagram, setDiagram] = useState<WireDiagram>(initialDiagram);
   const [jsonDraft, setJsonDraft] = useState(() => formatJson(initialDiagram));
@@ -98,9 +126,18 @@ export function PlaygroundClient({
   const [totalCostUsd, setTotalCostUsd] = useState(0);
   const [totalTokens, setTotalTokens] = useState(0);
   const [lastModel, setLastModel] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [cloudWires, setCloudWires] = useState<WireSummary[]>(initialWires);
+  const [wireQuery, setWireQuery] = useState("");
+  const [creatingWire, setCreatingWire] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   const validation = useMemo(() => validate(diagram), [diagram]);
+  const filteredCloudWires = useMemo(() => {
+    const q = wireQuery.trim().toLowerCase();
+    if (!q) return cloudWires;
+    return cloudWires.filter((wire) => wire.title.toLowerCase().includes(q));
+  }, [cloudWires, wireQuery]);
 
   const acceptDiagram = useCallback((next: WireDiagram) => {
     setDiagram(next);
@@ -153,16 +190,39 @@ export function PlaygroundClient({
     const el = chatScrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages, traces, busy, apiError]);
+  }, [messages, traces, busy, apiError, authRequired]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isAuthenticated) {
+      window.localStorage.removeItem(AUTH_GATE_KEY);
+      setAuthRequired(false);
+      return;
+    }
+    setAuthRequired(readAuthGate().authRequired);
+  }, [isAuthenticated]);
+
+  const requireAuth = useCallback(() => {
+    writeAuthGate({ ...readAuthGate(), authRequired: true });
+    setAuthRequired(true);
+  }, []);
 
   const submit = useCallback(
     async (event?: FormEvent<HTMLFormElement>) => {
       event?.preventDefault();
       const trimmed = input.trim();
       if (!trimmed || busy) return;
+      if (!isAuthenticated) {
+        const gate = readAuthGate();
+        if (gate.authRequired || gate.promptCount >= FREE_CHAT_LIMIT) {
+          requireAuth();
+          return;
+        }
+      }
 
       const userMessage: ChatMessage = { role: "user", content: trimmed };
       const nextMessages = [...messages, userMessage];
+      const shouldRequireAuthAfterSend = !isAuthenticated && recordFreePrompt() >= FREE_CHAT_LIMIT;
       setMessages(nextMessages);
       setInput("");
       setBusy(true);
@@ -219,11 +279,78 @@ export function PlaygroundClient({
           }
         ]);
       } finally {
+        if (shouldRequireAuthAfterSend) {
+          requireAuth();
+        }
         setBusy(false);
       }
     },
-    [acceptDiagram, busy, diagram, input, messages]
+    [acceptDiagram, busy, diagram, input, isAuthenticated, messages, requireAuth]
   );
+
+  const openGooglePopup = useCallback(async () => {
+    if (typeof window === "undefined") return;
+    const popup = window.open(
+      "about:blank",
+      "wire-google-auth",
+      "popup=yes,width=520,height=680,menubar=no,toolbar=no,location=no,status=no"
+    );
+    const importToken = await persistToken(diagram);
+    if (importToken) setShareToken(importToken);
+
+    const nextUrl = importToken ? `/wires?import=${encodeURIComponent(importToken)}` : "/wires";
+    const callbackUrl = `/auth/popup-complete?next=${encodeURIComponent(nextUrl)}`;
+    const authUrl = googleAuthConfigured
+      ? `/api/google-auth?callbackUrl=${encodeURIComponent(callbackUrl)}`
+      : `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+    if (!popup) {
+      window.location.assign(authUrl);
+      return;
+    }
+    popup.location.assign(authUrl);
+    let timer: number | null = null;
+    function closeListener() {
+      window.removeEventListener("message", handleAuthComplete);
+      if (timer) window.clearInterval(timer);
+    }
+    function handleAuthComplete(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string; next?: unknown };
+      if (data.type !== "wire:auth-complete") return;
+      closeListener();
+      const next = typeof data.next === "string" && isInternalPath(data.next) ? data.next : nextUrl;
+      window.location.assign(next);
+    }
+    window.addEventListener("message", handleAuthComplete);
+    timer = window.setInterval(() => {
+      if (!popup.closed) return;
+      closeListener();
+      window.location.reload();
+    }, 600);
+  }, [diagram, googleAuthConfigured]);
+
+  const createCloudWire = useCallback(async () => {
+    if (!isAuthenticated || creatingWire) return;
+    setCreatingWire(true);
+    setApiError(null);
+    try {
+      const res = await fetch("/api/wires", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: diagram.title || "Untitled wire" })
+      });
+      const data = await readJsonResponse<WireCreateResponse>(res);
+      if (!res.ok || data.error || !data.wire) {
+        throw new Error(data.error ?? `Request failed with ${res.status}`);
+      }
+      setCloudWires((current) => upsertWireSummary(current, data.wire!));
+      window.location.assign(`/wires?wire=${encodeURIComponent(data.wire.id)}`);
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCreatingWire(false);
+    }
+  }, [creatingWire, diagram.title, isAuthenticated]);
 
   return (
     <div className="flex h-dvh min-h-0 flex-col bg-slate-100 text-slate-950">
@@ -236,6 +363,15 @@ export function PlaygroundClient({
         </Link>
         <span className="hidden text-[13px] font-semibold text-slate-500 sm:inline">Playground</span>
         <div className="ml-auto flex items-center gap-2">
+          {isAuthenticated && user ? (
+            <Link
+              href="/wires"
+              className="hidden min-w-0 items-center gap-1.5 rounded-md border border-emerald-100 bg-emerald-50 px-2.5 py-1.5 text-[12px] font-bold text-emerald-700 no-underline hover:border-emerald-200 sm:flex"
+            >
+              <UserCheck size={13} />
+              <span className="max-w-[180px] truncate">{user.name ?? user.email}</span>
+            </Link>
+          ) : null}
           <CostPill model={lastModel} totalCostUsd={totalCostUsd} totalTokens={totalTokens} />
           <StatusPill validation={validation} busy={busy} />
           <Link
@@ -247,7 +383,23 @@ export function PlaygroundClient({
         </div>
       </header>
 
-      <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_390px]">
+      <main
+        className={
+          isAuthenticated
+            ? "grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_390px]"
+            : "grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_390px]"
+        }
+      >
+        {isAuthenticated && user ? (
+          <AuthenticatedWireSidebar
+            user={user}
+            wires={filteredCloudWires}
+            query={wireQuery}
+            onQueryChange={setWireQuery}
+            onCreateWire={createCloudWire}
+            creatingWire={creatingWire}
+          />
+        ) : null}
         <section className="flex min-h-[58vh] min-w-0 flex-col border-b border-slate-200 bg-slate-100 lg:min-h-0 lg:border-b-0 lg:border-r">
           <div className="flex h-12 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3">
             <SegmentedButton active={mode === "canvas"} onClick={() => setMode("canvas")} icon={<Play size={14} />}>
@@ -354,11 +506,12 @@ export function PlaygroundClient({
                   }
                 }}
                 rows={3}
+                disabled={authRequired && !isAuthenticated}
                 className="min-h-[76px] flex-1 resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-[13px] leading-5 text-slate-950 outline-none focus:border-blue-400"
               />
               <button
                 type="submit"
-                disabled={busy || input.trim().length === 0}
+                disabled={busy || input.trim().length === 0 || (authRequired && !isAuthenticated)}
                 className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
                 aria-label="Send"
                 title="Send"
@@ -369,6 +522,137 @@ export function PlaygroundClient({
           </form>
         </aside>
       </main>
+      {authRequired && !isAuthenticated ? (
+        <AuthGateModal
+          googleAuthConfigured={googleAuthConfigured}
+          onContinue={openGooglePopup}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function AuthenticatedWireSidebar({
+  user,
+  wires,
+  query,
+  onQueryChange,
+  onCreateWire,
+  creatingWire
+}: {
+  user: AuthenticatedUser;
+  wires: WireSummary[];
+  query: string;
+  onQueryChange: (value: string) => void;
+  onCreateWire: () => void;
+  creatingWire: boolean;
+}) {
+  return (
+    <aside className="flex min-h-[220px] min-w-0 flex-col border-b border-slate-200 bg-white lg:min-h-0 lg:border-b-0 lg:border-r">
+      <div className="grid gap-3 border-b border-slate-200 p-3">
+        <div className="grid gap-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <UserCheck size={15} className="shrink-0 text-emerald-600" />
+            <span className="truncate text-[13px] font-extrabold text-slate-950">Authenticated</span>
+          </div>
+          <div className="truncate text-[12px] font-semibold text-slate-500">{user.name ?? user.email}</div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onCreateWire}
+          disabled={creatingWire}
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-[13px] font-extrabold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+        >
+          {creatingWire ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+          New Wire
+        </button>
+
+        <label className="flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2 text-slate-500">
+          <Search size={14} />
+          <input
+            value={query}
+            onChange={(event) => onQueryChange(event.target.value)}
+            placeholder="Search wires..."
+            className="min-w-0 flex-1 border-0 bg-transparent text-[13px] font-medium text-slate-950 outline-none placeholder:text-slate-400"
+          />
+        </label>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-auto p-3">
+        <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-slate-500">Active Wires</div>
+        <div className="grid gap-1">
+          {wires.map((wire) => (
+            <Link
+              key={wire.id}
+              href={`/wires?wire=${encodeURIComponent(wire.id)}`}
+              className="grid min-h-10 rounded-md px-2.5 py-2 text-left text-slate-700 no-underline hover:bg-slate-100 hover:text-slate-950"
+            >
+              <span className="truncate text-[13px] font-bold">{wire.title}</span>
+              <span className="text-[11px] text-slate-400">{wire.nodeCount} nodes</span>
+            </Link>
+          ))}
+          {wires.length === 0 ? (
+            <div className="rounded-md border border-dashed border-slate-200 p-3 text-[13px] font-semibold leading-5 text-slate-500">
+              No wires yet.
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="grid gap-2 border-t border-slate-200 p-3">
+        <Link
+          href="/wires"
+          className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 text-[13px] font-bold text-slate-700 no-underline hover:border-slate-300 hover:text-slate-950"
+        >
+          Open Wires
+        </Link>
+        <a
+          href="/api/auth/signout"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 text-[13px] font-bold text-slate-500 no-underline hover:border-slate-300 hover:text-slate-950"
+        >
+          <LogOut size={14} />
+          Sign out
+        </a>
+      </div>
+    </aside>
+  );
+}
+
+function AuthGateModal({
+  googleAuthConfigured,
+  onContinue
+}: {
+  googleAuthConfigured: boolean;
+  onContinue: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 backdrop-blur-sm">
+      <section className="grid w-full max-w-sm gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-xl">
+        <div className="flex items-start gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-950 text-white">
+            <ShieldCheck size={17} />
+          </span>
+          <div className="grid gap-1">
+            <h2 className="m-0 text-[17px] font-extrabold tracking-tight text-slate-950">Sign in to keep chatting</h2>
+            <p className="m-0 text-[13px] leading-5 text-slate-600">
+              The playground includes three free chat updates. Continue with Google to keep iterating on this wire.
+            </p>
+          </div>
+        </div>
+        {!googleAuthConfigured ? (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-[12px] font-semibold leading-5 text-amber-800">
+            Google auth is not configured in this deployment yet.
+          </div>
+        ) : null}
+        <button
+          type="button"
+          onClick={onContinue}
+          className="h-10 rounded-md bg-slate-950 px-4 text-[13px] font-extrabold text-white hover:bg-slate-800"
+        >
+          Continue with Google
+        </button>
+      </section>
     </div>
   );
 }
@@ -533,6 +817,56 @@ function formatJson(diagram: WireDiagram): string {
   return JSON.stringify(diagram, null, 2);
 }
 
+type AuthGateState = {
+  promptCount: number;
+  authRequired: boolean;
+};
+
+function readAuthGate(): AuthGateState {
+  if (typeof window === "undefined") return { promptCount: 0, authRequired: false };
+  try {
+    const raw = window.localStorage.getItem(AUTH_GATE_KEY);
+    if (!raw) return { promptCount: 0, authRequired: false };
+    const parsed = JSON.parse(raw) as Partial<AuthGateState>;
+    return {
+      promptCount: typeof parsed.promptCount === "number" && parsed.promptCount > 0 ? parsed.promptCount : 0,
+      authRequired: parsed.authRequired === true
+    };
+  } catch {
+    return { promptCount: 0, authRequired: false };
+  }
+}
+
+function writeAuthGate(next: AuthGateState): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(
+    AUTH_GATE_KEY,
+    JSON.stringify({
+      promptCount: Math.max(0, Math.floor(next.promptCount)),
+      authRequired: next.authRequired
+    })
+  );
+}
+
+function recordFreePrompt(): number {
+  const current = readAuthGate();
+  const promptCount = current.promptCount + 1;
+  writeAuthGate({
+    promptCount,
+    authRequired: current.authRequired || promptCount >= FREE_CHAT_LIMIT
+  });
+  return promptCount;
+}
+
+function isInternalPath(value: string): boolean {
+  return value.startsWith("/") && !value.startsWith("//");
+}
+
+function upsertWireSummary(wires: WireSummary[], wire: WireSummary): WireSummary[] {
+  const next = wires.filter((item) => item.id !== wire.id);
+  return [wire, ...next].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
 async function persistToken(diagram: WireDiagram): Promise<string | null> {
   try {
     const res = await fetch("/api/share", {
@@ -545,6 +879,16 @@ async function persistToken(diagram: WireDiagram): Promise<string | null> {
     return typeof data.token === "string" ? data.token : null;
   } catch {
     return null;
+  }
+}
+
+async function readJsonResponse<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  if (!text) return {} as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(text.slice(0, 240) || `Request failed with ${res.status}`);
   }
 }
 

@@ -73,6 +73,7 @@ export interface WireCanvasModel {
 
 export interface BuildWireCanvasModelOptions {
   positionOverrides?: ReadonlyMap<string, Point>;
+  sizeOverrides?: ReadonlyMap<string, { width: number; height: number }>;
   edgeStyle?: EdgeStyle;
   edgeRouting?: EdgeRouting;
 }
@@ -103,13 +104,14 @@ export function buildWireCanvasModel(
     const node = nodeById.get(frame.id);
     if (!node) continue;
     const override = opts.positionOverrides?.get(frame.id);
+    const measured = opts.sizeOverrides?.get(frame.id);
     framesById.set(frame.id, {
       id: frame.id,
       node,
       x: override?.x ?? frame.x,
       y: override?.y ?? frame.y,
-      width: frame.width,
-      height: frame.height
+      width: Math.max(frame.width, measured?.width ?? 0),
+      height: Math.max(frame.height, measured?.height ?? 0)
     });
   }
 

@@ -20,14 +20,14 @@ Choose what to deploy:
 
 ## Local — stdio (MCP clients)
 
-After `npm install` and `npm run build`, point your MCP client at:
+For normal local use, point your MCP client at the published npm package:
 
 ```json
 {
   "mcpServers": {
     "wire": {
-      "command": "node",
-      "args": ["/absolute/path/to/wire/packages/wire-mcp/dist/server.js"],
+      "command": "npx",
+      "args": ["-y", "@aigentive/wire-mcp@latest"],
       "env": {
         "WIRE_STORAGE_DIR": "/Users/me/Documents/wire-diagrams"
       }
@@ -35,6 +35,31 @@ After `npm install` and `npm run build`, point your MCP client at:
   }
 }
 ```
+
+For authenticated cloud sync, generate a key in the hosted app under **Wires ->
+Connect local MCP**:
+
+```json
+{
+  "mcpServers": {
+    "wire": {
+      "command": "npx",
+      "args": ["-y", "@aigentive/wire-mcp@latest"],
+      "env": {
+        "WIRE_CLOUD_URL": "https://reefagent-mcp-wire.vercel.app",
+        "WIRE_CLOUD_API_KEY": "wire_sk_live_REAL_KEY"
+      }
+    }
+  }
+}
+```
+
+Restart the MCP client after adding or changing the server config.
+
+When `WIRE_CLOUD_URL` is present, `render_preview` returns hosted Wire Cloud
+share URLs for browser viewing and raw embeds (`.svg`, `.png`, `.json`, `.mmd`).
+Customers do not need to run the playground locally. `render_svg` and
+`render_png` return inline assets from the MCP server.
 
 Other MCP clients use the same shape: command, args, and env. The visible tool
 names depend on the host. Some clients expose bare names such as
@@ -46,11 +71,31 @@ names depend on the host. Some clients expose bare names such as
 ## Local — HTTP (network clients)
 
 ```bash
-node packages/wire-mcp/dist/server.js --http
-# → http://127.0.0.1:3860/mcp + http://127.0.0.1:3860/health
+npx -y @aigentive/wire-mcp@latest --http
+# http://127.0.0.1:3860/mcp
+# http://127.0.0.1:3860/health
 ```
 
 Set `WIRE_HTTP_PORT` to change port; set `WIRE_HTTP_HOST=0.0.0.0` to expose on the LAN.
+
+Cloud-backed local HTTP:
+
+```bash
+WIRE_CLOUD_URL='https://reefagent-mcp-wire.vercel.app' \
+WIRE_CLOUD_API_KEY='wire_sk_live_REAL_KEY' \
+npx -y @aigentive/wire-mcp@latest --http
+```
+
+`/health` reports whether cloud sync is enabled:
+
+```json
+{
+  "cloud": {
+    "enabled": true,
+    "url": "https://reefagent-mcp-wire.vercel.app"
+  }
+}
+```
 
 ---
 
@@ -115,8 +160,11 @@ Routes available after deploy:
 
 - `/` — index + template list
 - `/preview/template/[name]` — render a built-in template
-- `/preview/inline?d=<base64url-or-token>` — render an inlined diagram or stored share token
-- `/edit/inline?d=<base64url-or-token>` — open the React editor for an inline diagram or stored share token
+- `/s/<viewToken>` — public read-only share page
+- `/s/<viewToken>.svg`, `.png`, `.json`, `.mmd` — public raw embed assets
+- `/e/<editToken>` — public editor, only for edit-scope share tokens
+- `/preview/inline?d=<base64url-or-token>` — legacy preview route; token links redirect to `/s/<token>`
+- `/edit/inline?d=<base64url>` — legacy inline editor for base64 diagrams
 - `POST /api/render` — body: canonical Wire JSON; returns `image/svg+xml`
 - `POST /api/validate` — body: canonical Wire JSON; returns issues
 - `POST /api/share` — body: canonical Wire JSON; stores `wires/{token}.json` and returns share URLs
@@ -142,9 +190,9 @@ users / docs / dashboards   ────→  wire-playground (Vercel or Next.js 
 
 Agents open an MCP session against the `wire-mcp` HTTP endpoint and edit
 diagrams via tools (`add_node`, `connect`, `validate`, etc.). When an agent needs
-to surface a diagram in chat, it can call `render_svg` or `render_preview`. Users
-opening the playground get the browser editor/viewer for the same canonical JSON
-model.
+to surface a diagram in chat, it can call `render_svg`, `render_png`, or
+`render_preview`. Cloud-connected MCP servers return hosted preview links; local
+only MCP servers use `WIRE_PREVIEW_BASE` and fall back to `http://localhost:3870`.
 
 ---
 

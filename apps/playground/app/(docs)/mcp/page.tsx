@@ -11,7 +11,7 @@ const ENV_VARS: Array<{ name: string; default: string; purpose: string }> = [
   { name: "WIRE_HTTP_HOST", default: "127.0.0.1", purpose: "HTTP transport host" },
   { name: "WIRE_AUDIT_LOG", default: "(stderr only)", purpose: "JSONL audit log file path" },
   { name: "WIRE_DEFAULT_LAYOUT", default: "LR", purpose: "Default layout direction" },
-  { name: "WIRE_PREVIEW_BASE", default: "http://localhost:3870", purpose: "Base URL for preview links" },
+  { name: "WIRE_PREVIEW_BASE", default: "WIRE_CLOUD_URL or http://localhost:3870", purpose: "Optional override for preview links" },
   { name: "WIRE_PNG_ENABLED", default: "false", purpose: "Enable PNG rasterization (requires @resvg/resvg-js)" },
   { name: "WIRE_AGENT_ID", default: "wire-mcp", purpose: "Audit log actor id" }
 ];
@@ -69,7 +69,7 @@ const TOOL_GROUPS: Array<{ title: string; tools: Array<{ name: string; purpose: 
     tools: [
       { name: "render_svg", purpose: "Server-side SVG render." },
       { name: "render_png", purpose: "PNG via @resvg/resvg-js (falls back to SVG when not installed)." },
-      { name: "render_preview", purpose: "Return a browser preview URL using WIRE_PREVIEW_BASE." },
+      { name: "render_preview", purpose: "Return browser and raw asset URLs; cloud share URLs when cloud sync is configured." },
       { name: "summarize_diagram", purpose: "Plain-text summary (counts by kind, triggers, ends, branches)." },
       { name: "export_mermaid", purpose: "Convert to Mermaid `flowchart` syntax." }
     ]
@@ -309,10 +309,10 @@ wire-mcp --http    # http on port 3860`}</Shell>
 }`}
       </CodeBlock>
 
-      <Callout tone="tip" title="Live preview">
-        Set <InlineCode>WIRE_PREVIEW_BASE</InlineCode> to your playground URL (default{" "}
-        <InlineCode>http://localhost:3870</InlineCode>) and the <InlineCode>render_preview</InlineCode> tool returns a
-        click-to-open URL the agent can hand the user.
+      <Callout tone="tip" title="Cloud previews">
+        With <InlineCode>WIRE_CLOUD_URL</InlineCode> and <InlineCode>WIRE_CLOUD_API_KEY</InlineCode>,{" "}
+        <InlineCode>render_preview</InlineCode> returns hosted view, edit, SVG, PNG, JSON, and Mermaid URLs. Without cloud
+        sync it falls back to <InlineCode>WIRE_PREVIEW_BASE</InlineCode>.
       </Callout>
     </DocsPage>
   );

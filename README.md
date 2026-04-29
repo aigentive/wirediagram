@@ -41,11 +41,11 @@ npm test
 ### Use the MCP server locally (stdio)
 
 ```bash
-# start over stdio
-node packages/wire-mcp/dist/server.js
+# npm package, stdio transport
+npx -y @aigentive/wire-mcp@latest
 
 # or HTTP transport (default port 3860)
-node packages/wire-mcp/dist/server.js --http
+npx -y @aigentive/wire-mcp@latest --http
 ```
 
 ### Configure for Claude Desktop
@@ -54,8 +54,8 @@ node packages/wire-mcp/dist/server.js --http
 {
   "mcpServers": {
     "wire": {
-      "command": "node",
-      "args": ["/absolute/path/to/wire/packages/wire-mcp/dist/server.js"],
+      "command": "npx",
+      "args": ["-y", "@aigentive/wire-mcp@latest"],
       "env": {
         "WIRE_STORAGE_DIR": "/absolute/path/to/diagrams"
       }
@@ -329,8 +329,10 @@ The playground is intentionally simple and deployment-safe:
 4. The JSON is stored at `wires/{token}.json`, where `token` is a content hash.
    Vercel uses Vercel Blob; local Docker/dev can use `WIRE_SHARE_BACKEND=local`
    and `WIRE_SHARE_DIR`.
-5. `/edit/inline?d={token}` loads the JSON and hydrates the React editor.
-6. `/preview/inline?d={token}` loads the same JSON and renders SVG.
+5. Authenticated shares mint separate random view/edit tokens.
+6. `/s/{viewToken}` renders public read-only HTML, and `/s/{viewToken}.svg`,
+   `.png`, `.json`, and `.mmd` return raw embeddable assets.
+7. `/e/{editToken}` opens public edit only when an edit-scope share exists.
 
 For a production multi-user hosted app, keep JSON blobs revisioned behind stable ids:
 
@@ -369,13 +371,28 @@ server named `wire`:
 ```yaml
 mcpServers:
   wire:
-    command: node
+    command: npx
     args:
-      - /path/to/wire/packages/wire-mcp/dist/server.js
+      - -y
+      - @aigentive/wire-mcp@latest
     env:
       WIRE_STORAGE_DIR: ${HOME}/Documents/wire-diagrams
       WIRE_PREVIEW_BASE: http://localhost:3870
 ```
+
+For authenticated cloud sync, generate an API key from **Wires -> Connect local
+MCP** and add:
+
+```yaml
+env:
+  WIRE_CLOUD_URL: https://reefagent-mcp-wire.vercel.app
+  WIRE_CLOUD_API_KEY: wire_sk_live_REAL_KEY
+```
+
+With cloud sync configured, `render_preview` returns hosted Wire Cloud URLs:
+public view, optional edit, SVG, PNG, JSON, Mermaid, and workspace links.
+Customers do not need a local playground. `render_svg` and `render_png` still
+return inline assets directly from the MCP server.
 
 Some clients expose tools as bare MCP names such as `create_diagram`; others
 prefix tools with the server name, such as `wire__create_diagram` or

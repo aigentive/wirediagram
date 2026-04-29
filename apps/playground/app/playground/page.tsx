@@ -1,4 +1,6 @@
 import { parseWireDiagram, type WireDiagram } from "@aigentive/wire-core";
+import { redirect } from "next/navigation";
+import { auth, isGoogleAuthConfigured } from "@/auth";
 import { resolveShareToken } from "@/lib/share-store";
 import { INITIAL_PLAYGROUND_DIAGRAM } from "./initial-diagram";
 import { PlaygroundClient } from "./PlaygroundClient";
@@ -17,6 +19,9 @@ interface PageProps {
 }
 
 export default async function PlaygroundPage({ searchParams }: PageProps) {
+  const session = await auth();
+  if (session?.user?.email) redirect("/wires");
+
   const { d } = await searchParams;
   let initialDiagram: WireDiagram = INITIAL_PLAYGROUND_DIAGRAM;
   let initialToken: string | null = null;
@@ -35,5 +40,12 @@ export default async function PlaygroundPage({ searchParams }: PageProps) {
 
   const serializableDiagram = JSON.parse(JSON.stringify(initialDiagram)) as WireDiagram;
 
-  return <PlaygroundClient initialDiagram={serializableDiagram} initialToken={initialToken} />;
+  return (
+    <PlaygroundClient
+      initialDiagram={serializableDiagram}
+      initialToken={initialToken}
+      isAuthenticated={Boolean(session?.user?.email)}
+      googleAuthConfigured={isGoogleAuthConfigured()}
+    />
+  );
 }

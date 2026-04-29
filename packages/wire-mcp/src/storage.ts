@@ -234,6 +234,198 @@ export class MemoryStorage implements StorageBackend {
   }
 }
 
+type CloudStorageOptions = {
+  baseUrl: string;
+  apiKey: string;
+};
+
+type CloudWireSummary = {
+  id: string;
+  title: string;
+  nodeCount: number;
+  updatedAt: string;
+};
+
+type CloudWireListResponse = {
+  wires?: CloudWireSummary[];
+  error?: string;
+};
+
+type CloudWireResponse = {
+  wire?: CloudWireSummary;
+  diagram?: unknown;
+  error?: string;
+};
+
+export class CloudStorage implements StorageBackend {
+  private readonly mutex = makeKeyedMutex();
+  private readonly baseUrl: string;
+
+  constructor(
+    private readonly local: StorageBackend,
+    private readonly options: CloudStorageOptions
+  ) {
+    this.baseUrl = options.baseUrl.replace(/\/$/, "");
+  }
+
+  pathFor(id: string): string | undefined {
+    return this.local.pathFor(id);
+  }
+
+  async list(): Promise<DiagramSummary[]> {
+    const remote = await this.request<CloudWireListResponse>("/api/cloud/wires");
+    const cloud = (remote.wires ?? []).map((wire): DiagramSummary => ({
+      id: wire.id,
+      title: wire.title,
+      nodes: wire.nodeCount,
+      layout: "LR",
+      updatedAt: wire.updatedAt
+    }));
+    const cloudIds = new Set(cloud.map((wire) => wire.id));
+    const localOnly = (await this.local.list()).filter((wire) => !cloudIds.has(wire.id));
+    return [...cloud, ...localOnly].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  async exists(id: string): Promise<boolean> {
+    assertSafeId(id);
+    try {
+      await this.request<CloudWireResponse>(this.cloudWirePath(id));
+      return true;
+    } catch (err) {
+      if (err instanceof CloudStorageError && err.status === 404) {
+        return this.local.exists(id);
+      }
+      throw err;
+    }
+  }
+
+  async load(id: string): Promise<WireDiagram> {
+    assertSafeId(id);
+    return this.mutex.run(id, async () => {
+      try {
+        const data = await this.request<CloudWireResponse>(this.cloudWirePath(id));
+        if (data.diagram === undefined) throw new Error(`Cloud diagram "${id}" did not include diagram JSON.`);
+        const diagram = parseWireDiagram(data.diagram);
+        return this.local.save(id, diagram);
+      } catch (err) {
+        if (err instanceof CloudStorageError && err.status === 404 && await this.local.exists(id)) {
+          return this.local.load(id);
+        }
+        throw err;
+      }
+    });
+  }
+
+  async save(id: string, diagram: WireDiagram): Promise<WireDiagram> {
+    assertSafeId(id);
+    return this.mutex.run(id, async () => {
+      const localSaved = await this.local.save(id, diagram);
+      const data = await this.request<CloudWireResponse>(this.cloudWirePath(id), {
+        method: "PATCH",
+        body: JSON.stringify({
+          diagram: localSaved,
+          source: "manual",
+          createIfMissing: true
+        })
+      });
+      if (data.diagram === undefined) throw new Error(`Cloud diagram "${id}" did not include diagram JSON.`);
+      const cloudDiagram = parseWireDiagram(data.diagram);
+      return this.local.save(id, cloudDiagram);
+    });
+  }
+
+  async mutate(
+    id: string,
+    mutator: (diagram: WireDiagram) => Promise<WireDiagram> | WireDiagram
+  ): Promise<WireDiagram> {
+    assertSafeId(id);
+    return this.mutex.run(id, async () => {
+      const current = await this.loadUnlocked(id);
+      const next = await mutator(current);
+      return this.saveUnlocked(id, next);
+    });
+  }
+
+  async remove(id: string): Promise<void> {
+    assertSafeId(id);
+    return this.mutex.run(id, async () => {
+      await this.local.remove(id);
+      try {
+        await this.request<{ ok?: boolean }>(this.cloudWirePath(id), { method: "DELETE" });
+      } catch (err) {
+        if (!(err instanceof CloudStorageError && err.status === 404)) throw err;
+      }
+    });
+  }
+
+  private async loadUnlocked(id: string): Promise<WireDiagram> {
+    try {
+      const data = await this.request<CloudWireResponse>(this.cloudWirePath(id));
+      if (data.diagram === undefined) throw new Error(`Cloud diagram "${id}" did not include diagram JSON.`);
+      const diagram = parseWireDiagram(data.diagram);
+      return this.local.save(id, diagram);
+    } catch (err) {
+      if (err instanceof CloudStorageError && err.status === 404 && await this.local.exists(id)) {
+        return this.local.load(id);
+      }
+      throw err;
+    }
+  }
+
+  private async saveUnlocked(id: string, diagram: WireDiagram): Promise<WireDiagram> {
+    const localSaved = await this.local.save(id, diagram);
+    const data = await this.request<CloudWireResponse>(this.cloudWirePath(id), {
+      method: "PATCH",
+      body: JSON.stringify({
+        diagram: localSaved,
+        source: "manual",
+        createIfMissing: true
+      })
+    });
+    if (data.diagram === undefined) throw new Error(`Cloud diagram "${id}" did not include diagram JSON.`);
+    const cloudDiagram = parseWireDiagram(data.diagram);
+    return this.local.save(id, cloudDiagram);
+  }
+
+  private cloudWirePath(id: string): string {
+    return `/api/cloud/wires/${encodeURIComponent(id)}`;
+  }
+
+  private async request<T>(pathname: string, init: RequestInit = {}): Promise<T> {
+    const headers = new Headers(init.headers);
+    headers.set("authorization", `Bearer ${this.options.apiKey}`);
+    if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
+    const res = await fetch(new URL(pathname, `${this.baseUrl}/`), {
+      ...init,
+      headers,
+      cache: "no-store"
+    });
+    const text = await res.text();
+    const data = text ? parseResponseJson(text) : {};
+    if (!res.ok) {
+      const error = data && typeof data === "object" && "error" in data && typeof data.error === "string"
+        ? data.error
+        : text || `Cloud request failed with ${res.status}`;
+      throw new CloudStorageError(res.status, error);
+    }
+    return data as T;
+  }
+}
+
+class CloudStorageError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
+
+function parseResponseJson(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return { error: text };
+  }
+}
+
 export function createDefaultDiagram(opts: {
   id: string;
   title?: string;
