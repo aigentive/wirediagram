@@ -9,6 +9,7 @@ import {
   DollarSign,
   FileJson,
   Loader2,
+  LogIn,
   LogOut,
   MessageSquare,
   Play,
@@ -378,6 +379,19 @@ export function PlaygroundClient({
         <Link href="/contact" className="no-underline">
           <DotPillStatic>Contact</DotPillStatic>
         </Link>
+        {!isAuthenticated ? (
+          <Link
+            href={
+              googleAuthConfigured
+                ? `/api/google-auth?callbackUrl=${encodeURIComponent("/wires")}`
+                : `/login?callbackUrl=${encodeURIComponent("/wires")}`
+            }
+            className="inline-flex items-center gap-1.5 rounded-md bg-wire-primary px-3 py-1.5 text-[12px] font-bold text-white no-underline hover:opacity-90"
+          >
+            <LogIn size={13} strokeWidth={1.5} />
+            Login
+          </Link>
+        ) : null}
       </EditorHeader>
 
       <main

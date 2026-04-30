@@ -923,19 +923,28 @@ function WireControls({
         position: "absolute",
         left: 12,
         bottom: 12,
-        display: "grid",
-        gridTemplateColumns: "32px 32px 44px",
-        gap: 6,
-        padding: 6,
-        borderRadius: 8,
-        border: "1px solid #cbd5e1",
-        background: "rgba(255,255,255,0.94)",
-        boxShadow: "0 10px 24px rgba(15,23,42,0.12)"
+        display: "inline-flex",
+        alignItems: "center",
+        overflow: "hidden",
+        borderRadius: 10,
+        border: "1px solid rgba(15,23,42,0.08)",
+        background: "rgba(255,255,255,0.88)",
+        backdropFilter: "blur(14px) saturate(1.2)",
+        WebkitBackdropFilter: "blur(14px) saturate(1.2)",
+        boxShadow:
+          "0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px -8px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.04)"
       }}
     >
-      <ControlButton label="Zoom in" onClick={onZoomIn}>+</ControlButton>
-      <ControlButton label="Zoom out" onClick={onZoomOut}>-</ControlButton>
-      <ControlButton label="Fit view" onClick={onFit}>Fit</ControlButton>
+      <ControlButton label="Zoom in" onClick={onZoomIn}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </ControlButton>
+      <ControlButton label="Zoom out" onClick={onZoomOut} divider>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14"/></svg>
+      </ControlButton>
+      <ControlButton label="Fit view" onClick={onFit} divider wide>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        <span style={{ marginLeft: 5, fontSize: 11.5, fontWeight: 600, color: "#334155" }}>Fit</span>
+      </ControlButton>
     </div>
   );
 }
@@ -943,10 +952,14 @@ function WireControls({
 function ControlButton({
   label,
   onClick,
+  divider = false,
+  wide = false,
   children
 }: {
   label: string;
   onClick: () => void;
+  divider?: boolean;
+  wide?: boolean;
   children: ReactNode;
 }): ReactElement {
   return (
@@ -959,13 +972,15 @@ function ControlButton({
         onClick();
       }}
       style={{
-        height: 32,
-        minWidth: 32,
-        border: "1px solid #cbd5e1",
-        borderRadius: 6,
-        background: "#ffffff",
-        color: "#0f172a",
-        font: "700 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+        height: 30,
+        ...(wide ? { padding: "0 12px" } : { width: 30 }),
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: 0,
+        borderLeft: divider ? "1px solid rgba(15,23,42,0.08)" : "0",
+        background: "transparent",
+        color: "#475569",
         cursor: "pointer"
       }}
     >
@@ -981,7 +996,7 @@ function WireMiniMap({
   model: ReturnType<typeof buildWireCanvasModel>;
   viewport: WireViewport;
 }): ReactElement {
-  const width = 152;
+  const width = 184;
   const height = 104;
   const pad = 8;
   const scale = Math.min(
@@ -1005,10 +1020,13 @@ function WireMiniMap({
         position: "absolute",
         right: 12,
         bottom: 12,
-        borderRadius: 8,
-        border: "1px solid #cbd5e1",
-        background: "rgba(255,255,255,0.94)",
-        boxShadow: "0 10px 24px rgba(15,23,42,0.12)"
+        borderRadius: 10,
+        border: "1px solid rgba(15,23,42,0.08)",
+        background: "rgba(255,255,255,0.88)",
+        backdropFilter: "blur(14px) saturate(1.2)",
+        WebkitBackdropFilter: "blur(14px) saturate(1.2)",
+        boxShadow:
+          "0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px -8px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.04)"
       }}
     >
       {model.edges.map((edge) => (

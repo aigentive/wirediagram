@@ -90,3 +90,16 @@ The MCP server is **not** deployed to Vercel — the playground is read/render-o
 - Don't commit `dist/` directories — Vercel builds them. They're gitignored.
 - Don't write a `.env.local` to the repo (it's gitignored, but be careful with `vercel env pull`).
 - Don't bypass git hooks (`--no-verify`, `--no-gpg-sign`).
+
+## Design / UI work
+
+Two project-scoped helpers cover anything visual in this repo (playground, wire-react components, docs surface):
+
+- **Skill — `wire-design`** (`.claude/skills/wire-design/SKILL.md`).
+  Loaded when the user asks for design, polish, hierarchy, spacing, state, or "easier to understand" work — or invoked directly with `/wire-design`. Carries Wire's non-negotiables (sentence case, brand accent only blue-600, no colored left-border cards, single shadow, dot grid only on canvas, tokens not hex), the component-by-component playbook from the [shared UI judgment rules](https://gist.github.com/adriandemian/07f9534883cca5a49c8f6414aada8a1f), and recurring fix recipes for this repo (column-width drift, `fitView` right-bias, validation/minimap chrome unification, etc.).
+  Reference design system on disk: `/Users/admin/Downloads/Wire Design System/` (`editor.html`, `colors_and_type.css`, `preview/*.html`).
+
+- **Agent — `wire-design-reviewer`** (`.claude/agents/wire-design-reviewer.md`).
+  Delegated reviewer. Use proactively after non-trivial TSX edits or on demand for "does this match the design system" / "polish pass" / pre-merge UI checks. Returns a punch list grouped by **blocker / polish / nice-to-have**, each anchored to a file path and phrased as a UX outcome (clearer hierarchy, calmer sidebar, stronger selected state) — not cosmetic adjectives. Doesn't write code; the main agent applies fixes.
+
+When in doubt: **load the skill before editing UI; spawn the agent after editing UI.** Both pull from the same gist, so guidance stays consistent across in-line work and review.

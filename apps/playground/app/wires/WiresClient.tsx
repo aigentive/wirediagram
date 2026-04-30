@@ -753,9 +753,9 @@ export function WiresClient({
         className={
           workspace
             ? chatOpen
-              ? "grid min-h-0 flex-1 grid-cols-[260px_220px_minmax(0,1fr)_390px]"
-              : "grid min-h-0 flex-1 grid-cols-[260px_220px_minmax(0,1fr)]"
-            : "grid min-h-0 flex-1 grid-cols-[260px_minmax(0,1fr)]"
+              ? "grid min-h-0 flex-1 grid-cols-[224px_196px_minmax(0,1fr)_320px]"
+              : "grid min-h-0 flex-1 grid-cols-[224px_196px_minmax(0,1fr)]"
+            : "grid min-h-0 flex-1 grid-cols-[224px_minmax(0,1fr)]"
         }
       >
         <NavRail
@@ -885,7 +885,7 @@ export function WiresClient({
                     fitView
                     showMiniMap
                     showBackground={false}
-                    showControls={false}
+                    showControls
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", backgroundColor: "transparent" }}
                   />
                 </CanvasFrame>
@@ -1091,7 +1091,7 @@ function CanvasOverlays({ validationValid }: { validationValid: boolean }) {
   return (
     <>
       {!validationValid ? (
-        <WireValidationPanel className="rounded-md border border-wire bg-wire-surface p-[10px] shadow-wire-sm" />
+        <WireValidationPanel className="wire-canvas-overlay rounded-[10px] p-[10px]" />
       ) : null}
       <SelectedNodeInspector />
     </>
@@ -1102,7 +1102,7 @@ function SelectedNodeInspector() {
   const [selection] = useWireSelection();
   if (selection.nodeIds.length === 0) return null;
   return (
-    <WireInspector className="max-h-[220px] overflow-auto rounded-md border border-wire bg-wire-surface p-[10px] shadow-wire-sm" />
+    <WireInspector className="wire-canvas-overlay max-h-[200px] overflow-auto rounded-[10px] p-[10px]" />
   );
 }
 

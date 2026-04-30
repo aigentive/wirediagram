@@ -8,7 +8,7 @@ export function ToolRail({
   children: ReactNode;
 }) {
   return (
-    <aside className="flex min-h-0 w-[220px] shrink-0 flex-col border-r border-wire bg-wire-rail">
+    <aside className="flex min-h-0 w-[196px] shrink-0 flex-col border-r border-wire bg-wire-rail">
       {topbar ? (
         <div className="flex items-center gap-2 border-b border-wire p-2">
           {topbar}

@@ -10,7 +10,7 @@ export function NavRail({
   children: ReactNode;
 }) {
   return (
-    <aside className="flex min-h-0 w-[260px] shrink-0 flex-col border-r border-wire bg-wire-nav text-wire-nav-fg">
+    <aside className="flex min-h-0 w-[224px] shrink-0 flex-col border-r border-wire bg-wire-nav text-wire-nav-fg">
       {header ? (
         <div className="grid gap-3 border-b border-wire p-3">{header}</div>
       ) : null}

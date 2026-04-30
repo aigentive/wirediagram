@@ -71,13 +71,12 @@ export function WireNodeCardView(ctx: WireNodeCardViewProps): ReactElement {
   const hasStructuredContent = hasStructuredCardContent(cardContent);
   const shouldRenderStructuredContent = customContent === undefined && hasStructuredContent;
   const showDefaultSummary = ctx.showDefaultSummary ?? (customContent === undefined && !hasStructuredContent);
-  const refLabel = subtitle;
 
   return (
     <NodeCard
       kind={ctx.kind}
       title={title}
-      refLabel={refLabel}
+      meta={subtitle}
       selected={ctx.selected}
       ariaSelected={ctx.selected}
       className={cx("box-border h-full w-full min-w-0", ctx.className)}

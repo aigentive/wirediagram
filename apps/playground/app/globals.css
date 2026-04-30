@@ -127,17 +127,17 @@
   --wire-rail-divider: rgba(15, 23, 42, 0.06);
   --wire-rail-section-fg: var(--wire-slate-500);
 
-  --wire-nav-bg: var(--wire-bg-page);
-  --wire-nav-bg-hover: var(--wire-slate-100);
-  --wire-nav-bg-active: var(--wire-slate-900);
-  --wire-nav-fg: var(--wire-slate-700);
-  --wire-nav-fg-muted: var(--wire-slate-500);
-  --wire-nav-fg-dim: var(--wire-slate-400);
-  --wire-nav-divider: var(--wire-border);
+  --wire-nav-bg: var(--wire-slate-800);
+  --wire-nav-bg-hover: rgba(255, 255, 255, 0.05);
+  --wire-nav-bg-active: rgba(255, 255, 255, 0.08);
+  --wire-nav-fg: var(--wire-slate-200);
+  --wire-nav-fg-muted: var(--wire-slate-400);
+  --wire-nav-fg-dim: var(--wire-slate-500);
+  --wire-nav-divider: rgba(255, 255, 255, 0.06);
   --wire-nav-accent: #60a5fa;
-  --wire-nav-button-bg: var(--wire-slate-900);
-  --wire-nav-button-fg: #ffffff;
-  --wire-nav-button-bg-hover: var(--wire-slate-800);
+  --wire-nav-button-bg: #ffffff;
+  --wire-nav-button-fg: var(--wire-slate-900);
+  --wire-nav-button-bg-hover: var(--wire-slate-100);
 
   --wire-canvas-bg: #f8fafc;
   --wire-canvas-grid-major: rgba(15, 23, 42, 0.1);
@@ -217,7 +217,7 @@
 
   --wire-nav-bg: var(--wire-slate-800);
   --wire-nav-bg-hover: rgba(255, 255, 255, 0.05);
-  --wire-nav-bg-active: var(--wire-slate-900);
+  --wire-nav-bg-active: rgba(255, 255, 255, 0.08);
   --wire-nav-fg: var(--wire-slate-200);
   --wire-nav-fg-muted: var(--wire-slate-400);
   --wire-nav-fg-dim: var(--wire-slate-500);
@@ -361,6 +361,24 @@
   }
   .wire-tabular {
     font-feature-settings: "tnum" 1;
+  }
+  .wire-canvas-overlay {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.6) inset,
+      0 8px 24px -8px rgba(15, 23, 42, 0.12),
+      0 2px 6px rgba(15, 23, 42, 0.04);
+  }
+  .dark .wire-canvas-overlay {
+    background: rgba(15, 23, 42, 0.78);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.04) inset,
+      0 8px 24px -8px rgba(0, 0, 0, 0.5),
+      0 2px 6px rgba(0, 0, 0, 0.35);
   }
 }
 
