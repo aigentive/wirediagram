@@ -125,11 +125,11 @@
   --wire-status-invalid: #b91c1c;
   --wire-status-invalid-bg: #fef2f2;
 
-  --wire-bg-page: var(--wire-slate-50);
+  --wire-bg-page: #eef1f5;
   --wire-bg-surface: #ffffff;
   --wire-bg-sunken: var(--wire-slate-100);
   --wire-bg-code: var(--wire-slate-950);
-  --wire-bg-canvas: #ffffff;
+  --wire-bg-canvas: #fafbfd;
   --wire-grid-dot: rgba(100, 116, 139, 0.2);
 
   --wire-fg-primary: var(--wire-slate-900);
