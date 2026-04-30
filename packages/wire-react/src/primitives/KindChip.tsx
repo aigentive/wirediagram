@@ -16,6 +16,7 @@ const CHIP_CLASS: Record<WireKindChipKey, string> = {
   action: "bg-wire-kind-action-bg text-wire-kind-action",
   human: "bg-wire-kind-human-bg text-wire-kind-human",
   note: "bg-wire-kind-note-bg text-wire-kind-note",
+  condition: "bg-wire-kind-condition-bg text-wire-kind-condition",
   end: "bg-wire-kind-end-bg text-wire-kind-end"
 };
 

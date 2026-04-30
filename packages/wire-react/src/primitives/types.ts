@@ -10,6 +10,7 @@ export type WireKindChipKey =
   | "action"
   | "human"
   | "note"
+  | "condition"
   | "end";
 
 export function kindChipKey(kind: WireNodeKind): WireKindChipKey {
@@ -29,7 +30,7 @@ export function kindChipKey(kind: WireNodeKind): WireKindChipKey {
     case "note":
       return "note";
     case "condition":
-      return "ai";
+      return "condition";
     case "guardrail":
       return "action";
     case "memory":

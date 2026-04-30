@@ -2,7 +2,7 @@ import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { cx } from "../components/classes.js";
 import { KindChip } from "./KindChip.js";
 import { Ref } from "./Ref.js";
-import type { WireNodeKind } from "./types.js";
+import { kindChipKey, type WireKindChipKey, type WireNodeKind } from "./types.js";
 
 export interface NodeCardProps {
   kind: WireNodeKind;
@@ -17,6 +17,18 @@ export interface NodeCardProps {
   ariaSelected?: boolean;
 }
 
+const KIND_TINT: Record<WireKindChipKey, string> = {
+  trigger: "var(--wire-kind-trigger-tint)",
+  ai: "var(--wire-kind-ai-tint)",
+  retrieval: "var(--wire-kind-retrieval-tint)",
+  tool: "var(--wire-kind-tool-tint)",
+  action: "var(--wire-kind-action-tint)",
+  human: "var(--wire-kind-human-tint)",
+  note: "var(--wire-kind-note-tint)",
+  condition: "var(--wire-kind-condition-tint)",
+  end: "var(--wire-kind-end-tint)"
+};
+
 export function NodeCard({
   kind,
   title,
@@ -29,23 +41,31 @@ export function NodeCard({
   style,
   ariaSelected
 }: NodeCardProps): ReactElement {
+  const tint = KIND_TINT[kindChipKey(kind)];
+  const cardStyle: CSSProperties = {
+    backgroundImage: `linear-gradient(180deg, ${tint} 0%, var(--wire-bg-surface) 80%)`,
+    backgroundColor: "var(--wire-bg-surface)",
+    boxShadow: selected
+      ? "var(--wire-card-shadow-selected)"
+      : "var(--wire-card-shadow)",
+    minWidth: 132,
+    ...style
+  };
   return (
     <div
       aria-selected={ariaSelected ?? selected}
       className={cx(
-        "flex flex-col gap-1 rounded-lg border bg-wire-surface px-3 py-[10px]",
-        selected
-          ? "border-wire-focus shadow-[0_0_0_2px_var(--wire-blue-500)_inset]"
-          : "border-wire",
+        "group/node flex flex-col gap-1 rounded-[9px] border px-3 py-[10px] transition-shadow duration-150",
+        selected ? "border-wire-focus" : "border-wire",
         className
       )}
-      style={style}
+      style={cardStyle}
     >
       <div className="flex items-center justify-between gap-1.5">
         <KindChip kind={kind} />
         {refLabel ? <Ref>{refLabel}</Ref> : null}
       </div>
-      <div className="mt-0.5 text-[13px] font-bold leading-snug text-wire-primary">
+      <div className="mt-0.5 text-[13px] font-semibold leading-snug tracking-[-0.005em] text-wire-primary">
         {title}
       </div>
       {meta ? (

@@ -92,6 +92,29 @@
   --wire-kind-human-bg: #f1f5f9;
   --wire-kind-note: #b45309;
   --wire-kind-note-bg: #fffbeb;
+  --wire-kind-condition: #7e22ce;
+  --wire-kind-condition-bg: #f3e8ff;
+  --wire-kind-condition-tint: #faf5ff;
+  --wire-kind-trigger-tint: #ecfdf5;
+  --wire-kind-ai-tint: #eff6ff;
+  --wire-kind-retrieval-tint: #eef2ff;
+  --wire-kind-tool-tint: #f0fdfa;
+  --wire-kind-action-tint: #fff7ed;
+  --wire-kind-human-tint: #fffbeb;
+  --wire-kind-end-tint: #f1f5f9;
+  --wire-kind-note-tint: #fffbeb;
+  --wire-card-shadow:
+    0 1px 0 rgba(15, 23, 42, 0.04),
+    0 4px 10px rgba(15, 23, 42, 0.07),
+    0 1px 2px rgba(15, 23, 42, 0.04);
+  --wire-card-shadow-hover:
+    0 1px 0 rgba(15, 23, 42, 0.04),
+    0 8px 18px rgba(15, 23, 42, 0.1),
+    0 2px 4px rgba(15, 23, 42, 0.06);
+  --wire-card-shadow-selected:
+    0 0 0 3px rgba(37, 99, 235, 0.16),
+    0 8px 18px rgba(37, 99, 235, 0.18),
+    0 2px 4px rgba(15, 23, 42, 0.06);
 
   --wire-status-valid: #047857;
   --wire-status-valid-bg: #ecfdf5;
@@ -201,6 +224,22 @@
   --wire-kind-end-bg: rgba(71, 85, 105, 0.3);
   --wire-kind-human-bg: rgba(71, 85, 105, 0.3);
   --wire-kind-note-bg: rgba(180, 83, 9, 0.2);
+  --wire-kind-condition-bg: rgba(126, 34, 206, 0.22);
+  --wire-kind-trigger-tint: rgba(4, 120, 87, 0.12);
+  --wire-kind-ai-tint: rgba(37, 99, 235, 0.12);
+  --wire-kind-retrieval-tint: rgba(67, 56, 202, 0.14);
+  --wire-kind-tool-tint: rgba(15, 118, 110, 0.12);
+  --wire-kind-action-tint: rgba(194, 65, 12, 0.12);
+  --wire-kind-human-tint: rgba(180, 83, 9, 0.12);
+  --wire-kind-end-tint: rgba(71, 85, 105, 0.18);
+  --wire-kind-condition-tint: rgba(126, 34, 206, 0.14);
+  --wire-kind-note-tint: rgba(180, 83, 9, 0.14);
+  --wire-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --wire-card-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.45), 0 8px 18px rgba(0, 0, 0, 0.35);
+  --wire-card-shadow-selected:
+    0 0 0 3px rgba(96, 165, 250, 0.28),
+    0 8px 18px rgba(0, 0, 0, 0.4),
+    0 2px 4px rgba(0, 0, 0, 0.35);
 
   --wire-status-valid-bg: rgba(4, 120, 87, 0.18);
   --wire-status-reserved-bg: rgba(37, 99, 235, 0.18);
@@ -313,6 +352,8 @@
   --color-wire-kind-human-bg: var(--wire-kind-human-bg);
   --color-wire-kind-note: var(--wire-kind-note);
   --color-wire-kind-note-bg: var(--wire-kind-note-bg);
+  --color-wire-kind-condition: var(--wire-kind-condition);
+  --color-wire-kind-condition-bg: var(--wire-kind-condition-bg);
 
   --radius-xs: var(--wire-radius-xs);
   --radius-sm: var(--wire-radius-sm);
