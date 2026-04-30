@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  ArrowRight,
   Boxes,
   Lightbulb,
   MousePointerClick,
@@ -61,19 +60,17 @@ export default function DocsLanding() {
             <Link
               key={path.href}
               href={path.href}
-              className="group grid content-start gap-2 rounded-xl border border-slate-200 bg-white p-5 no-underline transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
+              className="group grid content-start gap-2 rounded-lg border border-wire bg-wire-surface p-5 no-underline transition-colors hover:border-wire-strong hover:bg-wire-sunken"
             >
-              <span className="grid h-9 w-9 place-items-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                <Icon size={16} aria-hidden strokeWidth={2.25} />
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-wire-sunken text-wire-primary">
+                <Icon size={16} aria-hidden strokeWidth={1.5} />
               </span>
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-700 dark:text-blue-300">
-                {path.eyebrow}
-              </span>
-              <span className="text-[17px] font-bold tracking-tight text-slate-950 dark:text-slate-50">{path.title}</span>
-              <span className="text-[13px] leading-6 text-slate-600 dark:text-slate-400">{path.detail}</span>
-              <span aria-hidden className="mt-1 flex items-center gap-1 text-[12px] font-bold text-blue-700 dark:text-blue-300">
+              <span className="wire-eyebrow">{path.eyebrow}</span>
+              <span className="text-[17px] font-bold tracking-tight text-wire-primary">{path.title}</span>
+              <span className="text-[13px] leading-6 text-wire-secondary">{path.detail}</span>
+              <span aria-hidden className="mt-1 inline-flex items-center gap-1 text-[12px] font-bold text-blue-600">
                 Read
-                <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" strokeWidth={2.5} />
+                <span className="inline-block transition-transform group-hover:translate-x-0.5">{"→"}</span>
               </span>
             </Link>
           );
@@ -177,16 +174,18 @@ export default function DocsLanding() {
           <Link
             key={task.href}
             href={task.href}
-            className="group grid content-start gap-1 rounded-lg border border-slate-200 bg-white p-4 no-underline hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+            className="group grid content-start gap-1 rounded-lg border border-wire bg-wire-surface p-4 no-underline hover:border-wire-strong"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2 text-[14px] font-bold text-slate-950 dark:text-slate-50">
-                <Icon size={14} aria-hidden strokeWidth={2.25} className="text-slate-500 dark:text-slate-400" />
+              <span className="flex items-center gap-2 text-[14px] font-bold text-wire-primary">
+                <Icon size={14} aria-hidden strokeWidth={1.5} className="text-wire-tertiary" />
                 {task.title}
               </span>
-              <ArrowRight size={14} aria-hidden className="text-slate-400 transition-transform group-hover:translate-x-0.5 dark:text-slate-500" />
+              <span aria-hidden className="text-[14px] font-bold text-blue-600 transition-transform group-hover:translate-x-0.5">
+                {"→"}
+              </span>
             </div>
-            <span className="text-[13px] leading-6 text-slate-600 dark:text-slate-400">{task.detail}</span>
+            <span className="text-[13px] leading-6 text-wire-secondary">{task.detail}</span>
           </Link>
         );
         })}

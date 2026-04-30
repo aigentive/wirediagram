@@ -5,6 +5,7 @@ import {
   type WireOptionSpec
 } from "../options.js";
 import type { WireNodeRenderContext } from "../canvas/nodeTypes.js";
+import { NodeCard } from "../primitives/NodeCard.js";
 import { cx } from "./classes.js";
 
 export interface WireNodeCardViewProps extends WireNodeRenderContext {
@@ -70,31 +71,29 @@ export function WireNodeCardView(ctx: WireNodeCardViewProps): ReactElement {
   const hasStructuredContent = hasStructuredCardContent(cardContent);
   const shouldRenderStructuredContent = customContent === undefined && hasStructuredContent;
   const showDefaultSummary = ctx.showDefaultSummary ?? (customContent === undefined && !hasStructuredContent);
+  const refLabel = ctx.node.id;
 
   return (
-    <div
-      aria-selected={ctx.selected}
-      className={cx(
-        "box-border grid min-h-full w-full gap-2 rounded-lg border bg-white px-3.5 py-3 shadow-lg dark:bg-slate-900 dark:shadow-black/40",
-        ctx.selected
-          ? "border-blue-600 ring-4 ring-blue-600/15 dark:border-blue-400 dark:ring-blue-400/20"
-          : "border-slate-200 dark:border-slate-700",
-        ctx.className
-      )}
+    <NodeCard
+      kind={ctx.kind}
+      title={title}
+      refLabel={refLabel}
+      selected={ctx.selected}
+      ariaSelected={ctx.selected}
+      className={cx("box-border h-full w-full min-w-0", ctx.className)}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className={cx("rounded-full px-2 py-0.5 text-[11px] font-extrabold uppercase", kindBadgeClass(ctx.kind))}>
-          {ctx.kind}
-        </span>
-        <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">{ctx.node.id}</span>
-      </div>
-      <strong className="text-sm leading-snug text-slate-950 dark:text-slate-50">{title}</strong>
-      {description ? <span className="text-xs leading-snug text-slate-600 dark:text-slate-300">{description}</span> : null}
+      {description ? (
+        <span className="text-[12px] leading-snug text-wire-secondary">{description}</span>
+      ) : null}
       {customContent}
       {shouldRenderStructuredContent ? <StructuredCardContent content={cardContent} /> : null}
-      {showDefaultSummary && optionLine ? <span className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">{optionLine}</span> : null}
-      {ctx.footer ? <div className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">{ctx.footer}</div> : null}
-    </div>
+      {showDefaultSummary && optionLine ? (
+        <span className="text-[11px] leading-snug text-wire-tertiary">{optionLine}</span>
+      ) : null}
+      {ctx.footer ? (
+        <div className="text-[11px] leading-snug text-wire-tertiary">{ctx.footer}</div>
+      ) : null}
+    </NodeCard>
   );
 }
 
@@ -102,15 +101,18 @@ export function WireGroupFrame(ctx: WireGroupFrameProps): ReactElement {
   return (
     <div
       aria-selected={ctx.selected}
+      data-selected={ctx.selected ? "true" : undefined}
       className={cx(
-        "relative box-border h-full w-full rounded-lg border bg-slate-50/70 px-3.5 pb-3.5 pt-8 shadow-inner dark:bg-slate-900/60",
-        ctx.selected ? "border-blue-600 dark:border-blue-400" : "border-slate-300 dark:border-slate-700",
+        "relative box-border h-full w-full rounded-lg border-[1.5px] bg-wire-canvas pb-3.5 pl-3.5 pr-3.5 pt-7",
+        ctx.selected ? "border-wire-focus" : "border-wire-strong",
         ctx.className
       )}
     >
-      <div className="absolute left-3.5 right-3.5 top-2.5 flex items-center justify-between text-xs font-extrabold uppercase text-slate-700 dark:text-slate-300">
+      <div className="absolute left-3.5 right-3.5 top-2 flex items-center justify-between text-[10.5px] font-bold uppercase tracking-[0.08em] text-wire-primary">
         <span>{ctx.node.title}</span>
-        <span>{ctx.node.kind === "group" ? ctx.node.children?.length ?? 0 : 0}</span>
+        <span className="font-mono text-[11px] text-wire-tertiary">
+          {ctx.node.kind === "group" ? ctx.node.children?.length ?? 0 : 0}
+        </span>
       </div>
     </div>
   );
@@ -138,7 +140,13 @@ function StructuredCardContent({ content }: { content: WireCardContent | undefin
           {content.badges.map((badge, index) => {
             const parsed = parseBadge(badge);
             return (
-              <span key={`${parsed.label}-${index}`} className={cx("rounded-full px-2 py-0.5 text-[11px] font-extrabold", cardBadgeClass(parsed.tone))}>
+              <span
+                key={`${parsed.label}-${index}`}
+                className={cx(
+                  "rounded-sm px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em]",
+                  cardBadgeClass(parsed.tone)
+                )}
+              >
                 {parsed.label}
               </span>
             );
@@ -147,7 +155,7 @@ function StructuredCardContent({ content }: { content: WireCardContent | undefin
       ) : null}
 
       {content?.meta?.length ? (
-        <div className="grid gap-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+        <div className="grid gap-0.5 text-[11px] leading-snug text-wire-tertiary">
           {content.meta.map((item, index) => (
             <span key={`${metaItemText(item)}-${index}`}>{metaItemText(item)}</span>
           ))}
@@ -157,7 +165,7 @@ function StructuredCardContent({ content }: { content: WireCardContent | undefin
       {progress ? (
         <div className="grid gap-1.5">
           {(progress.label || progress.showPercent) ? (
-            <div className="flex items-center justify-between gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+            <div className="flex items-center justify-between gap-2 text-[11px] font-bold text-wire-tertiary">
               <span>{progress.label}</span>
               {progress.showPercent ? <span>{Math.round(progress.percent * 100)}%</span> : null}
             </div>
@@ -168,23 +176,25 @@ function StructuredCardContent({ content }: { content: WireCardContent | undefin
                 <span
                   key={index}
                   className={cx(
-                    "h-2 w-2 rounded-full",
-                    index < progress.filledSteps ? "bg-slate-500 dark:bg-slate-300" : "bg-slate-200 dark:bg-slate-700"
+                    "h-2 w-2 rounded-sm",
+                    index < progress.filledSteps ? "bg-wire-fg-secondary" : "bg-wire-sunken"
                   )}
                 />
               ))}
             </div>
           ) : null}
-          <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+          <div className="h-1.5 overflow-hidden rounded-sm bg-wire-sunken">
             <div
-              className="h-full rounded-full bg-slate-500 dark:bg-slate-300"
+              className="h-full rounded-sm bg-wire-fg-secondary"
               style={{ width: `${Math.round(progress.percent * 100)}%` }}
             />
           </div>
         </div>
       ) : null}
 
-      {content?.footer ? <span className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">{content.footer}</span> : null}
+      {content?.footer ? (
+        <span className="text-[11px] leading-snug text-wire-tertiary">{content.footer}</span>
+      ) : null}
     </div>
   );
 }
@@ -216,11 +226,11 @@ function parseBadge(badge: WireCardBadge): { label: string; tone: WireCardBadgeT
 
 function cardBadgeClass(tone: WireCardBadgeTone): string {
   switch (tone) {
-    case "info": return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
-    case "success": return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300";
-    case "warning": return "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300";
-    case "error": return "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300";
-    default: return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+    case "info": return "bg-wire-status-reserved-bg text-wire-status-reserved";
+    case "success": return "bg-wire-status-valid-bg text-wire-status-valid";
+    case "warning": return "bg-wire-status-warn-bg text-wire-status-warn";
+    case "error": return "bg-wire-status-invalid-bg text-wire-status-invalid";
+    default: return "bg-wire-sunken text-wire-secondary";
   }
 }
 
@@ -284,17 +294,6 @@ function isProgress(value: unknown): value is WireCardProgress {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function kindBadgeClass(kind: WireNode["kind"]): string {
-  switch (kind) {
-    case "ai": return "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300";
-    case "tool": return "bg-cyan-50 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300";
-    case "retrieval": return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
-    case "trigger": return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300";
-    case "action": return "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300";
-    default: return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
-  }
 }
 
 function subtitleForNode(node: WireNode): string | undefined {

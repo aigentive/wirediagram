@@ -60,7 +60,7 @@ export default function ClickModalExamplePage() {
       </Prose>
 
       <WireProvider defaultDiagram={HORIZONTAL_DIAGRAM} validateOnChange onEvent={onEvent}>
-        <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative overflow-hidden rounded-lg border border-wire bg-wire-surface">
           <ClickableHint>Click any node</ClickableHint>
           <CanvasPane height={400} />
           {modalNodeId ? (
@@ -72,7 +72,7 @@ export default function ClickModalExamplePage() {
       </WireProvider>
       <Hint>
         Click any node above to open its options dialog. Press{" "}
-        <kbd className="rounded border border-slate-300 bg-white px-1 font-mono text-[10px] dark:border-slate-700 dark:bg-slate-800">Esc</kbd>{" "}
+        <kbd className="rounded border border-wire bg-wire-surface px-1 font-mono text-[10px]">Esc</kbd>{" "}
         or click the backdrop to close.
       </Hint>
 

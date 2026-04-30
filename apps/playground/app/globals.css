@@ -218,10 +218,9 @@
 }
 
 /* =============================================================
-   Tailwind v4 theme bridge
-   Routes existing slate-*/blue-* classes through Wire variables
-   so dark-mode flips through the cascade and downstream code
-   doesn't need to change overnight.
+   Tailwind v4 theme bridge.
+   Routes existing slate and blue classes through Wire variables
+   so dark-mode flips through the cascade.
    ============================================================= */
 @theme inline {
   --font-sans: var(--wire-font-sans);

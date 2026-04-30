@@ -49,9 +49,7 @@ export function PageToc() {
 
   return (
     <nav aria-label="On this page" className="grid content-start gap-2 py-8">
-      <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-        On this page
-      </span>
+      <span className="wire-eyebrow wire-eyebrow--muted">On this page</span>
       <ul className="m-0 grid list-none gap-1 p-0">
         {headings.map((heading) => {
           const active = heading.id === activeId;
@@ -59,10 +57,10 @@ export function PageToc() {
             <li key={heading.id} className="m-0 p-0">
               <a
                 href={`#${heading.id}`}
-                className={`block rounded px-2 py-1 text-[12px] leading-5 no-underline ${
+                className={`block rounded-md px-2 py-1 text-[12px] leading-5 no-underline ${
                   active
-                    ? "bg-slate-100 font-bold text-slate-950 dark:bg-slate-800 dark:text-slate-50"
-                    : "text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-50"
+                    ? "bg-wire-sunken font-semibold text-wire-primary"
+                    : "text-wire-tertiary hover:text-wire-primary"
                 }`}
               >
                 {heading.text}

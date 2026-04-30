@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Menu, Moon, Sun } from "lucide-react";
+import { Menu } from "lucide-react";
 import { GithubRepoLink } from "../../_components/GithubRepoLink";
 
 type Theme = "light" | "dark";
@@ -33,36 +33,37 @@ export function TopHeader({
   }, [theme]);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
+    <header className="sticky top-0 z-30 border-b border-wire bg-wire-surface">
       <div className="mx-auto flex h-14 items-center gap-3 px-4 lg:px-6">
         <button
           type="button"
           onClick={onToggleSidebar}
           aria-label={sidebarOpen ? "Close navigation" : "Open navigation"}
           aria-expanded={sidebarOpen}
-          className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-950 dark:border-slate-800 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-50 lg:hidden"
+          className="grid h-9 w-9 place-items-center rounded-md border border-wire text-wire-secondary hover:border-wire-strong hover:text-wire-primary lg:hidden"
         >
           <Menu size={14} aria-hidden />
         </button>
 
-        <Link href="/" className="flex items-center gap-2 text-slate-950 no-underline dark:text-slate-50">
+        <Link href="/" className="flex items-center gap-2 text-wire-primary no-underline">
           <BrandMark />
           <span className="text-[15px] font-bold tracking-tight">Wire</span>
-          <span className="hidden text-[12px] font-medium text-slate-500 sm:inline dark:text-slate-400">
+          <span className="hidden text-[12px] font-medium text-wire-tertiary sm:inline">
             React components
           </span>
+          <span className="hidden font-mono text-[11px] text-wire-tertiary sm:inline">v1.0</span>
         </Link>
 
         <div className="ml-auto flex items-center gap-2">
           <Link
             href="/playground"
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-[13px] font-bold text-white no-underline transition-colors hover:bg-blue-500"
+            className="rounded-md border border-wire bg-wire-surface px-3 py-1.5 text-[13px] font-bold text-wire-primary no-underline transition-colors hover:border-wire-strong"
           >
             Playground
           </Link>
           <Link
             href="/contact"
-            className="rounded-md border border-slate-200 px-3 py-1.5 text-[13px] font-bold text-slate-700 no-underline transition-colors hover:border-slate-300 hover:text-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:text-slate-50"
+            className="rounded-md border border-wire px-3 py-1.5 text-[13px] font-bold text-wire-secondary no-underline transition-colors hover:border-wire-strong hover:text-wire-primary"
           >
             Contact
           </Link>
@@ -76,8 +77,8 @@ export function TopHeader({
 
 function BrandMark() {
   return (
-    <span aria-hidden className="grid h-7 w-7 place-items-center rounded-md bg-slate-950 dark:bg-slate-50">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-50 dark:text-slate-950">
+    <span aria-hidden className="grid h-7 w-7 place-items-center rounded-md bg-slate-800">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
         <circle cx="5" cy="12" r="2.5" />
         <circle cx="19" cy="6" r="2.5" />
         <circle cx="19" cy="18" r="2.5" />
@@ -88,18 +89,33 @@ function BrandMark() {
 }
 
 function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (t: Theme) => void }) {
-  const next = theme === "dark" ? "light" : "dark";
-  const Icon = theme === "dark" ? Sun : Moon;
+  const isDark = theme === "dark";
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={theme === "dark"}
-      aria-label={`Switch to ${next} theme`}
-      onClick={() => onChange(next)}
-      className="grid h-9 w-9 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:text-slate-50"
+    <div
+      role="group"
+      aria-label="Theme"
+      className="inline-flex items-center gap-0.5 rounded-full border border-wire bg-wire-surface p-[3px]"
     >
-      <Icon size={14} aria-hidden />
-    </button>
+      <button
+        type="button"
+        aria-pressed={!isDark}
+        onClick={() => onChange("light")}
+        className={`rounded-full px-3 py-[5px] text-[11px] font-bold uppercase tracking-[0.08em] transition-colors ${
+          !isDark ? "bg-slate-900 text-white" : "text-wire-tertiary hover:text-wire-primary"
+        }`}
+      >
+        Light
+      </button>
+      <button
+        type="button"
+        aria-pressed={isDark}
+        onClick={() => onChange("dark")}
+        className={`rounded-full px-3 py-[5px] text-[11px] font-bold uppercase tracking-[0.08em] transition-colors ${
+          isDark ? "bg-slate-900 text-white" : "text-wire-tertiary hover:text-wire-primary"
+        }`}
+      >
+        Dark
+      </button>
+    </div>
   );
 }

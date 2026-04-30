@@ -20,3 +20,4 @@ export * from "./components/WireNodeList.js";
 export * from "./components/WireOptionPanel.js";
 export * from "./components/WireValidationPanel.js";
 export * from "./components/WireWorkspace.js";
+export * from "./primitives/index.js";

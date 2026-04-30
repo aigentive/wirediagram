@@ -155,9 +155,9 @@ wire-mcp --http    # http on port 3860`}</Shell>
         <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr className="border-b border-slate-200 dark:border-slate-700">
-              <th className="px-4 py-2.5 font-extrabold">Variable</th>
-              <th className="px-4 py-2.5 font-extrabold">Default</th>
-              <th className="px-4 py-2.5 font-extrabold">Purpose</th>
+              <th className="px-4 py-2.5 font-bold">Variable</th>
+              <th className="px-4 py-2.5 font-bold">Default</th>
+              <th className="px-4 py-2.5 font-bold">Purpose</th>
             </tr>
           </thead>
           <tbody>
@@ -186,8 +186,8 @@ wire-mcp --http    # http on port 3860`}</Shell>
 
       <div className="not-prose grid gap-4">
         {TOOL_GROUPS.map((group) => (
-          <section key={group.title} className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-            <header className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+          <section key={group.title} className="overflow-hidden rounded-lg border border-wire bg-wire-surface">
+            <header className="border-b border-wire bg-wire-sunken px-4 py-2 wire-eyebrow wire-eyebrow--muted">
               {group.title}
             </header>
             <table className="w-full border-collapse text-left text-[13px]">
@@ -250,8 +250,8 @@ wire-mcp --http    # http on port 3860`}</Shell>
         <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr className="border-b border-slate-200 dark:border-slate-700">
-              <th className="px-4 py-2.5 font-extrabold">URI</th>
-              <th className="px-4 py-2.5 font-extrabold">Purpose</th>
+              <th className="px-4 py-2.5 font-bold">URI</th>
+              <th className="px-4 py-2.5 font-bold">Purpose</th>
             </tr>
           </thead>
           <tbody>
@@ -279,8 +279,8 @@ wire-mcp --http    # http on port 3860`}</Shell>
         <table className="w-full min-w-[560px] border-collapse text-left text-[13px]">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr className="border-b border-slate-200 dark:border-slate-700">
-              <th className="px-4 py-2.5 font-extrabold">Name</th>
-              <th className="px-4 py-2.5 font-extrabold">Purpose</th>
+              <th className="px-4 py-2.5 font-bold">Name</th>
+              <th className="px-4 py-2.5 font-bold">Purpose</th>
             </tr>
           </thead>
           <tbody>

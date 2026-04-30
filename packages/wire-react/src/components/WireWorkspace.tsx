@@ -109,7 +109,7 @@ export function WireWorkspace({
         className={cx(
           layout === "fixed"
             ? "fixed inset-0 grid grid-rows-[auto_minmax(420px,55vh)_auto] gap-3 overflow-auto bg-slate-100 p-3 text-slate-950 dark:bg-slate-900 dark:text-slate-50 lg:grid-cols-[280px_minmax(0,1fr)_320px] lg:grid-rows-none lg:gap-0 lg:overflow-hidden lg:p-0"
-            : "grid min-h-[560px] grid-rows-[auto_minmax(420px,1fr)_auto] gap-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 p-3 text-slate-950 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:shadow-black/40 lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:grid-rows-none lg:gap-0 lg:p-0",
+            : "grid min-h-[560px] grid-rows-[auto_minmax(420px,1fr)_auto] gap-3 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 p-3 text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:grid-rows-none lg:gap-0 lg:p-0",
           className
         )}
         style={style}

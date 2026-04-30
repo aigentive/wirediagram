@@ -44,7 +44,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps): Promi
           >
             <button
               type="submit"
-              className="h-10 w-full rounded-md bg-slate-950 px-4 text-[13px] font-extrabold text-white hover:bg-slate-800"
+              className="h-10 w-full rounded-md bg-slate-950 px-4 text-[13px] font-bold text-white hover:bg-slate-800"
             >
               Continue with Google
             </button>

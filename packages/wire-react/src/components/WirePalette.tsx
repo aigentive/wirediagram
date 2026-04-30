@@ -1,6 +1,9 @@
 import type { CSSProperties, ReactElement } from "react";
 import type { WireNode } from "@aigentive/wire-core";
 import { useWireActions, useWireDiagram } from "../hooks.js";
+import { Eyebrow } from "../primitives/Eyebrow.js";
+import { KindChip } from "../primitives/KindChip.js";
+import { cx } from "./classes.js";
 
 const DEFAULT_KINDS: WireNode["kind"][] = [
   "trigger",
@@ -17,69 +20,19 @@ const DEFAULT_KINDS: WireNode["kind"][] = [
   "group"
 ];
 
-const KIND_META: Record<WireNode["kind"], { label: string; icon: string }> = {
-  trigger: { label: "Trigger", icon: "▶" },
-  action: { label: "Action", icon: "→" },
-  ai: { label: "AI", icon: "✦" },
-  tool: { label: "Tool", icon: "✱" },
-  condition: { label: "Condition", icon: "?" },
-  human: { label: "Human", icon: "◎" },
-  memory: { label: "Memory", icon: "⊙" },
-  retrieval: { label: "Retrieval", icon: "⊕" },
-  guardrail: { label: "Guardrail", icon: "◆" },
-  end: { label: "End", icon: "■" },
-  note: { label: "Note", icon: "✎" },
-  group: { label: "Group", icon: "▢" }
-};
-
-const PANEL_STYLE: CSSProperties = {
-  display: "grid",
-  gap: 8,
-  padding: 12,
-  background: "rgba(255,255,255,0.96)",
-  border: "1px solid #e2e8f0",
-  borderRadius: 8,
-  boxShadow: "0 10px 28px rgba(15, 23, 42, 0.07)",
-  fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-};
-
-const HEADING_STYLE: CSSProperties = {
-  padding: "0 2px 2px",
-  color: "#94a3b8",
-  fontSize: 12,
-  fontWeight: 800,
-  letterSpacing: 0,
-  textTransform: "uppercase"
-};
-
-const BUTTON_STYLE: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  width: "100%",
-  minHeight: 40,
-  padding: "8px 12px",
-  background: "#ffffff",
-  border: "1px solid #dbe4ef",
-  borderRadius: 8,
-  color: "#0f172a",
-  cursor: "pointer",
-  font: "inherit",
-  fontSize: 15,
-  fontWeight: 700,
-  textAlign: "left",
-  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)"
-};
-
-const ICON_STYLE: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  width: 20,
-  flex: "0 0 20px",
-  color: "#0f172a",
-  fontSize: 15,
-  lineHeight: 1
+const KIND_LABEL: Record<WireNode["kind"], string> = {
+  trigger: "Trigger",
+  action: "Action",
+  ai: "AI",
+  tool: "Tool",
+  condition: "Condition",
+  human: "Human",
+  memory: "Memory",
+  retrieval: "Retrieval",
+  guardrail: "Guardrail",
+  end: "End",
+  note: "Note",
+  group: "Group"
 };
 
 export interface WirePaletteProps {
@@ -93,13 +46,16 @@ export function WirePalette({ kinds = DEFAULT_KINDS, className, style }: WirePal
   const actions = useWireActions();
 
   return (
-    <div className={className} style={{ ...PANEL_STYLE, ...style }}>
-      <div style={HEADING_STYLE}>Add node</div>
+    <div
+      className={cx("grid gap-1.5 rounded-lg bg-wire-surface p-3", className)}
+      style={style}
+    >
+      <Eyebrow muted>Add node</Eyebrow>
       {kinds.map((kind) => (
         <button
           key={kind}
           type="button"
-          style={BUTTON_STYLE}
+          className="flex h-9 w-full items-center gap-2 rounded-md border border-wire bg-wire-surface px-3 text-left text-[13px] font-semibold text-wire-primary transition-colors hover:border-wire-strong hover:bg-wire-sunken"
           onClick={() => {
             const id = nextNodeId(kind, diagram.nodes.map((node) => node.id));
             actions.dispatch({
@@ -113,10 +69,8 @@ export function WirePalette({ kinds = DEFAULT_KINDS, className, style }: WirePal
             });
           }}
         >
-          <span aria-hidden="true" style={ICON_STYLE}>
-            {KIND_META[kind].icon}
-          </span>
-          <span>{KIND_META[kind].label}</span>
+          <KindChip kind={kind} />
+          <span className="flex-1">{KIND_LABEL[kind]}</span>
         </button>
       ))}
     </div>
@@ -133,5 +87,5 @@ function nextNodeId(kind: WireNode["kind"], existing: Iterable<string>): string 
 }
 
 function titleForKind(kind: WireNode["kind"]): string {
-  return KIND_META[kind].label;
+  return KIND_LABEL[kind];
 }

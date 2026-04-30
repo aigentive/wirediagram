@@ -106,9 +106,9 @@ export function SupportAgent() {
         <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr className="border-b border-slate-200 dark:border-slate-700">
-              <th className="px-4 py-2.5 font-extrabold">Component</th>
-              <th className="px-4 py-2.5 font-extrabold">Wire kind</th>
-              <th className="px-4 py-2.5 font-extrabold">Extra props</th>
+              <th className="px-4 py-2.5 font-bold">Component</th>
+              <th className="px-4 py-2.5 font-bold">Wire kind</th>
+              <th className="px-4 py-2.5 font-bold">Extra props</th>
             </tr>
           </thead>
           <tbody>
@@ -137,9 +137,9 @@ export function SupportAgent() {
         <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr className="border-b border-slate-200 dark:border-slate-700">
-              <th className="px-4 py-2.5 font-extrabold">Prop</th>
-              <th className="px-4 py-2.5 font-extrabold">Type</th>
-              <th className="px-4 py-2.5 font-extrabold">Purpose</th>
+              <th className="px-4 py-2.5 font-bold">Prop</th>
+              <th className="px-4 py-2.5 font-bold">Type</th>
+              <th className="px-4 py-2.5 font-bold">Purpose</th>
             </tr>
           </thead>
           <tbody>
@@ -168,9 +168,9 @@ export function SupportAgent() {
         <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr className="border-b border-slate-200 dark:border-slate-700">
-              <th className="px-4 py-2.5 font-extrabold">Prop</th>
-              <th className="px-4 py-2.5 font-extrabold">Type</th>
-              <th className="px-4 py-2.5 font-extrabold">Purpose</th>
+              <th className="px-4 py-2.5 font-bold">Prop</th>
+              <th className="px-4 py-2.5 font-bold">Type</th>
+              <th className="px-4 py-2.5 font-bold">Purpose</th>
             </tr>
           </thead>
           <tbody>

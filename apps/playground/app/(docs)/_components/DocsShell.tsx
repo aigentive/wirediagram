@@ -14,12 +14,12 @@ export function DocsShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
+    <div className="min-h-screen bg-wire-page text-wire-primary">
       <TopHeader onToggleSidebar={() => setSidebarOpen((open) => !open)} sidebarOpen={sidebarOpen} />
 
       <div className="lg:flex">
         <aside
-          className={`fixed inset-y-0 left-0 top-14 z-20 w-[260px] overflow-auto border-r border-slate-200 bg-white transition-transform dark:border-slate-800 dark:bg-slate-950 lg:sticky lg:top-14 lg:z-0 lg:h-[calc(100vh-3.5rem)] lg:shrink-0 lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 top-14 z-20 w-[260px] overflow-auto border-r border-wire bg-wire-surface transition-transform lg:sticky lg:top-14 lg:z-0 lg:h-[calc(100vh-3.5rem)] lg:shrink-0 lg:translate-x-0 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }`}
         >
@@ -32,7 +32,7 @@ export function DocsShell({ children }: { children: ReactNode }) {
             aria-hidden
             tabIndex={-1}
             onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 top-14 z-10 bg-slate-950/40 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 top-14 z-10 bg-slate-950/40 lg:hidden"
           />
         ) : null}
 

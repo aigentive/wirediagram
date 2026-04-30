@@ -9,6 +9,7 @@ import {
   WireToolbar,
   WireValidationPanel
 } from "@aigentive/wire-react";
+import { CanvasFrame } from "../_components/wire-editor";
 
 interface EditCanvasProps {
   diagram: WireDiagram;
@@ -73,7 +74,7 @@ export function EditCanvas({
 
   return (
     <WireProvider diagram={current} onChange={handleChange}>
-      <div style={{ position: "fixed", inset: 0, background: "#f8fafc" }}>
+      <div className="fixed inset-0 flex flex-col bg-wire-page">
         <Header
           label={label}
           status={status}
@@ -82,49 +83,24 @@ export function EditCanvas({
           importHref={importHref}
           banner={banner}
         />
-        <div style={{ position: "absolute", top: banner ? 106 : 74, left: 16, zIndex: 10, display: "grid", gap: 8 }}>
-          <WireToolbar
-            style={{
-              padding: 8,
-              background: "rgba(255,255,255,0.94)",
-              border: "1px solid #e2e8f0",
-              borderRadius: 8
-            }}
-          />
-          <WirePalette
-            style={{
-              width: 260,
-              padding: 8,
-              background: "rgba(255,255,255,0.94)",
-              border: "1px solid #e2e8f0",
-              borderRadius: 8
-            }}
-          />
+        <div className="relative min-h-0 flex-1">
+          <div className="absolute left-4 top-4 z-10 grid w-[260px] gap-2">
+            <WireToolbar className="rounded-md border border-wire bg-wire-surface p-2 shadow-wire-sm" />
+            <WirePalette className="max-h-[420px] overflow-auto rounded-md border border-wire bg-wire-surface p-2 shadow-wire-sm" />
+          </div>
+          <div className="absolute right-4 top-4 z-10 w-[320px]">
+            <WireValidationPanel className="rounded-md border border-wire bg-wire-surface p-[10px] shadow-wire-sm" />
+          </div>
+          <CanvasFrame>
+            <WireCanvas
+              mode="edit"
+              fitView
+              showMiniMap
+              showBackground={false}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", backgroundColor: "transparent" }}
+            />
+          </CanvasFrame>
         </div>
-        <div style={{ position: "absolute", top: banner ? 106 : 74, right: 16, zIndex: 10, width: 320 }}>
-          <WireValidationPanel
-            style={{
-              padding: 10,
-              background: "rgba(255,255,255,0.94)",
-              border: "1px solid #e2e8f0",
-              borderRadius: 8
-            }}
-          />
-        </div>
-        <WireCanvas
-          mode="edit"
-          fitView
-          showMiniMap
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 316,
-            width: "auto",
-            height: "100%"
-          }}
-        />
       </div>
     </WireProvider>
   );
@@ -146,45 +122,21 @@ function Header({
   banner: string | null;
 }) {
   return (
-    <div style={{ position: "absolute", top: 12, left: 12, right: 12, zIndex: 10 }}>
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "10px 16px",
-          background: "rgba(255,255,255,0.92)",
-          backdropFilter: "blur(8px)",
-          border: "1px solid #e2e8f0",
-          borderRadius: 10,
-          fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-          fontSize: 13,
-          color: "#0f172a"
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-          <a href="/" style={{ color: "#1e3a8a", textDecoration: "none", fontWeight: 600 }}>
-            Wire
-          </a>
-          <span style={{ color: "#94a3b8" }}>/</span>
-          <span style={{ fontWeight: 600 }}>{label}</span>
-          <span style={{ color: "#94a3b8" }}>/</span>
-          <span style={{ color: "#475569", fontSize: 12 }}>edit</span>
+    <div className="grid shrink-0 gap-2 border-b border-wire bg-wire-surface px-4 py-3">
+      <header className="flex items-center justify-between text-[13px] text-wire-primary">
+        <div className="flex min-w-0 items-center gap-2">
+          <a href="/" className="font-bold text-wire-primary no-underline">Wire</a>
+          <span aria-hidden className="text-wire-muted">/</span>
+          <span className="font-bold text-wire-primary">{label}</span>
+          <span aria-hidden className="text-wire-muted">/</span>
+          <span className="text-[12px] font-semibold text-wire-tertiary">edit</span>
           <StatusBadge status={status} token={token} />
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="flex items-center gap-2">
           {importHref ? (
             <a
               href={importHref}
-              style={{
-                fontSize: 12,
-                color: "white",
-                background: "#020617",
-                textDecoration: "none",
-                fontWeight: 700,
-                padding: "7px 12px",
-                borderRadius: 6
-              }}
+              className="rounded-md bg-wire-primary px-3 py-1.5 text-[12px] font-bold text-white no-underline hover:opacity-90"
             >
               save to my workspace
             </a>
@@ -194,38 +146,18 @@ function Header({
               href={previewHref}
               target="_blank"
               rel="noreferrer"
-              style={{
-                fontSize: 12,
-                color: "#1e3a8a",
-                textDecoration: "none",
-                fontWeight: 600,
-                padding: "6px 12px",
-                border: "1px solid #cbd5e1",
-                borderRadius: 6
-              }}
+              className="rounded-md border border-wire bg-wire-surface px-3 py-1.5 text-[12px] font-bold text-wire-secondary no-underline hover:border-wire-strong hover:text-wire-primary"
             >
               preview
             </a>
           ) : null}
-          <span style={{ fontSize: 11, color: "#94a3b8" }}>
+          <span className="text-[11px] font-semibold text-wire-tertiary">
             drag handles to connect, delete to remove
           </span>
         </div>
       </header>
       {banner ? (
-        <div
-          style={{
-            marginTop: 8,
-            border: "1px solid #bfdbfe",
-            borderRadius: 8,
-            background: "#eff6ff",
-            color: "#1e3a8a",
-            padding: "8px 12px",
-            fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-            fontSize: 12,
-            fontWeight: 700
-          }}
-        >
+        <div className="rounded-md bg-wire-status-reserved-bg px-3 py-2 text-[12px] font-bold text-wire-status-reserved">
           {banner}
         </div>
       ) : null}
@@ -235,17 +167,17 @@ function Header({
 
 function StatusBadge({ status, token }: { status: SaveStatus; token: string | null }) {
   if (status === "saving") {
-    return <span style={{ color: "#0284c7", fontSize: 12, marginLeft: 8 }}>saving</span>;
+    return <span className="ml-2 text-[12px] font-semibold text-wire-status-reserved">saving</span>;
   }
   if (status === "saved" && token) {
     return (
-      <span style={{ color: "#16a34a", fontSize: 12, marginLeft: 8, fontFamily: "ui-monospace, monospace" }}>
+      <span className="ml-2 font-mono text-[12px] font-semibold text-wire-status-valid">
         saved {token}
       </span>
     );
   }
   if (status === "error") {
-    return <span style={{ color: "#dc2626", fontSize: 12, marginLeft: 8 }}>save failed</span>;
+    return <span className="ml-2 text-[12px] font-semibold text-wire-status-invalid">save failed</span>;
   }
   return null;
 }

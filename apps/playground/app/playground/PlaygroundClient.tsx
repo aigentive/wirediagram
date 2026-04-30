@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   AlertCircle,
-  Bot,
   Check,
   Code2,
   DollarSign,
@@ -16,10 +15,8 @@ import {
   Plus,
   RefreshCcw,
   Search,
-  Send,
   ShieldCheck,
-  UserCheck,
-  Wrench
+  UserCheck
 } from "lucide-react";
 import {
   parseWireDiagram,
@@ -35,6 +32,13 @@ import {
 } from "@aigentive/wire-react";
 import { INITIAL_PLAYGROUND_DIAGRAM } from "./initial-diagram";
 import type { WireSummary } from "@/lib/wires-store";
+import { EditorHeader } from "../_components/wire-brand";
+import { DotPillStatic, StatusPill as StatusPillBase } from "../_components/wire-pill";
+import {
+  ChatBubble as SharedChatBubble,
+  ChatComposer,
+  InlineCode
+} from "../_components/wire-chat";
 
 type Usage = {
   inputTokens: number;
@@ -353,35 +357,28 @@ export function PlaygroundClient({
   }, [creatingWire, diagram.title, isAuthenticated]);
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col bg-slate-100 text-slate-950">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
-        <Link href="/" className="flex items-center gap-2 text-slate-950 no-underline">
-          <span aria-hidden className="grid h-7 w-7 place-items-center rounded-md bg-slate-950 text-white">
-            <Wrench size={15} />
-          </span>
-          <span className="text-[15px] font-bold">Wire</span>
-        </Link>
-        <span className="hidden text-[13px] font-semibold text-slate-500 sm:inline">Playground</span>
-        <div className="ml-auto flex items-center gap-2">
-          {isAuthenticated && user ? (
-            <Link
-              href="/wires"
-              className="hidden min-w-0 items-center gap-1.5 rounded-md border border-emerald-100 bg-emerald-50 px-2.5 py-1.5 text-[12px] font-bold text-emerald-700 no-underline hover:border-emerald-200 sm:flex"
-            >
-              <UserCheck size={13} />
-              <span className="max-w-[180px] truncate">{user.name ?? user.email}</span>
-            </Link>
-          ) : null}
-          <CostPill model={lastModel} totalCostUsd={totalCostUsd} totalTokens={totalTokens} />
-          <StatusPill validation={validation} busy={busy} />
+    <div className="flex h-dvh min-h-0 flex-col bg-wire-page text-wire-primary">
+      <EditorHeader breadcrumb="Playground">
+        {isAuthenticated && user ? (
           <Link
-            href="/contact"
-            className="rounded-md border border-slate-200 px-3 py-1.5 text-[13px] font-bold text-slate-700 no-underline hover:border-slate-300 hover:text-slate-950"
+            href="/wires"
+            className="hidden min-w-0 sm:inline-flex"
+            aria-label={user.name ?? user.email}
           >
-            Contact
+            <DotPillStatic
+              dotColor="emerald"
+              icon={<UserCheck size={13} strokeWidth={1.5} />}
+            >
+              <span className="max-w-[180px] truncate">{user.name ?? user.email}</span>
+            </DotPillStatic>
           </Link>
-        </div>
-      </header>
+        ) : null}
+        <CostPill model={lastModel} totalCostUsd={totalCostUsd} totalTokens={totalTokens} />
+        <StatusPill validation={validation} busy={busy} />
+        <Link href="/contact" className="no-underline">
+          <DotPillStatic>Contact</DotPillStatic>
+        </Link>
+      </EditorHeader>
 
       <main
         className={
@@ -436,19 +433,19 @@ export function PlaygroundClient({
               </div>
             </WireProvider>
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col bg-slate-950">
-              <div className="flex h-11 shrink-0 items-center gap-2 border-b border-slate-800 px-3">
+            <div className="flex min-h-0 flex-1 flex-col bg-wire-code">
+              <div className="flex h-11 shrink-0 items-center gap-2 border-b border-wire px-3">
                 <button
                   type="button"
                   onClick={applyJson}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-emerald-500 px-3 text-[12px] font-extrabold text-emerald-950 hover:bg-emerald-400"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-wire-status-valid px-3 text-[12px] font-bold text-white hover:opacity-90"
                 >
-                  <Check size={14} />
+                  <Check size={14} strokeWidth={1.5} />
                   Apply
                 </button>
                 {jsonError ? (
-                  <span className="flex min-w-0 items-center gap-1.5 truncate text-[12px] font-semibold text-red-300">
-                    <AlertCircle size={13} />
+                  <span className="flex min-w-0 items-center gap-1.5 truncate text-[12px] font-semibold text-wire-status-invalid">
+                    <AlertCircle size={13} strokeWidth={1.5} />
                     {jsonError}
                   </span>
                 ) : null}
@@ -457,17 +454,17 @@ export function PlaygroundClient({
                 value={jsonDraft}
                 onChange={(event) => setJsonDraft(event.target.value)}
                 spellCheck={false}
-                className="min-h-0 flex-1 resize-none border-0 bg-slate-950 p-4 font-mono text-[12px] leading-5 text-slate-100 outline-none"
+                className="min-h-0 flex-1 resize-none border-0 bg-wire-code p-4 font-mono text-[12px] leading-[1.55] text-[var(--wire-fg-on-code)] outline-none"
               />
             </div>
           )}
         </section>
 
-        <aside className="flex min-h-[42vh] min-w-0 flex-col bg-white lg:min-h-0">
-          <div className="flex h-12 shrink-0 items-center gap-2 border-b border-slate-200 px-4">
-            <MessageSquare size={15} className="text-slate-500" />
-            <span className="text-[13px] font-extrabold">Chat</span>
-            <span className="ml-auto text-[12px] font-semibold text-slate-500">
+        <aside className="flex min-h-[42vh] min-w-0 flex-col bg-wire-surface lg:min-h-0">
+          <div className="flex h-12 shrink-0 items-center gap-2 border-b border-wire px-4">
+            <MessageSquare size={15} strokeWidth={1.5} className="text-wire-tertiary" />
+            <span className="text-[13px] font-bold">Chat</span>
+            <span className="ml-auto text-[12px] font-semibold text-wire-tertiary">
               {diagram.nodes.length} nodes
             </span>
           </div>
@@ -478,8 +475,8 @@ export function PlaygroundClient({
                 <ChatBubble key={`${message.role}-${index}`} message={message} />
               ))}
               {busy ? (
-                <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-500">
-                  <Loader2 size={14} className="animate-spin" />
+                <div className="flex items-center gap-2 text-[13px] font-semibold text-wire-tertiary">
+                  <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
                   Running tools
                 </div>
               ) : null}
@@ -488,38 +485,20 @@ export function PlaygroundClient({
             <ToolTraceList traces={traces} />
 
             {apiError ? (
-              <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-[12px] font-semibold leading-5 text-red-700">
+              <div className="mt-3 rounded-md bg-wire-status-invalid-bg p-3 text-[12px] font-semibold leading-5 text-wire-status-invalid">
                 {apiError}
               </div>
             ) : null}
           </div>
 
-          <form onSubmit={submit} className="shrink-0 border-t border-slate-200 p-3">
-            <div className="flex items-end gap-2">
-              <textarea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    void submit();
-                  }
-                }}
-                rows={3}
-                disabled={authRequired && !isAuthenticated}
-                className="min-h-[76px] flex-1 resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-[13px] leading-5 text-slate-950 outline-none focus:border-blue-400"
-              />
-              <button
-                type="submit"
-                disabled={busy || input.trim().length === 0 || (authRequired && !isAuthenticated)}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
-                aria-label="Send"
-                title="Send"
-              >
-                {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-              </button>
-            </div>
-          </form>
+          <ChatComposer
+            value={input}
+            onChange={setInput}
+            onSubmit={() => void submit()}
+            busy={busy}
+            disabled={authRequired && !isAuthenticated}
+            footerSlot={<ComposerFooter model={lastModel} />}
+          />
         </aside>
       </main>
       {authRequired && !isAuthenticated ? (
@@ -553,7 +532,7 @@ function AuthenticatedWireSidebar({
         <div className="grid gap-1">
           <div className="flex min-w-0 items-center gap-2">
             <UserCheck size={15} className="shrink-0 text-emerald-600" />
-            <span className="truncate text-[13px] font-extrabold text-slate-950">Authenticated</span>
+            <span className="truncate text-[13px] font-bold text-slate-950">Authenticated</span>
           </div>
           <div className="truncate text-[12px] font-semibold text-slate-500">{user.name ?? user.email}</div>
         </div>
@@ -562,7 +541,7 @@ function AuthenticatedWireSidebar({
           type="button"
           onClick={onCreateWire}
           disabled={creatingWire}
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-[13px] font-extrabold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-[13px] font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
         >
           {creatingWire ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
           New Wire
@@ -580,7 +559,7 @@ function AuthenticatedWireSidebar({
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto p-3">
-        <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-slate-500">Active Wires</div>
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">Active Wires</div>
         <div className="grid gap-1">
           {wires.map((wire) => (
             <Link
@@ -627,28 +606,28 @@ function AuthGateModal({
   onContinue: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4 backdrop-blur-sm">
-      <section className="grid w-full max-w-sm gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-xl">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 px-4">
+      <section className="grid w-full max-w-sm gap-4 rounded-lg border border-wire bg-wire-surface p-5 shadow-wire-md">
         <div className="flex items-start gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-950 text-white">
-            <ShieldCheck size={17} />
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-900 text-white">
+            <ShieldCheck size={17} strokeWidth={1.5} />
           </span>
           <div className="grid gap-1">
-            <h2 className="m-0 text-[17px] font-extrabold tracking-tight text-slate-950">Sign in to keep chatting</h2>
-            <p className="m-0 text-[13px] leading-5 text-slate-600">
+            <h2 className="m-0 text-[17px] font-bold tracking-tight text-wire-primary">Sign in to keep chatting</h2>
+            <p className="m-0 text-[13px] leading-5 text-wire-secondary">
               The playground includes three free chat updates. Continue with Google to keep iterating on this wire.
             </p>
           </div>
         </div>
         {!googleAuthConfigured ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-[12px] font-semibold leading-5 text-amber-800">
+          <div className="rounded-md bg-wire-status-warn-bg p-3 text-[12px] font-semibold leading-5 text-wire-status-warn">
             Google auth is not configured in this deployment yet.
           </div>
         ) : null}
         <button
           type="button"
           onClick={onContinue}
-          className="h-10 rounded-md bg-slate-950 px-4 text-[13px] font-extrabold text-white hover:bg-slate-800"
+          className="h-10 rounded-md bg-slate-900 px-4 text-[13px] font-bold text-white hover:bg-slate-800"
         >
           Continue with Google
         </button>
@@ -660,25 +639,28 @@ function AuthGateModal({
 function StatusPill({ validation, busy }: { validation: ValidationResult; busy: boolean }) {
   if (busy) {
     return (
-      <span className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-50 px-2.5 text-[12px] font-bold text-blue-700">
-        <Loader2 size={13} className="animate-spin" />
+      <StatusPillBase
+        kind="reserved"
+        icon={<Loader2 size={13} strokeWidth={1.5} className="animate-spin" />}
+      >
         Working
-      </span>
+      </StatusPillBase>
     );
   }
   if (validation.valid) {
     return (
-      <span className="inline-flex h-8 items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 text-[12px] font-bold text-emerald-700">
-        <Check size={13} />
+      <StatusPillBase kind="valid" dot icon={<Check size={13} strokeWidth={1.5} />}>
         Valid
-      </span>
+      </StatusPillBase>
     );
   }
   return (
-    <span className="inline-flex h-8 items-center gap-1.5 rounded-md bg-amber-50 px-2.5 text-[12px] font-bold text-amber-700">
-      <AlertCircle size={13} />
+    <StatusPillBase
+      kind="warn"
+      icon={<AlertCircle size={13} strokeWidth={1.5} />}
+    >
       Review
-    </span>
+    </StatusPillBase>
   );
 }
 
@@ -699,8 +681,8 @@ function SegmentedButton({
       onClick={onClick}
       className={
         active
-          ? "inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-950 px-3 text-[12px] font-extrabold text-white"
-          : "inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-[12px] font-bold text-slate-700 hover:border-slate-300 hover:text-slate-950"
+          ? "inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[12px] font-bold text-white"
+          : "inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-3 text-[12px] font-bold text-wire-secondary hover:border-wire-strong hover:text-wire-primary"
       }
     >
       {icon}
@@ -710,24 +692,13 @@ function SegmentedButton({
 }
 
 function ChatBubble({ message }: { message: ChatMessage }) {
-  const assistant = message.role === "assistant";
   return (
-    <div className={assistant ? "mr-5" : "ml-5"}>
-      <div
-        className={
-          assistant
-            ? "rounded-md border border-slate-200 bg-slate-50 p-3 text-[13px] leading-5 text-slate-700"
-            : "rounded-md bg-blue-600 p-3 text-[13px] font-medium leading-5 text-white"
-        }
-      >
-        <div className="mb-1 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide opacity-75">
-          {assistant ? <Bot size={12} /> : <MessageSquare size={12} />}
-          {assistant ? "Assistant" : "User"}
-        </div>
-        {message.content}
-        {assistant && message.cost ? <CostLine cost={message.cost} /> : null}
-      </div>
-    </div>
+    <SharedChatBubble
+      role={message.role}
+      cost={message.role === "assistant" && message.cost ? <CostLine cost={message.cost} /> : null}
+    >
+      {message.content}
+    </SharedChatBubble>
   );
 }
 
@@ -736,13 +707,13 @@ function CostLine({ cost }: { cost: CostInfo }) {
   const cached = usage.cachedInputTokens > 0 ? ` (${formatTokens(usage.cachedInputTokens)} cached)` : "";
   const reasoning = usage.reasoningTokens > 0 ? ` · ${formatTokens(usage.reasoningTokens)} reasoning` : "";
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t border-slate-200 pt-1.5 text-[11px] font-semibold text-slate-500">
-      <span className="font-bold text-slate-700">{costUsd === null ? "—" : formatUsd(costUsd)}</span>
-      <span className="text-slate-300">·</span>
+    <div className="wire-tabular mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t border-wire pt-1.5 text-[11px] font-semibold text-wire-tertiary">
+      <span className="font-bold text-wire-secondary">{costUsd === null ? "—" : formatUsd(costUsd)}</span>
+      <span className="text-wire-muted">·</span>
       <span>
         {formatTokens(usage.inputTokens)} in{cached} / {formatTokens(usage.outputTokens)} out{reasoning}
       </span>
-      <span className="text-slate-300">·</span>
+      <span className="text-wire-muted">·</span>
       <span className="truncate">{model}</span>
     </div>
   );
@@ -759,14 +730,33 @@ function CostPill({
 }) {
   if (!model && totalTokens === 0) return null;
   return (
-    <span
-      className="inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-100 px-2.5 text-[12px] font-bold text-slate-700"
+    <DotPillStatic
+      icon={<DollarSign size={13} strokeWidth={1.5} />}
       title={model ? `${model} · ${totalTokens.toLocaleString()} tokens` : undefined}
     >
-      <DollarSign size={13} />
-      {formatUsd(totalCostUsd)}
-      {model ? <span className="hidden text-slate-400 sm:inline">· {model}</span> : null}
-    </span>
+      <span className="wire-tabular">{formatUsd(totalCostUsd)}</span>
+      {model ? (
+        <span className="hidden text-wire-tertiary sm:inline">· {model}</span>
+      ) : null}
+    </DotPillStatic>
+  );
+}
+
+function ComposerFooter({ model }: { model: string | null }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-wire-tertiary">
+      <span className="wire-eyebrow wire-eyebrow--muted">Wire MCP</span>
+      <InlineCode>local</InlineCode>
+      <span className="text-wire-muted">·</span>
+      <InlineCode>{model ?? "gpt-4.1"}</InlineCode>
+      <span className="ml-auto flex items-center gap-1.5">
+        <InlineCode>↵</InlineCode>
+        send
+        <span className="text-wire-muted">·</span>
+        <InlineCode>⇧↵</InlineCode>
+        newline
+      </span>
+    </div>
   );
 }
 
@@ -787,7 +777,7 @@ function ToolTraceList({ traces }: { traces: ToolTrace[] }) {
   if (traces.length === 0) return null;
   return (
     <section className="mt-4 grid gap-2">
-      <div className="flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-wide text-slate-500">
+      <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide text-slate-500">
         <Code2 size={13} />
         MCP
       </div>

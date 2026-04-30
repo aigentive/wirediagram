@@ -149,7 +149,7 @@ function BannerCard(ctx: WireNodeRenderContext) {
     <div className="grid h-[140px] content-center gap-1 rounded-lg border border-dashed
                     border-slate-300 bg-white px-4 py-3 text-center
                     dark:border-slate-700 dark:bg-slate-900">
-      <span className="text-[10px] font-extrabold uppercase tracking-wider
+      <span className="text-[10px] font-bold uppercase tracking-wider
                        text-slate-500">{ctx.kind}</span>
       <strong className="text-[14px] text-slate-950 dark:text-slate-50">{ctx.node.title}</strong>
       <span className="font-mono text-[11px] text-slate-400">minimal</span>
@@ -233,7 +233,7 @@ function BannerCard(ctx: WireNodeRenderContext) {
   return (
     <div
       aria-selected={ctx.selected}
-      className={\`grid h-full content-start gap-1 rounded-xl border-2 border-dashed
+      className={\`grid h-full content-start gap-1 rounded-lg border-2 border-dashed
                   bg-slate-50/60 p-3 dark:bg-slate-900/40 \${
         ctx.selected
           ? "border-blue-400 ring-2 ring-blue-400/20"
@@ -241,7 +241,7 @@ function BannerCard(ctx: WireNodeRenderContext) {
       }\`}
       style={{ width: ctx.width, height: ctx.height }}
     >
-      <span className="text-[10px] font-extrabold uppercase tracking-wider
+      <span className="text-[10px] font-bold uppercase tracking-wider
                        text-slate-500 dark:text-slate-400">
         Stage · {ctx.node.title}
       </span>
@@ -272,7 +272,7 @@ function Showcase({ rows }: { rows: Array<{ card: ReactNode; caption: string }> 
       {rows.map((row, index) => (
         <div key={index} className="grid gap-1.5">
           {row.card}
-          <span className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">{row.caption}</span>
+          <span className="text-[11px] leading-snug text-wire-tertiary">{row.caption}</span>
         </div>
       ))}
     </div>
@@ -281,10 +281,10 @@ function Showcase({ rows }: { rows: Array<{ card: ReactNode; caption: string }> 
 
 function MinimalCard(ctx: WireNodeRenderContext) {
   return (
-    <div className="grid h-[140px] content-center gap-1 rounded-lg border border-dashed border-slate-300 bg-white px-4 py-3 text-center dark:border-slate-700 dark:bg-slate-900">
-      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{ctx.kind}</span>
-      <strong className="text-[14px] text-slate-950 dark:text-slate-50">{ctx.node.title}</strong>
-      <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500">minimal</span>
+    <div className="grid h-[140px] content-center gap-1 rounded-lg border border-dashed border-wire bg-wire-surface px-4 py-3 text-center">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-wire-tertiary">{ctx.kind}</span>
+      <strong className="text-[14px] text-wire-primary">{ctx.node.title}</strong>
+      <span className="font-mono text-[11px] text-wire-muted">minimal</span>
     </div>
   );
 }
@@ -307,13 +307,13 @@ function TerminalCard(ctx: WireNodeRenderContext) {
 
 function RowCard(ctx: WireNodeRenderContext) {
   return (
-    <div className="grid h-[140px] content-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+    <div className="grid h-[140px] content-center gap-2 rounded-lg border border-wire bg-wire-surface px-4 py-3">
       <div className="flex items-center gap-2">
         <span className={`h-2 w-2 rounded-full ${kindDotClass(ctx.kind)}`} />
-        <span className="font-mono text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">{ctx.kind}</span>
+        <span className="font-mono text-[11px] uppercase tracking-wider text-wire-tertiary">{ctx.kind}</span>
       </div>
-      <strong className="text-[15px] leading-tight text-slate-950 dark:text-slate-50">{ctx.node.title}</strong>
-      <span className="text-[11px] text-slate-500 dark:text-slate-400">row · custom renderer</span>
+      <strong className="text-[15px] leading-tight text-wire-primary">{ctx.node.title}</strong>
+      <span className="text-[11px] text-wire-tertiary">row · custom renderer</span>
     </div>
   );
 }

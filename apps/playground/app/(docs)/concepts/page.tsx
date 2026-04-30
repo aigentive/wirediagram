@@ -96,9 +96,9 @@ export default function ConceptsPage() {
         <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr className="border-b border-slate-200 dark:border-slate-700">
-              <th className="px-4 py-2.5 font-extrabold">Kind</th>
-              <th className="px-4 py-2.5 font-extrabold">JSX equivalent</th>
-              <th className="px-4 py-2.5 font-extrabold">Purpose</th>
+              <th className="px-4 py-2.5 font-bold">Kind</th>
+              <th className="px-4 py-2.5 font-bold">JSX equivalent</th>
+              <th className="px-4 py-2.5 font-bold">Purpose</th>
             </tr>
           </thead>
           <tbody>
@@ -198,9 +198,9 @@ type WireEventSource =
         <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr className="border-b border-slate-200 dark:border-slate-700">
-              <th className="px-4 py-2.5 font-extrabold">Code</th>
-              <th className="px-4 py-2.5 font-extrabold">Severity</th>
-              <th className="px-4 py-2.5 font-extrabold">Meaning</th>
+              <th className="px-4 py-2.5 font-bold">Code</th>
+              <th className="px-4 py-2.5 font-bold">Severity</th>
+              <th className="px-4 py-2.5 font-bold">Meaning</th>
             </tr>
           </thead>
           <tbody>

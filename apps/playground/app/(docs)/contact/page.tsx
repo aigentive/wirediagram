@@ -72,7 +72,7 @@ export default function ContactPage() {
         </Callout>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="not-prose grid gap-4 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <form onSubmit={handleSubmit} className="not-prose grid gap-4 rounded-lg border border-wire bg-wire-surface p-6">
         <div className="grid gap-1.5">
           <label htmlFor="name" className="text-[12px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
             Name
@@ -132,8 +132,8 @@ export default function ContactPage() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="flex items-center gap-2 text-[12px] text-slate-500 dark:text-slate-400">
-            <Mail size={12} aria-hidden strokeWidth={2.25} />
+          <span className="flex items-center gap-2 text-[12px] text-wire-tertiary">
+            <Mail size={12} aria-hidden strokeWidth={1.5} />
             We&rsquo;ll reply to the email above.
           </span>
           <button
@@ -145,7 +145,7 @@ export default function ContactPage() {
               <>Sending…</>
             ) : (
               <>
-                <Send size={13} aria-hidden strokeWidth={2.5} />
+                <Send size={13} aria-hidden strokeWidth={1.5} />
                 Send message
               </>
             )}

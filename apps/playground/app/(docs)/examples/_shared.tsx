@@ -98,7 +98,7 @@ export function Modal({
 
   return (
     <div
-      className="absolute inset-0 z-30 grid place-items-center bg-slate-950/40 p-4 backdrop-blur-sm"
+      className="absolute inset-0 z-30 grid place-items-center bg-slate-950/40 p-4"
       onClick={onClose}
       role="presentation"
     >
@@ -107,19 +107,19 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
-        className="grid w-full max-w-[420px] gap-3 rounded-xl border border-slate-200 bg-white p-5 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+        className="grid w-full max-w-[420px] gap-3 rounded-lg border border-wire bg-wire-surface p-5 shadow-wire-md"
       >
         <header className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <span className="wire-eyebrow wire-eyebrow--muted">
             {title}
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="grid h-7 w-7 place-items-center rounded border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-950 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50"
+            className="grid h-7 w-7 place-items-center rounded border border-wire text-wire-secondary hover:border-wire-strong hover:text-wire-primary"
             aria-label="Close"
           >
-            <X size={14} aria-hidden strokeWidth={2.25} />
+            <X size={14} aria-hidden strokeWidth={1.5} />
           </button>
         </header>
         {children}
@@ -137,9 +137,9 @@ export function ContextSidebar({
 }) {
   if (!nodeId) {
     return (
-      <aside className="grid place-items-center border-l border-slate-200 bg-slate-50 p-6 text-center text-[13px] text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+      <aside className="grid place-items-center border-l border-wire bg-wire-sunken p-6 text-center text-[13px] text-wire-tertiary">
         <div className="grid justify-items-center gap-2">
-          <MousePointerClick size={20} aria-hidden strokeWidth={1.5} className="text-slate-300 dark:text-slate-600" />
+          <MousePointerClick size={20} aria-hidden strokeWidth={1.5} className="text-wire-muted" />
           <span>Click a node to inspect it</span>
         </div>
       </aside>
@@ -147,18 +147,18 @@ export function ContextSidebar({
   }
 
   return (
-    <aside className="grid content-start gap-3 border-l border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+    <aside className="grid content-start gap-3 border-l border-wire bg-wire-sunken p-4">
       <header className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <span className="wire-eyebrow wire-eyebrow--muted">
           Inspector
         </span>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close inspector"
-          className="grid h-7 w-7 place-items-center rounded border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-slate-50"
+          className="grid h-7 w-7 place-items-center rounded border border-wire bg-wire-surface text-wire-secondary hover:border-wire-strong hover:text-wire-primary"
         >
-          <X size={14} aria-hidden strokeWidth={2.25} />
+          <X size={14} aria-hidden strokeWidth={1.5} />
         </button>
       </header>
       <WireOptionPanel catalog={OPTIONS} nodeId={nodeId} />
@@ -168,8 +168,8 @@ export function ContextSidebar({
 
 export function Hint({ children }: { children: ReactNode }) {
   return (
-    <p className="m-0 flex flex-wrap items-center gap-1.5 text-[12px] text-slate-500 dark:text-slate-400">
-      <MousePointerClick size={12} aria-hidden strokeWidth={2.25} className="text-slate-400 dark:text-slate-500" />
+    <p className="m-0 flex flex-wrap items-center gap-1.5 text-[12px] text-wire-tertiary">
+      <MousePointerClick size={12} aria-hidden strokeWidth={1.5} className="text-wire-muted" />
       {children}
     </p>
   );
@@ -177,8 +177,8 @@ export function Hint({ children }: { children: ReactNode }) {
 
 export function ClickableHint({ children }: { children: ReactNode }) {
   return (
-    <span className="pointer-events-none absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-300">
-      <MousePointerClick size={11} aria-hidden strokeWidth={2.25} />
+    <span className="pointer-events-none absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-wire bg-wire-surface px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-wire-secondary shadow-wire-sm">
+      <MousePointerClick size={11} aria-hidden strokeWidth={1.5} />
       {children}
     </span>
   );

@@ -42,9 +42,9 @@ export default function LlmDocsPage() {
         <table className="w-full min-w-[680px] border-collapse text-left text-[13px]">
           <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             <tr className="border-b border-slate-200 dark:border-slate-700">
-              <th className="px-4 py-2.5 font-extrabold">Route</th>
-              <th className="px-4 py-2.5 font-extrabold">Media type</th>
-              <th className="px-4 py-2.5 font-extrabold">Purpose</th>
+              <th className="px-4 py-2.5 font-bold">Route</th>
+              <th className="px-4 py-2.5 font-bold">Media type</th>
+              <th className="px-4 py-2.5 font-bold">Purpose</th>
             </tr>
           </thead>
           <tbody>

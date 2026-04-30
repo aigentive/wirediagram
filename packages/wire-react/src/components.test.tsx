@@ -23,7 +23,8 @@ describe("shared editor components", () => {
     expect(markup).toContain("Memory");
     expect(markup).toContain("Guardrail");
     expect(markup).toContain("Group");
-    expect(markup).toContain("border-radius:8px");
+    expect(markup).toContain("rounded-md");
+    expect(markup).toContain("bg-wire-kind-trigger-bg");
   });
 
   it("renders toolbar controls without browser-default button styling", () => {
@@ -46,8 +47,8 @@ describe("shared editor components", () => {
     );
 
     expect(markup).toContain("Valid");
-    expect(markup).toContain("text-emerald-700");
-    expect(markup).toContain("rounded-lg");
+    expect(markup).toContain("Validation");
+    expect(markup).toContain("text-wire-status-valid");
   });
 
   it("renders declarative node options without graph-canvas app code", () => {

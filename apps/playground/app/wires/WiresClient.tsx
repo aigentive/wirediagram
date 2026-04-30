@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   useCallback,
   useEffect,
@@ -12,36 +11,67 @@ import {
 } from "react";
 import {
   AlertCircle,
+  ArrowRight,
   Check,
   Code2,
   Copy,
+  Database,
   Download,
+  Eye,
   FileJson,
+  HelpCircle,
   ImageIcon,
   KeyRound,
   Loader2,
   MessageSquare,
   Play,
   Plus,
+  Redo2,
   RefreshCcw,
-  Search,
-  Send,
   Share2,
+  Sparkles,
   Terminal,
   Trash2,
+  Undo2,
+  User,
   Workflow,
   Wrench,
   X
 } from "lucide-react";
 import { parseWireDiagram, renderToSvg, toMermaid, validate, type ValidationResult, type WireDiagram } from "@aigentive/wire-core";
+import type { WireAction, WireNode } from "@aigentive/wire-core";
 import {
+  CodeBlock as WireCodeBlock,
   WireCanvas,
   WireInspector,
-  WirePalette,
   WireProvider,
-  WireToolbar,
-  WireValidationPanel
+  WireValidationPanel,
+  useWireDiagram,
+  useWireDispatch,
+  useWireHistory
 } from "@aigentive/wire-react";
+import { EditorHeader } from "../_components/wire-brand";
+import {
+  Avatar,
+  DotPill,
+  DotPillStatic,
+  StatusPill as StatusPillBase
+} from "../_components/wire-pill";
+import {
+  ChatBubble as SharedChatBubble,
+  ChatComposer,
+  InlineCode
+} from "../_components/wire-chat";
+import {
+  CanvasFrame,
+  NavRail,
+  NavRailButton,
+  NavRailItem,
+  NavRailSearch,
+  ToolRail,
+  ToolRailKindButton,
+  type WireNodeKind
+} from "../_components/wire-editor";
 
 type WireSummary = {
   id: string;
@@ -100,6 +130,25 @@ type Workspace = {
 
 type WorkspaceMode = "canvas" | "json" | "svg" | "mermaid";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+type RailKind = {
+  kind: WireNodeKind;
+  label: string;
+  shortcut: string;
+  icon: ReactNode;
+};
+
+const RAIL_KINDS: RailKind[] = [
+  { kind: "trigger", label: "Trigger", shortcut: "T", icon: <Play size={16} strokeWidth={1.5} /> },
+  { kind: "ai", label: "AI", shortcut: "A", icon: <Sparkles size={16} strokeWidth={1.5} /> },
+  { kind: "tool", label: "Tool", shortcut: "L", icon: <Wrench size={16} strokeWidth={1.5} /> },
+  { kind: "action", label: "Action", shortcut: "N", icon: <ArrowRight size={16} strokeWidth={1.5} /> },
+  { kind: "condition", label: "Condition", shortcut: "C", icon: <HelpCircle size={16} strokeWidth={1.5} /> },
+  { kind: "human", label: "Human", shortcut: "H", icon: <User size={16} strokeWidth={1.5} /> },
+  { kind: "retrieval", label: "Retrieval", shortcut: "R", icon: <Database size={16} strokeWidth={1.5} /> }
+];
+
+const RAIL_KIND_BY_KEY = new Map(RAIL_KINDS.map((entry) => [entry.shortcut.toLowerCase(), entry.kind]));
 
 type WireLoadResponse = {
   wire?: WireSummary;
@@ -628,332 +677,300 @@ export function WiresClient({
   );
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col bg-slate-100 text-slate-950">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
-        <Link href="/" className="flex items-center gap-2 text-slate-950 no-underline">
-          <span aria-hidden className="grid h-7 w-7 place-items-center rounded-md bg-slate-950 text-white">
-            <Wrench size={15} />
-          </span>
-          <span className="text-[15px] font-bold">Wire</span>
-        </Link>
-        <span className="hidden text-[13px] font-semibold text-slate-500 sm:inline">Wires</span>
-        <div className="ml-auto flex min-w-0 items-center gap-3">
-          <span className="hidden max-w-[220px] truncate text-[12px] font-bold text-slate-500 sm:block">
+    <div className="flex h-dvh min-h-0 flex-col bg-wire-page text-wire-primary">
+      <EditorHeader
+        breadcrumb={
+          <>
+            <span className="text-wire-tertiary">Wires</span>
+            {workspace ? (
+              <>
+                <span aria-hidden className="text-wire-muted">/</span>
+                <span className="truncate font-bold text-wire-primary">{workspace.wire.title}</span>
+              </>
+            ) : null}
+          </>
+        }
+      >
+        {saveStatus === "saved" ? (
+          <StatusPillBase kind="valid" dot icon={<Check size={13} strokeWidth={1.5} />}>
+            Saved
+          </StatusPillBase>
+        ) : null}
+        {saveStatus === "saving" ? (
+          <StatusPillBase
+            kind="reserved"
+            icon={<Loader2 size={13} strokeWidth={1.5} className="animate-spin" />}
+          >
+            Saving
+          </StatusPillBase>
+        ) : null}
+        {saveStatus === "error" ? (
+          <StatusPillBase
+            kind="invalid"
+            icon={<AlertCircle size={13} strokeWidth={1.5} />}
+          >
+            Error
+          </StatusPillBase>
+        ) : null}
+        <DotPill
+          dotColor="slate"
+          icon={<KeyRound size={13} strokeWidth={1.5} />}
+          onClick={openConnectGuide}
+        >
+          Connect local MCP
+        </DotPill>
+        {workspace ? (
+          <DotPill
+            icon={<Share2 size={13} strokeWidth={1.5} />}
+            onClick={() => setShareOpen(true)}
+          >
+            Share
+          </DotPill>
+        ) : null}
+        <span className="hidden items-center gap-2 sm:flex">
+          <Avatar name={user.name} email={user.email} />
+          <span className="hidden max-w-[160px] truncate text-[12px] font-semibold text-wire-secondary md:inline">
             {user.name ?? user.email}
           </span>
-          <button
-            type="button"
-            onClick={openConnectGuide}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-[12px] font-bold text-slate-700 hover:border-slate-300 hover:text-slate-950"
-          >
-            <KeyRound size={13} />
-            Connect local MCP
-          </button>
-          <a
-            href="/api/auth/signout"
-            className="rounded-md border border-slate-200 px-3 py-1.5 text-[12px] font-bold text-slate-700 no-underline hover:border-slate-300 hover:text-slate-950"
-          >
-            Sign out
-          </a>
-        </div>
-      </header>
+        </span>
+        <a href="/api/auth/signout" className="no-underline">
+          <DotPillStatic>Sign out</DotPillStatic>
+        </a>
+      </EditorHeader>
 
-      <main className="grid min-h-0 flex-1 grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="flex min-h-0 flex-col border-r border-slate-200 bg-white">
-          <div className="grid gap-3 border-b border-slate-200 p-3">
-            <button
-              type="button"
-              onClick={createWire}
-              disabled={busy}
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-[13px] font-extrabold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-            >
-              {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-              New Wire
-            </button>
-            <label className="flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-2 text-slate-500">
-              <Search size={14} />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search wires..."
-                className="min-w-0 flex-1 border-0 bg-transparent text-[13px] font-medium text-slate-950 outline-none placeholder:text-slate-400"
+      <main
+        className={
+          workspace
+            ? "grid min-h-0 flex-1 grid-cols-[260px_220px_minmax(0,1fr)_390px]"
+            : "grid min-h-0 flex-1 grid-cols-[260px_minmax(0,1fr)]"
+        }
+      >
+        <NavRail
+          header={
+            <>
+              <NavRailButton
+                onClick={createWire}
+                disabled={busy}
+                icon={busy ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" /> : <Plus size={14} strokeWidth={1.5} />}
+              >
+                New Wire
+              </NavRailButton>
+              <NavRailSearch value={query} onChange={setQuery} />
+            </>
+          }
+        >
+          <div className="wire-eyebrow wire-eyebrow--muted mb-2" style={{ color: "var(--wire-nav-fg-muted)" }}>
+            Active Wires
+          </div>
+          <div className="grid gap-1">
+            {filteredWires.map((wire) => (
+              <NavRailItem
+                key={wire.id}
+                active={workspace?.wire.id === wire.id}
+                title={wire.title}
+                meta={`${wire.nodeCount} nodes`}
+                loading={loadingWireId === wire.id}
+                onClick={() => void loadWire(wire.id)}
               />
-            </label>
+            ))}
+            {filteredWires.length === 0 ? (
+              <div
+                className="rounded-md border border-dashed p-3 text-[13px] font-semibold leading-5 text-wire-nav-fg-muted"
+                style={{ borderColor: "rgba(255,255,255,0.08)" }}
+              >
+                No wires found.
+              </div>
+            ) : null}
           </div>
-
-          <div className="min-h-0 flex-1 overflow-auto p-3">
-            <div className="mb-2 text-[11px] font-extrabold uppercase tracking-wide text-slate-500">Active Wires</div>
-            <div className="grid gap-1">
-              {filteredWires.map((wire) => (
-                <button
-                  key={wire.id}
-                  type="button"
-                  onClick={() => void loadWire(wire.id)}
-                  className={
-                    workspace?.wire.id === wire.id
-                      ? "grid min-h-10 rounded-md bg-slate-950 px-2.5 py-2 text-left text-white"
-                      : "grid min-h-10 rounded-md px-2.5 py-2 text-left text-slate-700 hover:bg-slate-100 hover:text-slate-950"
-                  }
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate text-[13px] font-bold">{wire.title}</span>
-                    {loadingWireId === wire.id ? <Loader2 size={12} className="shrink-0 animate-spin" /> : null}
-                  </span>
-                  <span className={workspace?.wire.id === wire.id ? "text-[11px] text-slate-300" : "text-[11px] text-slate-400"}>
-                    {wire.nodeCount} nodes
-                  </span>
-                </button>
-              ))}
-              {filteredWires.length === 0 ? (
-                <div className="rounded-md border border-dashed border-slate-200 p-3 text-[13px] font-semibold leading-5 text-slate-500">
-                  No wires found.
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </aside>
+        </NavRail>
 
         {workspace ? (
-          <section className="grid min-h-0 grid-rows-[48px_minmax(0,1fr)]">
-            <div className="flex h-12 min-w-0 items-center gap-2 border-b border-slate-200 bg-white px-3">
-              <input
-                defaultValue={workspace.wire.title}
-                key={workspace.wire.id}
-                onBlur={(event) => void renameWire(event.currentTarget.value)}
-                className="min-w-0 flex-1 border-0 bg-transparent text-[14px] font-extrabold text-slate-950 outline-none"
-              />
-              <SavePill status={saveStatus} />
-              {shareMessage ? <span className="text-[12px] font-semibold text-slate-500">{shareMessage}</span> : null}
-              {shareResult?.urls?.view ? (
-                <a
-                  href={shareResult.urls.view}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="max-w-[180px] truncate rounded-md border border-slate-200 px-2.5 py-1.5 text-[12px] font-bold text-slate-700 no-underline hover:border-slate-300 hover:text-slate-950"
+          <WireProvider
+            key={`${workspace.wire.id}:${canvasRevision}`}
+            diagram={workspace.diagram}
+            onChange={(next) => updateDiagram(next, "manual")}
+          >
+            <RailKeyboardShortcuts />
+            <ToolRail topbar={<ToolRailTopbar />}>
+              <div className="wire-eyebrow wire-eyebrow--muted mb-1 px-1">Add Node</div>
+              {RAIL_KINDS.map((entry) => (
+                <RailAddNodeButton key={entry.kind} entry={entry} />
+              ))}
+            </ToolRail>
+
+            <section className="grid min-h-0 min-w-0 grid-rows-[48px_48px_minmax(0,1fr)] border-r border-wire">
+              <div className="flex h-12 min-w-0 items-center gap-2 border-b border-wire bg-wire-surface px-3">
+                <input
+                  defaultValue={workspace.wire.title}
+                  key={workspace.wire.id}
+                  onBlur={(event) => void renameWire(event.currentTarget.value)}
+                  className="min-w-0 flex-1 border-0 bg-transparent text-[14px] font-bold text-wire-primary outline-none"
+                />
+                {shareMessage ? <span className="text-[12px] font-semibold text-wire-tertiary">{shareMessage}</span> : null}
+                {shareResult?.urls?.view ? (
+                  <a
+                    href={shareResult.urls.view}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="max-w-[180px] truncate rounded-md border border-wire bg-wire-surface px-2.5 py-1.5 text-[12px] font-bold text-wire-secondary no-underline hover:border-wire-strong hover:text-wire-primary"
+                  >
+                    Open link
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={deleteWire}
+                  className="grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary hover:bg-wire-status-invalid-bg hover:text-wire-status-invalid"
+                  aria-label="Delete wire"
+                  title="Delete wire"
                 >
-                  Open link
-                </a>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setShareOpen(true)}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-[12px] font-bold text-slate-700 hover:border-slate-300 hover:text-slate-950"
-              >
-                <Share2 size={13} />
-                Share
-              </button>
-              <button
-                type="button"
-                onClick={deleteWire}
-                className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-                aria-label="Delete wire"
-                title="Delete wire"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
+                  <Trash2 size={14} strokeWidth={1.5} />
+                </button>
+              </div>
 
-            <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_390px]">
-              <section className="flex min-h-0 min-w-0 flex-col border-r border-slate-200 bg-slate-100">
-                <div className="flex h-12 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3">
-                  <SegmentedButton active={mode === "canvas"} onClick={() => setMode("canvas")} icon={<Play size={14} />}>
-                    Canvas
-                  </SegmentedButton>
-                  <SegmentedButton active={mode === "json"} onClick={() => setMode("json")} icon={<FileJson size={14} />}>
-                    JSON
-                  </SegmentedButton>
-                  <SegmentedButton active={mode === "svg"} onClick={() => setMode("svg")} icon={<ImageIcon size={14} />}>
-                    SVG
-                  </SegmentedButton>
-                  <SegmentedButton active={mode === "mermaid"} onClick={() => setMode("mermaid")} icon={<Workflow size={14} />}>
-                    Mermaid
-                  </SegmentedButton>
-                  {mode !== "canvas" ? (
+              <div className="flex h-12 shrink-0 items-center gap-2 border-b border-wire bg-wire-surface px-3">
+                <SegmentedButton active={mode === "canvas"} onClick={() => setMode("canvas")} icon={<Play size={14} strokeWidth={1.5} />}>
+                  Canvas
+                </SegmentedButton>
+                <SegmentedButton active={mode === "json"} onClick={() => setMode("json")} icon={<FileJson size={14} strokeWidth={1.5} />}>
+                  JSON
+                </SegmentedButton>
+                <SegmentedButton active={mode === "svg"} onClick={() => setMode("svg")} icon={<ImageIcon size={14} strokeWidth={1.5} />}>
+                  SVG
+                </SegmentedButton>
+                <SegmentedButton active={mode === "mermaid"} onClick={() => setMode("mermaid")} icon={<Workflow size={14} strokeWidth={1.5} />}>
+                  Mermaid
+                </SegmentedButton>
+                {mode !== "canvas" ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void copyExport(activeExportSource)}
+                      className="ml-auto grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary hover:border-wire-strong hover:text-wire-primary"
+                      aria-label="Copy export"
+                      title="Copy export"
+                    >
+                      <Copy size={13} strokeWidth={1.5} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadExport(mode)}
+                      className="grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary hover:border-wire-strong hover:text-wire-primary"
+                      aria-label="Download export"
+                      title="Download export"
+                    >
+                      <Download size={13} strokeWidth={1.5} />
+                    </button>
+                    {exportMessage ? <span className="text-[12px] font-semibold text-wire-tertiary">{exportMessage}</span> : null}
+                  </>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={resetWire}
+                  className={
+                    mode === "canvas"
+                      ? "ml-auto inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-bold text-wire-secondary hover:border-wire-strong hover:text-wire-primary"
+                      : "inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-bold text-wire-secondary hover:border-wire-strong hover:text-wire-primary"
+                  }
+                >
+                  <RefreshCcw size={13} strokeWidth={1.5} />
+                  Reset
+                </button>
+              </div>
+
+              {mode === "canvas" ? (
+                <CanvasFrame
+                  topRight={
                     <>
-                      <button
-                        type="button"
-                        onClick={() => void copyExport(activeExportSource)}
-                        className="ml-auto grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-950"
-                        aria-label="Copy export"
-                        title="Copy export"
-                      >
-                        <Copy size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => downloadExport(mode)}
-                        className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-950"
-                        aria-label="Download export"
-                        title="Download export"
-                      >
-                        <Download size={13} />
-                      </button>
-                      {exportMessage ? <span className="text-[12px] font-semibold text-slate-500">{exportMessage}</span> : null}
+                      <WireValidationPanel className="rounded-md border border-wire bg-wire-surface p-[10px] shadow-wire-sm" />
+                      <WireInspector className="max-h-[220px] overflow-auto rounded-md border border-wire bg-wire-surface p-[10px] shadow-wire-sm" />
                     </>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={resetWire}
-                    className={
-                      mode === "canvas"
-                        ? "ml-auto inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-[12px] font-bold text-slate-700 hover:border-slate-300 hover:text-slate-950"
-                        : "inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-[12px] font-bold text-slate-700 hover:border-slate-300 hover:text-slate-950"
-                    }
-                  >
-                    <RefreshCcw size={13} />
-                    Reset
-                  </button>
-                </div>
-
-                {mode === "canvas" ? (
-                  <WireProvider
-                    key={`${workspace.wire.id}:${canvasRevision}`}
-                    diagram={workspace.diagram}
-                    onChange={(next) => updateDiagram(next, "manual")}
-                  >
-                    <div className="relative min-h-0 flex-1">
-                      <div className="absolute left-3 top-3 z-10 grid w-[220px] gap-2">
-                        <WireToolbar
-                          style={{
-                            padding: 8,
-                            background: "rgba(255,255,255,0.96)",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: 8
-                          }}
-                        />
-                        <WirePalette
-                          style={{
-                            maxHeight: 360,
-                            overflow: "auto",
-                            padding: 8,
-                            background: "rgba(255,255,255,0.96)",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: 8
-                          }}
-                        />
-                      </div>
-                      <div className="absolute right-3 top-3 z-10 grid w-[min(320px,calc(100%-24px))] gap-2">
-                        <WireValidationPanel
-                          style={{
-                            padding: 10,
-                            background: "rgba(255,255,255,0.96)",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: 8
-                          }}
-                        />
-                        <WireInspector
-                          style={{
-                            maxHeight: 220,
-                            overflow: "auto",
-                            padding: 10,
-                            background: "rgba(255,255,255,0.96)",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: 8
-                          }}
-                        />
-                      </div>
-                      <WireCanvas
-                        mode="edit"
-                        fitView
-                        showMiniMap
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-                      />
-                    </div>
-                  </WireProvider>
-                ) : mode === "json" ? (
-                  <div className="flex min-h-0 flex-1 flex-col bg-slate-950">
-                    <div className="flex h-11 shrink-0 items-center gap-2 border-b border-slate-800 px-3">
-                      <button
-                        type="button"
-                        onClick={applyJson}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-md bg-emerald-500 px-3 text-[12px] font-extrabold text-emerald-950 hover:bg-emerald-400"
-                      >
-                        <Check size={14} />
-                        Apply
-                      </button>
-                      {jsonError ? (
-                        <span className="flex min-w-0 items-center gap-1.5 truncate text-[12px] font-semibold text-red-300">
-                          <AlertCircle size={13} />
-                          {jsonError}
-                        </span>
-                      ) : null}
-                    </div>
-                    <textarea
-                      value={jsonDraft}
-                      onChange={(event) => setJsonDraft(event.target.value)}
-                      spellCheck={false}
-                      className="min-h-0 flex-1 resize-none border-0 bg-slate-950 p-4 font-mono text-[12px] leading-5 text-slate-100 outline-none"
-                    />
-                  </div>
-                ) : (
-                  <ExportSourcePanel mode={mode} source={activeExportSource} />
-                )}
-              </section>
-
-              <aside className="flex min-h-0 min-w-0 flex-col bg-white">
-                <div className="flex h-12 shrink-0 items-center gap-2 border-b border-slate-200 px-4">
-                  <MessageSquare size={15} className="text-slate-500" />
-                  <span className="text-[13px] font-extrabold">Chat</span>
-                  <span className="ml-auto text-[12px] font-semibold text-slate-500">
-                    {workspace.diagram.nodes.length} nodes
-                  </span>
-                </div>
-
-                <div ref={chatScrollRef} className="min-h-0 flex-1 overflow-auto px-4 py-3">
-                  <div className="grid gap-3">
-                    {messages.map((message, index) => (
-                      <ChatBubble key={`${message.role}-${index}`} message={message} />
-                    ))}
-                    {busy ? (
-                      <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-500">
-                        <Loader2 size={14} className="animate-spin" />
-                        Running tools
-                      </div>
+                  }
+                >
+                  <WireCanvas
+                    mode="edit"
+                    fitView
+                    showMiniMap
+                    showBackground={false}
+                    showControls={false}
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", backgroundColor: "transparent" }}
+                  />
+                </CanvasFrame>
+              ) : mode === "json" ? (
+                <div className="flex min-h-0 flex-1 flex-col bg-wire-code">
+                  <div className="flex h-11 shrink-0 items-center gap-2 border-b border-wire px-3">
+                    <button
+                      type="button"
+                      onClick={applyJson}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md bg-wire-status-valid px-3 text-[12px] font-bold text-white hover:opacity-90"
+                    >
+                      <Check size={14} strokeWidth={1.5} />
+                      Apply
+                    </button>
+                    {jsonError ? (
+                      <span className="flex min-w-0 items-center gap-1.5 truncate text-[12px] font-semibold text-wire-status-invalid">
+                        <AlertCircle size={13} strokeWidth={1.5} />
+                        {jsonError}
+                      </span>
                     ) : null}
                   </div>
-                  <ToolTraceList traces={traces} />
-                  {apiError ? (
-                    <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-[12px] font-semibold leading-5 text-red-700">
-                      {apiError}
+                  <textarea
+                    value={jsonDraft}
+                    onChange={(event) => setJsonDraft(event.target.value)}
+                    spellCheck={false}
+                    className="min-h-0 flex-1 resize-none border-0 bg-wire-code p-4 font-mono text-[12px] leading-[1.55] text-[var(--wire-fg-on-code)] outline-none"
+                  />
+                </div>
+              ) : (
+                <ExportSourcePanel mode={mode} source={activeExportSource} />
+              )}
+            </section>
+
+            <aside className="flex min-h-0 min-w-0 flex-col bg-wire-surface">
+              <div className="flex h-12 shrink-0 items-center gap-2 border-b border-wire px-4">
+                <MessageSquare size={15} strokeWidth={1.5} className="text-wire-tertiary" />
+                <span className="text-[13px] font-bold">Chat</span>
+                <span className="ml-auto text-[12px] font-semibold text-wire-tertiary">
+                  {workspace.diagram.nodes.length} nodes
+                </span>
+              </div>
+
+              <div ref={chatScrollRef} className="min-h-0 flex-1 overflow-auto px-4 py-3">
+                <div className="grid gap-3">
+                  {messages.map((message, index) => (
+                    <ChatBubble key={`${message.role}-${index}`} message={message} />
+                  ))}
+                  {busy ? (
+                    <div className="flex items-center gap-2 text-[13px] font-semibold text-wire-tertiary">
+                      <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+                      Running tools
                     </div>
                   ) : null}
                 </div>
-
-                <form onSubmit={submit} className="shrink-0 border-t border-slate-200 p-3">
-                  <div className="flex items-end gap-2">
-                    <textarea
-                      value={input}
-                      onChange={(event) => setInput(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && !event.shiftKey) {
-                          event.preventDefault();
-                          void submit();
-                        }
-                      }}
-                      rows={3}
-                      className="min-h-[76px] flex-1 resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-[13px] leading-5 text-slate-950 outline-none focus:border-blue-400"
-                    />
-                    <button
-                      type="submit"
-                      disabled={busy || input.trim().length === 0}
-                      className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
-                      aria-label="Send"
-                      title="Send"
-                    >
-                      {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                    </button>
+                <ToolTraceList traces={traces} />
+                {apiError ? (
+                  <div className="mt-3 rounded-md bg-wire-status-invalid-bg p-3 text-[12px] font-semibold leading-5 text-wire-status-invalid">
+                    {apiError}
                   </div>
-                </form>
-              </aside>
-            </div>
-          </section>
+                ) : null}
+              </div>
+
+              <ChatComposer
+                value={input}
+                onChange={setInput}
+                onSubmit={() => void submit()}
+                busy={busy}
+                footerSlot={<ComposerFooter />}
+              />
+            </aside>
+          </WireProvider>
         ) : (
-          <section className="grid min-h-0 place-items-center bg-slate-50">
+          <section className="grid min-h-0 place-items-center bg-wire-page">
             <div className="grid max-w-sm gap-3 text-center">
-              <h1 className="m-0 text-[22px] font-bold tracking-tight text-slate-950">Select a wire</h1>
-              <p className="m-0 text-[14px] leading-6 text-slate-500">Open an active wire from the sidebar or create a new one.</p>
+              <h1 className="m-0 text-[22px] font-bold tracking-tight text-wire-primary">Select a wire</h1>
+              <p className="m-0 text-[14px] leading-6 text-wire-tertiary">Open an active wire from the sidebar or create a new one.</p>
               {apiError ? (
-                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-[12px] font-semibold leading-5 text-red-700">
+                <div className="rounded-md bg-wire-status-invalid-bg p-3 text-[12px] font-semibold leading-5 text-wire-status-invalid">
                   {apiError}
                 </div>
               ) : null}
@@ -997,6 +1014,109 @@ export function WiresClient({
   );
 }
 
+function RailAddNodeButton({ entry }: { entry: RailKind }) {
+  const diagram = useWireDiagram();
+  const dispatch = useWireDispatch();
+
+  return (
+    <ToolRailKindButton
+      kind={entry.kind}
+      label={entry.label}
+      icon={entry.icon}
+      shortcut={entry.shortcut}
+      onAdd={() => addNodeOfKind(entry.kind, diagram.nodes, dispatch)}
+    />
+  );
+}
+
+function ToolRailTopbar() {
+  const history = useWireHistory();
+  return (
+    <>
+      <button
+        type="button"
+        onClick={history.undo}
+        disabled={!history.canUndo}
+        className="grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary transition-colors hover:border-wire-strong hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50"
+        aria-label="Undo"
+        title="Undo"
+      >
+        <Undo2 size={14} strokeWidth={1.5} />
+      </button>
+      <button
+        type="button"
+        onClick={history.redo}
+        disabled={!history.canRedo}
+        className="grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary transition-colors hover:border-wire-strong hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50"
+        aria-label="Redo"
+        title="Redo"
+      >
+        <Redo2 size={14} strokeWidth={1.5} />
+      </button>
+      <span
+        aria-label="View"
+        title="View"
+        className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-bold text-wire-secondary"
+      >
+        <Eye size={14} strokeWidth={1.5} />
+        View
+      </span>
+    </>
+  );
+}
+
+function RailKeyboardShortcuts() {
+  const diagram = useWireDiagram();
+  const dispatch = useWireDispatch();
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.defaultPrevented) return;
+      const target = event.target;
+      if (target instanceof HTMLElement) {
+        if (target.isContentEditable) return;
+        const tag = target.tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea" || tag === "select") return;
+      }
+      const kind = RAIL_KIND_BY_KEY.get(event.key.toLowerCase());
+      if (!kind) return;
+      event.preventDefault();
+      addNodeOfKind(kind, diagram.nodes, dispatch);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [diagram, dispatch]);
+
+  return null;
+}
+
+function addNodeOfKind(
+  kind: WireNodeKind,
+  existing: readonly WireNode[],
+  dispatch: (action: WireAction) => void
+) {
+  const used = new Set(existing.map((node) => node.id));
+  let id = `${kind}-1`;
+  for (let i = 1; i < 1000; i += 1) {
+    const candidate = `${kind}-${i}`;
+    if (!used.has(candidate)) {
+      id = candidate;
+      break;
+    }
+  }
+  const title = kind.charAt(0).toUpperCase() + kind.slice(1);
+  dispatch({
+    type: "node.add",
+    node: {
+      id,
+      kind,
+      title,
+      branches: kind === "condition" ? ["yes", "no"] : undefined
+    } as WireNode
+  });
+}
+
 function ShareDialog({
   title,
   scope,
@@ -1038,13 +1158,13 @@ function ShareDialog({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-3 sm:p-6">
-      <section className="grid max-h-[calc(100dvh-32px)] w-[min(760px,100%)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg bg-white shadow-2xl">
+      <section className="grid max-h-[calc(100dvh-32px)] w-[min(760px,100%)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg bg-white shadow-wire-md">
         <div className="flex min-h-14 items-center gap-3 border-b border-slate-200 px-4">
           <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-950 text-white">
             <Share2 size={16} />
           </span>
           <div className="min-w-0">
-            <h2 className="m-0 truncate text-[16px] font-extrabold text-slate-950">Share &quot;{title}&quot;</h2>
+            <h2 className="m-0 truncate text-[16px] font-bold text-slate-950">Share &quot;{title}&quot;</h2>
             <div className="mt-0.5 text-[12px] font-semibold text-slate-500">Public links are token-scoped.</div>
           </div>
           <button
@@ -1066,7 +1186,7 @@ function ShareDialog({
                   type="button"
                   onClick={() => onScopeChange("view")}
                   className={scope === "view"
-                    ? "rounded-md bg-slate-950 px-3 py-2 text-[12px] font-extrabold text-white"
+                    ? "rounded-md bg-slate-950 px-3 py-2 text-[12px] font-bold text-white"
                     : "rounded-md border border-slate-200 px-3 py-2 text-[12px] font-bold text-slate-600 hover:border-slate-300 hover:text-slate-950"}
                 >
                   View only
@@ -1075,7 +1195,7 @@ function ShareDialog({
                   type="button"
                   onClick={() => onScopeChange("edit")}
                   className={scope === "edit"
-                    ? "rounded-md bg-slate-950 px-3 py-2 text-[12px] font-extrabold text-white"
+                    ? "rounded-md bg-slate-950 px-3 py-2 text-[12px] font-bold text-white"
                     : "rounded-md border border-slate-200 px-3 py-2 text-[12px] font-bold text-slate-600 hover:border-slate-300 hover:text-slate-950"}
                 >
                   Can edit
@@ -1094,7 +1214,7 @@ function ShareDialog({
                 type="button"
                 onClick={onCreate}
                 disabled={loading}
-                className="inline-flex h-9 w-fit items-center gap-2 rounded-md bg-slate-950 px-3 text-[13px] font-extrabold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                className="inline-flex h-9 w-fit items-center gap-2 rounded-md bg-slate-950 px-3 text-[13px] font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 New link
@@ -1140,7 +1260,7 @@ function ShareRow({
 }) {
   return (
     <div className="grid min-h-11 grid-cols-[86px_minmax(0,1fr)_40px] items-center gap-2 border-b border-slate-100 px-3 last:border-b-0">
-      <div className="text-[12px] font-extrabold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="text-[12px] font-bold uppercase tracking-wide text-slate-500">{label}</div>
       <code className="truncate rounded-md bg-slate-50 px-2 py-1 font-mono text-[11px] font-semibold text-slate-700">{value}</code>
       <button
         type="button"
@@ -1241,13 +1361,13 @@ function ConnectMcpDialog({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-3 sm:p-6">
-      <section className="grid max-h-[calc(100dvh-32px)] w-[min(1120px,100%)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg bg-white shadow-2xl">
+      <section className="grid max-h-[calc(100dvh-32px)] w-[min(1120px,100%)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-lg bg-white shadow-wire-md">
         <div className="flex min-h-16 items-center gap-3 border-b border-slate-200 px-4 sm:px-5">
           <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-slate-950 text-white">
             <Terminal size={18} />
           </span>
           <div className="min-w-0">
-            <h2 className="m-0 text-[18px] font-extrabold text-slate-950">Connect local MCP</h2>
+            <h2 className="m-0 text-[18px] font-bold text-slate-950">Connect local MCP</h2>
             <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[12px] font-semibold text-slate-500">
               <span className="truncate">{user.email}</span>
               <span className="hidden text-slate-300 sm:inline">|</span>
@@ -1272,8 +1392,8 @@ function ConnectMcpDialog({
             <section className="grid min-w-0 content-start gap-3">
               <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
                 <div className="mb-3 flex items-center gap-2">
-                  <span className="grid h-6 w-6 place-items-center rounded-md bg-slate-950 text-[12px] font-extrabold text-white">1</span>
-                  <div className="text-[12px] font-extrabold uppercase tracking-wide text-slate-500">Generate API Key</div>
+                  <span className="grid h-6 w-6 place-items-center rounded-md bg-slate-950 text-[12px] font-bold text-white">1</span>
+                  <div className="text-[12px] font-bold uppercase tracking-wide text-slate-500">Generate API Key</div>
                 </div>
                 <label className="mb-2 block text-[12px] font-bold text-slate-600">Name</label>
                 <input
@@ -1285,7 +1405,7 @@ function ConnectMcpDialog({
                   type="button"
                   onClick={onCreate}
                   disabled={loading}
-                  className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-[13px] font-extrabold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-[13px] font-bold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />}
                   Generate Key
@@ -1299,7 +1419,7 @@ function ConnectMcpDialog({
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 shadow-sm">
                   <div className="mb-2 flex items-center gap-2">
                     <Check size={14} className="text-emerald-700" />
-                    <div className="text-[12px] font-extrabold text-emerald-800">One-time key</div>
+                    <div className="text-[12px] font-bold text-emerald-800">One-time key</div>
                     <button
                       type="button"
                       onClick={() => void copy("API key", createdApiKey)}
@@ -1315,7 +1435,7 @@ function ConnectMcpDialog({
               ) : null}
 
               <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
-                <div className="mb-2 text-[12px] font-extrabold uppercase tracking-wide text-slate-500">Use Saved Key</div>
+                <div className="mb-2 text-[12px] font-bold uppercase tracking-wide text-slate-500">Use Saved Key</div>
                 <input
                   value={manualApiKey}
                   onChange={(event) => setManualApiKey(event.target.value)}
@@ -1330,7 +1450,7 @@ function ConnectMcpDialog({
 
               <div className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
                 <div className="flex h-10 items-center gap-2 border-b border-slate-200 px-3">
-                  <div className="text-[12px] font-extrabold uppercase tracking-wide text-slate-500">Active Keys</div>
+                  <div className="text-[12px] font-bold uppercase tracking-wide text-slate-500">Active Keys</div>
                   <button
                     type="button"
                     onClick={onRefresh}
@@ -1345,7 +1465,7 @@ function ConnectMcpDialog({
                     <div key={apiKey.id} className="rounded-md border border-slate-200 p-2">
                       <div className="flex min-w-0 items-center gap-2">
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-[13px] font-extrabold text-slate-950">{apiKey.name}</div>
+                          <div className="truncate text-[13px] font-bold text-slate-950">{apiKey.name}</div>
                           <div className="truncate text-[11px] font-semibold text-slate-500">{apiKey.prefix}</div>
                         </div>
                         <button
@@ -1380,7 +1500,7 @@ function ConnectMcpDialog({
               <div className="flex min-w-0 gap-3 rounded-md border border-blue-100 bg-blue-50 p-3 text-[12px] font-semibold leading-5 text-blue-950">
                 <ImageIcon size={16} className="mt-0.5 shrink-0 text-blue-700" />
                 <div className="min-w-0">
-                  <div className="font-extrabold">Cloud rendering is enabled by this config.</div>
+                  <div className="font-bold">Cloud rendering is enabled by this config.</div>
                   <div className="text-blue-800">
                     With <span className="font-mono">WIRE_CLOUD_URL</span>, <span className="font-mono">render_preview</span> returns a Wire Cloud URL. <span className="font-mono">render_svg</span> and <span className="font-mono">render_png</span> return inline assets from the MCP server.
                   </div>
@@ -1441,10 +1561,10 @@ function ConnectMcpDialog({
 function GuideStep({ index, title }: { index: number; title: string }) {
   return (
     <div className="flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-white p-3 shadow-sm">
-      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-slate-100 text-[12px] font-extrabold text-slate-600">
+      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-slate-100 text-[12px] font-bold text-slate-600">
         {index}
       </span>
-      <span className="min-w-0 text-[12px] font-extrabold uppercase tracking-wide text-slate-500">{title}</span>
+      <span className="min-w-0 text-[12px] font-bold uppercase tracking-wide text-slate-500">{title}</span>
     </div>
   );
 }
@@ -1466,7 +1586,7 @@ function CodeBlock({
     <div className="min-w-0 overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
       <div className="flex min-h-12 items-center gap-3 border-b border-slate-200 px-3">
         <div className="min-w-0 flex-1 py-2">
-          <div className="truncate text-[12px] font-extrabold uppercase tracking-wide text-slate-500">{title}</div>
+          <div className="truncate text-[12px] font-bold uppercase tracking-wide text-slate-500">{title}</div>
           <div className="truncate text-[12px] font-semibold text-slate-400">{subtitle}</div>
         </div>
         <button
@@ -1483,34 +1603,6 @@ function CodeBlock({
       <pre className="max-h-48 min-w-0 overflow-auto whitespace-pre-wrap break-words bg-slate-950 p-3 font-mono text-[11px] leading-5 text-slate-100">{body}</pre>
     </div>
   );
-}
-
-function SavePill({ status }: { status: SaveStatus }) {
-  if (status === "saving") {
-    return (
-      <span className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-50 px-2.5 text-[12px] font-bold text-blue-700">
-        <Loader2 size={13} className="animate-spin" />
-        Saving
-      </span>
-    );
-  }
-  if (status === "error") {
-    return (
-      <span className="inline-flex h-8 items-center gap-1.5 rounded-md bg-red-50 px-2.5 text-[12px] font-bold text-red-700">
-        <AlertCircle size={13} />
-        Error
-      </span>
-    );
-  }
-  if (status === "saved") {
-    return (
-      <span className="inline-flex h-8 items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 text-[12px] font-bold text-emerald-700">
-        <Check size={13} />
-        Saved
-      </span>
-    );
-  }
-  return null;
 }
 
 function SegmentedButton({
@@ -1530,8 +1622,8 @@ function SegmentedButton({
       onClick={onClick}
       className={
         active
-          ? "inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-950 px-3 text-[12px] font-extrabold text-white"
-          : "inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-[12px] font-bold text-slate-700 hover:border-slate-300 hover:text-slate-950"
+          ? "inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[12px] font-bold text-white"
+          : "inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-3 text-[12px] font-bold text-wire-secondary hover:border-wire-strong hover:text-wire-primary"
       }
     >
       {icon}
@@ -1541,22 +1633,25 @@ function SegmentedButton({
 }
 
 function ChatBubble({ message }: { message: ChatMessage }) {
-  const assistant = message.role === "assistant";
   return (
-    <div className={assistant ? "mr-5" : "ml-5"}>
-      <div
-        className={
-          assistant
-            ? "rounded-md border border-slate-200 bg-slate-50 p-3 text-[13px] leading-5 text-slate-700"
-            : "rounded-md bg-blue-600 p-3 text-[13px] font-medium leading-5 text-white"
-        }
-      >
-        <div className="mb-1 flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide opacity-75">
-          <MessageSquare size={12} />
-          {assistant ? "Assistant" : "User"}
-        </div>
-        {message.content}
-      </div>
+    <SharedChatBubble role={message.role}>{message.content}</SharedChatBubble>
+  );
+}
+
+function ComposerFooter() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-wire-tertiary">
+      <span className="wire-eyebrow wire-eyebrow--muted">Wire MCP</span>
+      <InlineCode>local</InlineCode>
+      <span className="text-wire-muted">·</span>
+      <InlineCode>gpt-4.1</InlineCode>
+      <span className="ml-auto flex items-center gap-1.5">
+        <InlineCode>↵</InlineCode>
+        send
+        <span className="text-wire-muted">·</span>
+        <InlineCode>⇧↵</InlineCode>
+        newline
+      </span>
     </div>
   );
 }
@@ -1572,7 +1667,7 @@ function ToolTraceList({ traces }: { traces: ToolTrace[] }) {
   if (traces.length === 0) return null;
   return (
     <section className="mt-4 grid gap-2">
-      <div className="flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-wide text-slate-500">
+      <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide text-slate-500">
         <Code2 size={13} />
         MCP
       </div>
@@ -1601,21 +1696,18 @@ function ToolTraceList({ traces }: { traces: ToolTrace[] }) {
 function ExportSourcePanel({ mode, source }: { mode: "svg" | "mermaid"; source: string }) {
   const label = mode === "svg" ? "SVG" : "Mermaid";
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-slate-950">
+    <div className="flex min-h-0 flex-1 flex-col bg-wire-code">
       {mode === "svg" ? (
-        <div className="grid min-h-0 flex-[1.2] place-items-center overflow-auto border-b border-slate-800 bg-white p-4">
+        <div className="grid min-h-0 flex-[1.2] place-items-center overflow-auto border-b border-wire bg-wire-surface p-4">
           <div className="max-h-full max-w-full [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:max-w-full" dangerouslySetInnerHTML={{ __html: source }} />
         </div>
       ) : null}
-      <div className="flex h-9 shrink-0 items-center border-b border-slate-800 px-3 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">
+      <div className="wire-eyebrow wire-eyebrow--muted flex h-9 shrink-0 items-center border-b border-wire px-3">
         {label} Source
       </div>
-      <textarea
-        value={source}
-        readOnly
-        spellCheck={false}
-        className="min-h-0 flex-1 resize-none border-0 bg-slate-950 p-4 font-mono text-[12px] leading-5 text-slate-100 outline-none"
-      />
+      <WireCodeBlock language={mode === "svg" ? "xml" : "mermaid"} className="min-h-0 flex-1 rounded-none">
+        {source}
+      </WireCodeBlock>
     </div>
   );
 }

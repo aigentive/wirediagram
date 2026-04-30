@@ -153,11 +153,11 @@ function publicShareHtml({
   <meta name="robots" content="noindex" />
   <style>
     body { margin: 0; background: #f8fafc; color: #0f172a; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    header { position: sticky; top: 0; z-index: 2; display: flex; gap: 12px; align-items: center; min-height: 54px; padding: 0 16px; background: rgba(255,255,255,.94); border-bottom: 1px solid #e2e8f0; backdrop-filter: blur(8px); }
-    .brand { font-weight: 800; color: #020617; text-decoration: none; }
+    header { position: sticky; top: 0; z-index: 2; display: flex; gap: 12px; align-items: center; min-height: 54px; padding: 0 16px; background: #ffffff; border-bottom: 1px solid #e2e8f0; }
+    .brand { font-weight: 700; color: #020617; text-decoration: none; }
     .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
     .actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-    a.button { display: inline-flex; height: 34px; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 12px; color: #0f172a; text-decoration: none; font-size: 12px; font-weight: 800; background: #fff; }
+    a.button { display: inline-flex; height: 34px; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 12px; color: #0f172a; text-decoration: none; font-size: 12px; font-weight: 700; background: #fff; }
     main { height: calc(100dvh - 55px); display: grid; grid-template-rows: minmax(0, 1fr) auto; }
     .canvas { min-height: 0; margin: 16px; display: grid; place-items: center; overflow: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: white; }
     .canvas svg { max-width: calc(100vw - 64px); max-height: calc(100dvh - 160px); width: auto; height: auto; }

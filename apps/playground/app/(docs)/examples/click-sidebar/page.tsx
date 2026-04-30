@@ -63,7 +63,7 @@ export default function ClickSidebarExamplePage() {
       </Prose>
 
       <WireProvider defaultDiagram={HORIZONTAL_DIAGRAM} validateOnChange onEvent={onEvent}>
-        <div className="grid overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid overflow-hidden rounded-lg border border-wire bg-wire-surface lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="relative">
             <ClickableHint>Click any node</ClickableHint>
             <CanvasPane height={460} />

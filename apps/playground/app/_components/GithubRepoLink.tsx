@@ -8,7 +8,7 @@ export function GithubRepoLink({ className = "" }: { className?: string }) {
       rel="noreferrer"
       aria-label="Open GitHub repository"
       title="Open GitHub repository"
-      className={`inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 text-[13px] font-bold text-slate-600 no-underline transition-colors hover:border-slate-300 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:text-slate-50 ${className}`}
+      className={`inline-flex h-9 items-center justify-center gap-2 rounded-md border border-wire bg-wire-surface px-2.5 text-[13px] font-bold text-wire-secondary no-underline transition-colors hover:border-wire-strong hover:text-wire-primary ${className}`}
     >
       <GithubMark />
       <span className="hidden sm:inline">GitHub</span>

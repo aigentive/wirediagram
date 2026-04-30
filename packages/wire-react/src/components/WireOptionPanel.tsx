@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactElement } from "react";
 import type { WireNode } from "@aigentive/wire-core";
-import { useWireActions, useWireDiagram, useWireSelection } from "../hooks.js";
+import { useWireActions, useWireDiagram, useWireSelection, useWireValidation } from "../hooks.js";
 import {
   inferOptionType,
   optionChoiceKey,
@@ -14,6 +14,8 @@ import {
   type WireOptionPrimitive,
   type WireOptionSpec
 } from "../options.js";
+import { Eyebrow } from "../primitives/Eyebrow.js";
+import { StatusPill } from "../primitives/StatusPill.js";
 import { cx } from "./classes.js";
 
 export interface WireOptionPanelProps {
@@ -25,6 +27,10 @@ export interface WireOptionPanelProps {
   style?: CSSProperties;
 }
 
+const CONTROL_CLASS =
+  "w-full min-h-8 rounded-md border border-wire bg-wire-surface px-[9px] py-[5px] text-[12.5px] text-wire-primary outline-none transition-colors focus:border-wire-focus";
+const FIELD_LABEL_CLASS = "text-[11.5px] font-medium text-wire-secondary mb-[3px]";
+
 export function WireOptionPanel({
   catalog,
   nodeId,
@@ -35,6 +41,7 @@ export function WireOptionPanel({
   const diagram = useWireDiagram();
   const actions = useWireActions();
   const [selection] = useWireSelection();
+  const validation = useWireValidation();
   const selectedNodeId = nodeId ?? (selection.nodeIds.length === 1 ? selection.nodeIds[0] : undefined);
   const node = selectedNodeId
     ? diagram.nodes.find((candidate) => candidate.id === selectedNodeId)
@@ -42,19 +49,28 @@ export function WireOptionPanel({
 
   if (!node) {
     return (
-      <aside className={cx("grid gap-2.5 rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900", className)} style={style}>
-        <div className="text-xs font-extrabold uppercase tracking-normal text-slate-600 dark:text-slate-300">{title}</div>
-        <div className="text-[13px] leading-snug text-slate-500 dark:text-slate-400">No node selected</div>
+      <aside
+        className={cx("grid gap-2 rounded-md bg-wire-surface p-3", className)}
+        style={style}
+      >
+        <Eyebrow muted>{title}</Eyebrow>
+        <p className="text-[12.5px] leading-snug text-wire-tertiary">No node selected</p>
       </aside>
     );
   }
 
   const specs = wireOptionSpecsForNode(catalog, node);
+  const isValid = validation.issues.every((issue) => issue.nodeId !== node.id);
 
   return (
-    <aside className={cx("grid gap-2.5 rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900", className)} style={style}>
-      <div className="text-xs font-extrabold uppercase tracking-normal text-slate-600 dark:text-slate-300">{title}</div>
-      {specs.length === 0 ? <div className="text-[13px] leading-snug text-slate-500 dark:text-slate-400">No options</div> : null}
+    <aside
+      className={cx("grid gap-3 rounded-md bg-wire-surface p-3", className)}
+      style={style}
+    >
+      <Eyebrow muted>{title}</Eyebrow>
+      {specs.length === 0 ? (
+        <p className="text-[12.5px] leading-snug text-wire-tertiary">No options</p>
+      ) : null}
       {specs.map((spec) => (
         <OptionField
           key={`${spec.storage ?? "data.options"}:${spec.key}`}
@@ -69,6 +85,11 @@ export function WireOptionPanel({
           }}
         />
       ))}
+      {isValid ? (
+        <footer className="flex justify-end pt-1">
+          <StatusPill kind="valid">Valid</StatusPill>
+        </footer>
+      ) : null}
     </aside>
   );
 }
@@ -85,24 +106,23 @@ function OptionField({
   const type = inferOptionType(spec);
   const rawValue = readWireOption(node, spec) ?? spec.defaultValue;
   const label = spec.label ?? labelFromKey(spec.key);
-  const controlClass = "min-h-8 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[13px] font-medium text-slate-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-50 dark:focus:border-blue-400 dark:focus:ring-blue-400/20";
 
   return (
-    <label className="grid gap-1 text-[13px] font-bold text-slate-800 dark:text-slate-200">
-      <span>{label}</span>
+    <label className="grid">
+      <span className={FIELD_LABEL_CLASS}>{label}</span>
       {type === "textarea" ? (
         <textarea
           value={rawValue === undefined ? "" : String(rawValue)}
           placeholder={spec.placeholder}
           onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
-          className={cx(controlClass, "min-h-[72px] resize-y")}
+          className={cx(CONTROL_CLASS, "min-h-[72px] resize-y")}
         />
       ) : type === "boolean" ? (
         <input
           type="checkbox"
           checked={Boolean(rawValue)}
           onChange={(event) => onChange(event.target.checked)}
-          className="h-[18px] w-[18px] accent-blue-600"
+          className="h-[18px] w-[18px] accent-wire-focus"
         />
       ) : type === "number" ? (
         <input
@@ -113,13 +133,13 @@ function OptionField({
           max={spec.max}
           step={spec.step}
           onChange={(event) => onChange(event.target.value === "" ? null : Number(event.target.value))}
-          className={controlClass}
+          className={CONTROL_CLASS}
         />
       ) : type === "select" ? (
         <select
           value={choiceValueToInputValue(rawValue)}
           onChange={(event) => onChange(valueFromChoice(event.target.value, spec.options ?? []))}
-          className={controlClass}
+          className={CONTROL_CLASS}
         >
           <option value="">Unset</option>
           {(spec.options ?? []).map((choice) => (
@@ -133,10 +153,12 @@ function OptionField({
           value={rawValue === undefined ? "" : String(rawValue)}
           placeholder={spec.placeholder}
           onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
-          className={controlClass}
+          className={CONTROL_CLASS}
         />
       )}
-      {spec.description ? <span className="text-[11px] font-medium leading-snug text-slate-500 dark:text-slate-400">{spec.description}</span> : null}
+      {spec.description ? (
+        <span className="mt-1 text-[11px] leading-snug text-wire-tertiary">{spec.description}</span>
+      ) : null}
     </label>
   );
 }
