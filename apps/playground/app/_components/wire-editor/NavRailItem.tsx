@@ -20,10 +20,9 @@ export function NavRailItem({
 }) {
   const baseClass =
     "grid min-h-[52px] rounded-md px-3 py-2 text-left transition-colors";
-  const activeClass =
-    "bg-wire-nav-active text-white border-l-[3px] border-wire-nav-accent pl-[9px]";
+  const activeClass = "bg-wire-nav-active text-white";
   const inactiveClass =
-    "text-wire-nav-fg hover:bg-wire-nav-hover hover:text-white";
+    "text-wire-nav-fg hover:bg-wire-nav-hover hover:text-wire-primary";
 
   const content = (
     <>

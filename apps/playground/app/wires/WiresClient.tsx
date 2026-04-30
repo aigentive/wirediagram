@@ -774,17 +774,16 @@ export function WiresClient({
           footer={
             <a
               href="/api/auth/signout"
-              className="flex items-center gap-2 text-[13px] font-semibold no-underline transition-colors"
-              style={{ color: "var(--wire-nav-fg-muted)" }}
+              className="flex items-center gap-2 text-[12px] font-medium text-wire-nav-fg-muted no-underline transition-colors hover:text-wire-nav-fg"
             >
               <LogOut size={14} strokeWidth={1.5} />
               Sign out
             </a>
           }
         >
-          <div className="mb-2 flex items-center" style={{ color: "var(--wire-nav-fg-muted)" }}>
+          <div className="mb-2 flex items-center text-wire-nav-fg-muted">
             <span className="wire-eyebrow wire-eyebrow--muted">Active Wires</span>
-            <span className="wire-tabular ml-auto text-[11px]" style={{ color: "var(--wire-nav-fg-muted)" }}>
+            <span className="wire-tabular ml-auto text-[11px] font-bold">
               {wires.length}
             </span>
           </div>
@@ -800,10 +799,7 @@ export function WiresClient({
               />
             ))}
             {filteredWires.length === 0 ? (
-              <div
-                className="rounded-md border border-dashed p-3 text-[13px] font-semibold leading-5 text-wire-nav-fg-muted"
-                style={{ borderColor: "rgba(255,255,255,0.08)" }}
-              >
+              <div className="rounded-md border border-dashed border-wire p-3 text-[13px] font-medium leading-5 text-wire-nav-fg-muted">
                 No wires found.
               </div>
             ) : null}

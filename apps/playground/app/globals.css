@@ -127,14 +127,17 @@
   --wire-rail-divider: rgba(15, 23, 42, 0.06);
   --wire-rail-section-fg: var(--wire-slate-500);
 
-  --wire-nav-bg: var(--wire-slate-800);
-  --wire-nav-bg-hover: rgba(255, 255, 255, 0.05);
+  --wire-nav-bg: var(--wire-bg-page);
+  --wire-nav-bg-hover: var(--wire-slate-100);
   --wire-nav-bg-active: var(--wire-slate-900);
-  --wire-nav-fg: var(--wire-slate-200);
-  --wire-nav-fg-muted: var(--wire-slate-400);
-  --wire-nav-fg-dim: var(--wire-slate-500);
-  --wire-nav-divider: rgba(255, 255, 255, 0.06);
+  --wire-nav-fg: var(--wire-slate-700);
+  --wire-nav-fg-muted: var(--wire-slate-500);
+  --wire-nav-fg-dim: var(--wire-slate-400);
+  --wire-nav-divider: var(--wire-border);
   --wire-nav-accent: #60a5fa;
+  --wire-nav-button-bg: var(--wire-slate-900);
+  --wire-nav-button-fg: #ffffff;
+  --wire-nav-button-bg-hover: var(--wire-slate-800);
 
   --wire-canvas-bg: #f8fafc;
   --wire-canvas-grid-major: rgba(15, 23, 42, 0.1);
@@ -212,6 +215,17 @@
   --wire-rail-divider: rgba(255, 255, 255, 0.06);
   --wire-rail-section-fg: var(--wire-slate-400);
 
+  --wire-nav-bg: var(--wire-slate-800);
+  --wire-nav-bg-hover: rgba(255, 255, 255, 0.05);
+  --wire-nav-bg-active: var(--wire-slate-900);
+  --wire-nav-fg: var(--wire-slate-200);
+  --wire-nav-fg-muted: var(--wire-slate-400);
+  --wire-nav-fg-dim: var(--wire-slate-500);
+  --wire-nav-divider: rgba(255, 255, 255, 0.06);
+  --wire-nav-button-bg: #ffffff;
+  --wire-nav-button-fg: var(--wire-slate-900);
+  --wire-nav-button-bg-hover: var(--wire-slate-100);
+
   --wire-canvas-bg: var(--wire-slate-900);
   --wire-canvas-grid-major: rgba(148, 163, 184, 0.18);
   --wire-canvas-grid-minor: rgba(148, 163, 184, 0.08);
@@ -254,6 +268,9 @@
   --color-wire-nav: var(--wire-nav-bg);
   --color-wire-nav-hover: var(--wire-nav-bg-hover);
   --color-wire-nav-active: var(--wire-nav-bg-active);
+  --color-wire-nav-button: var(--wire-nav-button-bg);
+  --color-wire-nav-button-fg: var(--wire-nav-button-fg);
+  --color-wire-nav-button-hover: var(--wire-nav-button-bg-hover);
 
   --color-wire-primary: var(--wire-fg-primary);
   --color-wire-secondary: var(--wire-fg-secondary);
