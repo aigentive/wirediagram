@@ -727,7 +727,7 @@ export function WiresClient({
             Share
           </DotPill>
         ) : null}
-        <DotPill dotColor="emerald" onClick={openConnectGuide}>
+        <DotPill dotColor="emerald" variant="sunken" onClick={openConnectGuide}>
           Connect local MCP
         </DotPill>
         {workspace && !chatOpen ? (
@@ -741,9 +741,9 @@ export function WiresClient({
             <MessageSquare size={14} strokeWidth={1.5} />
           </button>
         ) : null}
-        <span className="hidden items-center gap-1.5 sm:flex">
+        <span className="ml-2 hidden h-7 items-center gap-2 border-l border-wire pl-3 sm:flex">
           <Avatar name={user.name} email={user.email} />
-          <span className="hidden max-w-[160px] truncate text-[13px] font-semibold text-wire-primary md:inline">
+          <span className="hidden max-w-[160px] truncate text-[12.5px] font-medium text-wire-primary md:inline">
             {shortName(user.name, user.email)}
           </span>
         </span>
@@ -774,16 +774,16 @@ export function WiresClient({
           footer={
             <a
               href="/api/auth/signout"
-              className="flex items-center gap-2 text-[12px] font-medium text-wire-nav-fg-muted no-underline transition-colors hover:text-wire-nav-fg"
+              className="flex w-full items-center gap-2 rounded-md px-[10px] py-[7px] text-[12.5px] font-medium text-wire-nav-fg-muted no-underline transition-colors hover:bg-[rgba(255,255,255,0.06)] hover:text-wire-nav-fg"
             >
               <LogOut size={14} strokeWidth={1.5} />
               Sign out
             </a>
           }
         >
-          <div className="mb-2 flex items-center text-wire-nav-fg-muted">
-            <span className="wire-eyebrow wire-eyebrow--muted">Active Wires</span>
-            <span className="wire-tabular ml-auto text-[11px] font-bold">
+          <div className="mb-2 flex items-baseline justify-between text-wire-nav-fg-muted">
+            <span className="wire-eyebrow wire-eyebrow--muted">Active wires</span>
+            <span className="wire-tabular font-mono text-[10.5px] text-wire-nav-fg-dim">
               {wires.length}
             </span>
           </div>
@@ -1051,38 +1051,39 @@ function CanvasModeBarRight({
   onReset: () => void;
 }) {
   const history = useWireHistory();
-  const pillClass =
-    "inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-medium text-wire-secondary transition-colors hover:border-wire-strong hover:text-wire-primary";
-  const iconButtonClass =
-    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-wire bg-wire-surface text-wire-secondary transition-colors hover:border-wire-strong hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50";
+  const ghostText =
+    "inline-flex items-center gap-[5px] rounded-md bg-transparent px-2 py-[5px] text-[12px] font-medium text-wire-tertiary transition-colors hover:bg-wire-sunken hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50";
+  const ghostIcon =
+    "grid h-7 w-7 place-items-center rounded-md bg-transparent text-wire-tertiary transition-colors hover:bg-wire-sunken hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50";
   return (
-    <div className={alignRight ? "ml-auto flex items-center gap-1.5" : "flex items-center gap-1.5"}>
+    <div className={alignRight ? "ml-auto flex items-center gap-1" : "flex items-center gap-1"}>
       <button
         type="button"
         onClick={history.undo}
         disabled={!history.canUndo}
-        className={iconButtonClass}
+        className={ghostIcon}
         aria-label="Undo"
         title="Undo"
       >
-        <Undo2 size={13} strokeWidth={1.5} />
+        <Undo2 size={13} strokeWidth={1.75} />
       </button>
       <button
         type="button"
         onClick={history.redo}
         disabled={!history.canRedo}
-        className={iconButtonClass}
+        className={ghostIcon}
         aria-label="Redo"
         title="Redo"
       >
-        <Redo2 size={13} strokeWidth={1.5} />
+        <Redo2 size={13} strokeWidth={1.75} />
       </button>
-      <button type="button" className={pillClass} aria-label="View" title="View">
-        <Eye size={13} strokeWidth={1.5} />
+      <span aria-hidden className="mx-1 h-4 w-px bg-wire" />
+      <button type="button" className={ghostText} aria-label="View" title="View">
+        <Eye size={12} strokeWidth={1.75} />
         View
       </button>
-      <button type="button" onClick={onReset} className={pillClass}>
-        <RefreshCcw size={13} strokeWidth={1.5} />
+      <button type="button" onClick={onReset} className={ghostText}>
+        <RefreshCcw size={12} strokeWidth={1.75} />
         Reset
       </button>
     </div>

@@ -41,7 +41,7 @@ export function StatusPill({
     : STATUS_BG[kind];
   return (
     <span
-      className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium ${surface}`}
+      className={`inline-flex h-[24px] items-center gap-[6px] rounded-full px-[10px] text-[12px] font-semibold ${surface}`}
       title={title}
     >
       {dot ? (

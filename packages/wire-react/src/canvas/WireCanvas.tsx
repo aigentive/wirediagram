@@ -92,7 +92,7 @@ const DEFAULT_MAX_ZOOM = 4;
 const DEFAULT_ZOOM_STEP = 1.1;
 const WHEEL_ZOOM_DELTA = 120;
 const GRID_SIZE = 24;
-const HANDLE_SIZE = 12;
+const HANDLE_SIZE = 9;
 const FIT_BOUNDS_PADDING = 20;
 const DEFAULT_LABEL_FILL = "#334155";
 const DEFAULT_LABEL_BG = "#ffffff";
@@ -892,9 +892,9 @@ function WireHandles({
               width: HANDLE_SIZE,
               height: HANDLE_SIZE,
               borderRadius: 999,
-              border: "2px solid #ffffff",
-              background: isSource && isTarget ? "#2563eb" : isSource ? "#475569" : "#ffffff",
-              boxShadow: "0 0 0 1px #64748b",
+              border: "1.5px solid #94a3b8",
+              background: isSource && isTarget ? "#2563eb" : "#ffffff",
+              boxShadow: "none",
               padding: 0,
               opacity: editable ? 1 : 0.68,
               cursor: editable && isSource ? "crosshair" : "default",
