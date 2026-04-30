@@ -824,7 +824,7 @@ export function WiresClient({
 
             <section className="grid min-h-0 min-w-0 grid-rows-[50px_minmax(0,1fr)] bg-wire-canvas">
               <div className="flex h-[50px] shrink-0 items-center gap-2 border-b border-wire px-[18px]">
-                <div className="inline-flex gap-[2px] rounded-lg bg-[rgba(15,23,42,0.04)] p-[2px]">
+                <div className="inline-flex gap-[2px] rounded-lg border border-wire bg-wire-sunken p-[2px]">
                   <SegmentedButton active={mode === "canvas"} onClick={() => setMode("canvas")} icon={<Play size={12} strokeWidth={2} />}>
                     Canvas
                   </SegmentedButton>
