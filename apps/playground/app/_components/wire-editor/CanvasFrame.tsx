@@ -22,18 +22,18 @@ export function CanvasFrame({
     >
       {children}
       {topRight ? (
-        <div className="pointer-events-none absolute right-3 top-3 z-10 grid w-[min(320px,calc(100%-24px))] gap-2">
-          <div className="pointer-events-auto grid gap-2">{topRight}</div>
+        <div className="pointer-events-none absolute right-3 top-3 z-10 grid w-[min(320px,calc(100%-24px))] gap-2 [&>*]:pointer-events-auto">
+          {topRight}
         </div>
       ) : null}
       {bottomLeft ? (
-        <div className="pointer-events-none absolute bottom-3 left-3 z-10">
-          <div className="pointer-events-auto">{bottomLeft}</div>
+        <div className="pointer-events-none absolute bottom-3 left-3 z-10 [&>*]:pointer-events-auto">
+          {bottomLeft}
         </div>
       ) : null}
       {bottomRight ? (
-        <div className="pointer-events-none absolute bottom-3 right-3 z-10">
-          <div className="pointer-events-auto">{bottomRight}</div>
+        <div className="pointer-events-none absolute bottom-3 right-3 z-10 [&>*]:pointer-events-auto">
+          {bottomRight}
         </div>
       ) : null}
     </div>

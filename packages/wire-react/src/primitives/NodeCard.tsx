@@ -33,7 +33,7 @@ export function NodeCard({
     <div
       aria-selected={ariaSelected ?? selected}
       className={cx(
-        "flex min-w-[140px] flex-col gap-1 rounded-lg border bg-wire-surface px-3 py-[10px]",
+        "flex flex-col gap-1 rounded-lg border bg-wire-surface px-3 py-[10px]",
         selected
           ? "border-wire-focus shadow-[0_0_0_2px_var(--wire-blue-500)_inset]"
           : "border-wire",

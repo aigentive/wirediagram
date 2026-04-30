@@ -161,6 +161,10 @@ function WireCanvasInner({
   const suppressNodeClickRef = useRef(false);
   const suppressPaneClickRef = useRef(false);
   const dragPositionsRef = useRef<Map<string, Point> | undefined>(undefined);
+  const viewportRafRef = useRef<number | null>(null);
+  const pendingViewportRef = useRef<WireViewport | null>(null);
+  const dragRafRef = useRef<number | null>(null);
+  const pendingDragPositionsRef = useRef<Map<string, Point> | null>(null);
   const [dragPositions, setDragPositions] = useState<Map<string, Point> | undefined>();
   const [connection, setConnection] = useState<ConnectionState | null>(null);
   const [fitReady, setFitReady] = useState(!fitView);
@@ -246,14 +250,40 @@ function WireCanvasInner({
 
   const setWireViewport = useCallback(
     (viewport: WireViewport) => {
-      ctx.viewportActions.setViewport({
+      const next: WireViewport = {
         x: viewport.x,
         y: viewport.y,
         zoom: clamp(viewport.zoom, minZoom, maxZoom)
+      };
+      viewportRef.current = next;
+      pendingViewportRef.current = next;
+      if (viewportRafRef.current !== null) return;
+      if (typeof requestAnimationFrame === "undefined") {
+        ctx.viewportActions.setViewport(next);
+        return;
+      }
+      viewportRafRef.current = requestAnimationFrame(() => {
+        viewportRafRef.current = null;
+        const queued = pendingViewportRef.current;
+        pendingViewportRef.current = null;
+        if (queued) ctx.viewportActions.setViewport(queued);
       });
     },
     [ctx.viewportActions.setViewport, maxZoom, minZoom]
   );
+
+  useEffect(() => {
+    return () => {
+      if (viewportRafRef.current !== null && typeof cancelAnimationFrame !== "undefined") {
+        cancelAnimationFrame(viewportRafRef.current);
+        viewportRafRef.current = null;
+      }
+      if (dragRafRef.current !== null && typeof cancelAnimationFrame !== "undefined") {
+        cancelAnimationFrame(dragRafRef.current);
+        dragRafRef.current = null;
+      }
+    };
+  }, []);
 
   const setWireSelection = useCallback(
     (selection: WireSelection, source: "canvas" | "api" = "canvas") => {
@@ -454,7 +484,19 @@ function WireCanvasInner({
     for (const [id, start] of drag.startPositions) {
       next.set(id, { x: start.x + dx, y: start.y + dy });
     }
-    setDragPositions(next);
+    dragPositionsRef.current = next;
+    pendingDragPositionsRef.current = next;
+    if (dragRafRef.current !== null) return;
+    if (typeof requestAnimationFrame === "undefined") {
+      setDragPositions(next);
+      return;
+    }
+    dragRafRef.current = requestAnimationFrame(() => {
+      dragRafRef.current = null;
+      const queued = pendingDragPositionsRef.current;
+      pendingDragPositionsRef.current = null;
+      if (queued) setDragPositions(queued);
+    });
   }, [editable, updatePan]);
 
   const handleNodePointerUp = useCallback(
@@ -469,6 +511,12 @@ function WireCanvasInner({
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
+
+      if (dragRafRef.current !== null && typeof cancelAnimationFrame !== "undefined") {
+        cancelAnimationFrame(dragRafRef.current);
+        dragRafRef.current = null;
+      }
+      pendingDragPositionsRef.current = null;
 
       const positions = dragPositionsRef.current;
       setDragPositions(undefined);
