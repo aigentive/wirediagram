@@ -141,13 +141,13 @@ type RailKind = {
 };
 
 const RAIL_KINDS: RailKind[] = [
-  { kind: "trigger", label: "Trigger", shortcut: "T", icon: <Play size={18} strokeWidth={1.5} /> },
-  { kind: "ai", label: "AI", shortcut: "A", icon: <Sparkles size={18} strokeWidth={1.5} /> },
-  { kind: "tool", label: "Tool", shortcut: "L", icon: <Wrench size={18} strokeWidth={1.5} /> },
-  { kind: "action", label: "Action", shortcut: "N", icon: <ArrowRight size={18} strokeWidth={1.5} /> },
-  { kind: "condition", label: "Condition", shortcut: "C", icon: <HelpCircle size={18} strokeWidth={1.5} /> },
-  { kind: "human", label: "Human", shortcut: "H", icon: <User size={18} strokeWidth={1.5} /> },
-  { kind: "retrieval", label: "Retrieval", shortcut: "R", icon: <Database size={18} strokeWidth={1.5} /> }
+  { kind: "trigger", label: "Trigger", shortcut: "T", icon: <Play size={13} strokeWidth={2} /> },
+  { kind: "ai", label: "AI", shortcut: "A", icon: <Sparkles size={13} strokeWidth={2} /> },
+  { kind: "tool", label: "Tool", shortcut: "L", icon: <Wrench size={13} strokeWidth={2} /> },
+  { kind: "action", label: "Action", shortcut: "N", icon: <ArrowRight size={13} strokeWidth={2.2} /> },
+  { kind: "condition", label: "Condition", shortcut: "C", icon: <HelpCircle size={13} strokeWidth={2} /> },
+  { kind: "human", label: "Human", shortcut: "H", icon: <User size={13} strokeWidth={2} /> },
+  { kind: "retrieval", label: "Retrieval", shortcut: "R", icon: <Database size={13} strokeWidth={2} /> }
 ];
 
 const RAIL_KIND_BY_KEY = new Map(RAIL_KINDS.map((entry) => [entry.shortcut.toLowerCase(), entry.kind]));
@@ -764,9 +764,9 @@ export function WiresClient({
               <NavRailButton
                 onClick={createWire}
                 disabled={busy}
-                icon={busy ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" /> : <Plus size={14} strokeWidth={1.5} />}
+                icon={busy ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" /> : <Plus size={14} strokeWidth={2.4} />}
               >
-                New Wire
+                New wire
               </NavRailButton>
               <NavRailSearch value={query} onChange={setQuery} />
             </>
@@ -820,20 +820,22 @@ export function WiresClient({
               ))}
             </ToolRail>
 
-            <section className="grid min-h-0 min-w-0 grid-rows-[48px_minmax(0,1fr)]">
-              <div className="flex h-12 shrink-0 items-center gap-1 border-b border-wire bg-wire-surface px-3">
-                <SegmentedButton active={mode === "canvas"} onClick={() => setMode("canvas")} icon={<Play size={14} strokeWidth={1.5} />}>
-                  Canvas
-                </SegmentedButton>
-                <SegmentedButton active={mode === "json"} onClick={() => setMode("json")} icon={<FileJson size={14} strokeWidth={1.5} />}>
-                  JSON
-                </SegmentedButton>
-                <SegmentedButton active={mode === "svg"} onClick={() => setMode("svg")} icon={<ImageIcon size={14} strokeWidth={1.5} />}>
-                  SVG
-                </SegmentedButton>
-                <SegmentedButton active={mode === "mermaid"} onClick={() => setMode("mermaid")} icon={<Workflow size={14} strokeWidth={1.5} />}>
-                  Mermaid
-                </SegmentedButton>
+            <section className="grid min-h-0 min-w-0 grid-rows-[50px_minmax(0,1fr)]">
+              <div className="flex h-[50px] shrink-0 items-center gap-2 border-b border-[var(--wire-rail-divider)] px-[18px]">
+                <div className="inline-flex gap-[2px] rounded-lg bg-[rgba(15,23,42,0.04)] p-[2px]">
+                  <SegmentedButton active={mode === "canvas"} onClick={() => setMode("canvas")} icon={<Play size={12} strokeWidth={2} />}>
+                    Canvas
+                  </SegmentedButton>
+                  <SegmentedButton active={mode === "json"} onClick={() => setMode("json")} icon={<FileJson size={12} strokeWidth={2} />}>
+                    JSON
+                  </SegmentedButton>
+                  <SegmentedButton active={mode === "svg"} onClick={() => setMode("svg")} icon={<ImageIcon size={12} strokeWidth={2} />}>
+                    SVG
+                  </SegmentedButton>
+                  <SegmentedButton active={mode === "mermaid"} onClick={() => setMode("mermaid")} icon={<Workflow size={12} strokeWidth={2} />}>
+                    Mermaid
+                  </SegmentedButton>
+                </div>
                 {shareMessage ? <span className="ml-2 text-[12px] font-semibold text-wire-tertiary">{shareMessage}</span> : null}
                 {shareResult?.urls?.view ? (
                   <a
@@ -920,10 +922,10 @@ export function WiresClient({
             </section>
 
             {chatOpen ? (
-            <aside className="flex min-h-0 min-w-0 flex-col border-l border-wire bg-wire-surface">
-              <div className="flex h-12 shrink-0 items-center gap-2 border-b border-wire px-4">
+            <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-wire bg-wire-chat">
+              <div className="flex h-[50px] shrink-0 items-center gap-[6px] border-b border-wire bg-wire-surface px-4">
                 <span className="text-[14px] font-bold text-wire-primary">Chat</span>
-                <span className="font-mono text-[12px] text-wire-tertiary">
+                <span className="font-mono text-[11px] text-wire-tertiary">
                   {workspace.diagram.nodes.length} nodes
                 </span>
                 <button
@@ -1091,7 +1093,7 @@ function CanvasOverlays({ validationValid }: { validationValid: boolean }) {
   return (
     <>
       {!validationValid ? (
-        <WireValidationPanel className="wire-canvas-overlay rounded-[10px] p-[10px]" />
+        <WireValidationPanel className="wire-canvas-overlay rounded-[10px]" />
       ) : null}
       <SelectedNodeInspector />
     </>
@@ -1718,8 +1720,8 @@ function SegmentedButton({
       onClick={onClick}
       className={
         active
-          ? "inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[12px] font-bold text-white"
-          : "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-medium text-wire-tertiary transition-colors hover:bg-wire-sunken hover:text-wire-primary"
+          ? "inline-flex items-center gap-[6px] rounded-md bg-slate-900 px-[11px] py-[4px] text-[12px] font-semibold text-white shadow-[0_1px_2px_rgba(15,23,42,0.15)]"
+          : "inline-flex items-center gap-[6px] rounded-md bg-transparent px-[11px] py-[4px] text-[12px] font-semibold text-wire-tertiary transition-colors hover:text-wire-primary"
       }
     >
       {icon}

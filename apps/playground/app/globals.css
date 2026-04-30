@@ -162,10 +162,11 @@
   --wire-nav-button-fg: var(--wire-slate-900);
   --wire-nav-button-bg-hover: var(--wire-slate-100);
 
-  --wire-canvas-bg: #f8fafc;
+  --wire-canvas-bg: #fafbfd;
   --wire-canvas-grid-major: rgba(15, 23, 42, 0.1);
   --wire-canvas-grid-minor: rgba(15, 23, 42, 0.05);
 
+  --wire-chat-bg: #f5f7fa;
   --wire-chat-user-from: var(--wire-blue-600);
   --wire-chat-user-to: #2256d5;
   --wire-chat-user-shadow: 0 1px 2px rgba(37, 99, 235, 0.16);
@@ -246,6 +247,8 @@
   --wire-status-warn-bg: rgba(194, 65, 12, 0.18);
   --wire-status-invalid-bg: rgba(185, 28, 28, 0.18);
 
+  --wire-chat-bg: #0b1426;
+
   --wire-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --wire-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4),
     0 4px 12px rgba(0, 0, 0, 0.3);
@@ -304,6 +307,7 @@
   --color-wire-code: var(--wire-bg-code);
   --color-wire-canvas: var(--wire-bg-canvas);
   --color-wire-rail: var(--wire-rail-bg);
+  --color-wire-chat: var(--wire-chat-bg);
   --color-wire-nav: var(--wire-nav-bg);
   --color-wire-nav-hover: var(--wire-nav-bg-hover);
   --color-wire-nav-active: var(--wire-nav-bg-active);

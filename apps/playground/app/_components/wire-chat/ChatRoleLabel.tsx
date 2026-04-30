@@ -2,18 +2,11 @@ export type ChatRole = "user" | "assistant";
 
 export function ChatRoleLabel({ role }: { role: ChatRole }) {
   const isUser = role === "user";
-  const dotClass = isUser ? "bg-white/80" : "bg-wire-muted";
-  const textClass = isUser
-    ? "wire-eyebrow text-white/80"
-    : "wire-eyebrow wire-eyebrow--muted";
   const label = isUser ? "You" : "Assistant";
   return (
-    <div className="mb-1 flex items-center gap-1.5">
-      <span
-        aria-hidden
-        className={`inline-block h-1 w-1 rounded-full ${dotClass}`}
-      />
-      <span className={textClass}>{label}</span>
+    <div className="mb-[5px] flex items-center gap-[5px]">
+      <span aria-hidden className="inline-block h-[5px] w-[5px] rounded-full bg-wire-muted" />
+      <span className="wire-eyebrow wire-eyebrow--muted">{label}</span>
     </div>
   );
 }

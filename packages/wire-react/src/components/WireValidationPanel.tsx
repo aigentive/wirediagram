@@ -27,18 +27,18 @@ export function WireValidationPanel({ className, style }: WireValidationPanelPro
   return (
     <section
       className={cx(
-        "grid gap-2 rounded-md bg-wire-surface p-3",
+        "grid gap-0 overflow-hidden rounded-md",
         className
       )}
       style={style}
     >
-      <header className="flex items-center justify-between gap-2">
+      <header className="flex items-center justify-between gap-2 px-[13px] py-[9px]">
         <Eyebrow muted>Validation</Eyebrow>
         <StatusPill kind={status}>{label}</StatusPill>
       </header>
 
       {validation.issues.length === 0 ? null : (
-        <ul className="grid gap-1.5">
+        <ul className="grid gap-1.5 border-t border-[rgba(15,23,42,0.06)] bg-[rgba(248,250,252,0.55)] px-[13px] py-[11px]">
           {validation.issues.map((issue, index) => {
             const issueStatus: StatusPillKind = issue.severity === "error" ? "invalid" : "warn";
             return (

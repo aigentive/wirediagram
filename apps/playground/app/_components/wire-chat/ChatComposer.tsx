@@ -30,9 +30,9 @@ export function ChatComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className="shrink-0 bg-wire-surface px-3 pb-3 pt-2"
+      className="shrink-0 border-t border-wire bg-wire-surface px-3 pb-[10px] pt-2"
     >
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-1.5 rounded-[9px] border border-wire bg-wire-page py-[6px] pl-[12px] pr-[6px] transition-colors focus-within:border-wire-focus focus-within:bg-wire-surface focus-within:shadow-[0_0_0_2px_rgba(37,99,235,0.12)]">
         <textarea
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -42,15 +42,15 @@ export function ChatComposer({
               if (!submitDisabled) onSubmit();
             }
           }}
-          rows={3}
+          rows={1}
           disabled={disabled}
           placeholder={placeholder}
-          className="min-h-[76px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[13px] leading-5 text-wire-primary outline-none focus:outline-none"
+          className="max-h-[120px] min-h-[22px] flex-1 resize-none border-0 bg-transparent py-[5px] text-[13px] leading-[1.45] text-wire-primary outline-none placeholder:text-wire-muted focus:outline-none"
         />
         <button
           type="submit"
           disabled={submitDisabled}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-wire-sunken disabled:text-wire-muted"
+          className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[7px] bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-wire-sunken disabled:text-wire-muted"
           aria-label="Send"
           title="Send"
         >
@@ -61,7 +61,7 @@ export function ChatComposer({
           )}
         </button>
       </div>
-      {footerSlot ? <div className="mt-2">{footerSlot}</div> : null}
+      {footerSlot ? <div className="mt-[6px]">{footerSlot}</div> : null}
     </form>
   );
 }
