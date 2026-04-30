@@ -129,7 +129,7 @@
 
   --wire-nav-bg: var(--wire-slate-800);
   --wire-nav-bg-hover: rgba(255, 255, 255, 0.05);
-  --wire-nav-bg-active: rgba(255, 255, 255, 0.08);
+  --wire-nav-bg-active: var(--wire-slate-900);
   --wire-nav-fg: var(--wire-slate-200);
   --wire-nav-fg-muted: var(--wire-slate-400);
   --wire-nav-fg-dim: var(--wire-slate-500);

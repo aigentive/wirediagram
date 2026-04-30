@@ -33,7 +33,6 @@ import {
   Share2,
   Sparkles,
   Terminal,
-  Trash2,
   Undo2,
   User,
   Workflow,
@@ -728,36 +727,21 @@ export function WiresClient({
             Share
           </DotPill>
         ) : null}
-        <DotPill
-          dotColor="emerald"
-          icon={<KeyRound size={13} strokeWidth={1.5} />}
-          onClick={openConnectGuide}
-        >
+        <DotPill dotColor="emerald" onClick={openConnectGuide}>
           Connect local MCP
         </DotPill>
         {workspace && !chatOpen ? (
           <button
             type="button"
             onClick={() => setChatOpen(true)}
-            className="grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary transition-colors hover:border-wire-strong hover:text-wire-primary"
+            className="grid h-7 w-7 place-items-center rounded-md text-wire-tertiary transition-colors hover:text-wire-primary"
             aria-label="Open chat"
             title="Open chat"
           >
             <MessageSquare size={14} strokeWidth={1.5} />
           </button>
         ) : null}
-        {workspace ? (
-          <button
-            type="button"
-            onClick={deleteWire}
-            className="grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary transition-colors hover:bg-wire-status-invalid-bg hover:text-wire-status-invalid"
-            aria-label="Delete wire"
-            title="Delete wire"
-          >
-            <Trash2 size={14} strokeWidth={1.5} />
-          </button>
-        ) : null}
-        <span className="hidden items-center gap-2 sm:flex">
+        <span className="hidden items-center gap-1.5 sm:flex">
           <Avatar name={user.name} email={user.email} />
           <span className="hidden max-w-[160px] truncate text-[13px] font-semibold text-wire-primary md:inline">
             {shortName(user.name, user.email)}
@@ -840,8 +824,8 @@ export function WiresClient({
               ))}
             </ToolRail>
 
-            <section className="grid min-h-0 min-w-0 grid-rows-[48px_minmax(0,1fr)] border-r border-wire">
-              <div className="flex h-12 shrink-0 items-center gap-2 border-b border-wire bg-wire-surface px-3">
+            <section className="grid min-h-0 min-w-0 grid-rows-[48px_minmax(0,1fr)]">
+              <div className="flex h-12 shrink-0 items-center gap-1 border-b border-wire bg-wire-surface px-3">
                 <SegmentedButton active={mode === "canvas"} onClick={() => setMode("canvas")} icon={<Play size={14} strokeWidth={1.5} />}>
                   Canvas
                 </SegmentedButton>
@@ -940,7 +924,7 @@ export function WiresClient({
             </section>
 
             {chatOpen ? (
-            <aside className="flex min-h-0 min-w-0 flex-col bg-wire-surface">
+            <aside className="flex min-h-0 min-w-0 flex-col border-l border-wire bg-wire-surface">
               <div className="flex h-12 shrink-0 items-center gap-2 border-b border-wire px-4">
                 <span className="text-[14px] font-bold text-wire-primary">Chat</span>
                 <span className="font-mono text-[12px] text-wire-tertiary">
@@ -1070,9 +1054,9 @@ function CanvasModeBarRight({
 }) {
   const history = useWireHistory();
   const pillClass =
-    "inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-bold text-wire-secondary hover:border-wire-strong hover:text-wire-primary";
+    "inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-medium text-wire-secondary transition-colors hover:border-wire-strong hover:text-wire-primary";
   const iconButtonClass =
-    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-wire bg-wire-surface text-wire-secondary hover:border-wire-strong hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-wire bg-wire-surface text-wire-secondary transition-colors hover:border-wire-strong hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50";
   return (
     <div className={alignRight ? "ml-auto flex items-center gap-1.5" : "flex items-center gap-1.5"}>
       <button
@@ -1739,7 +1723,7 @@ function SegmentedButton({
       className={
         active
           ? "inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[12px] font-bold text-white"
-          : "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-bold text-wire-secondary hover:text-wire-primary"
+          : "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-medium text-wire-tertiary transition-colors hover:bg-wire-sunken hover:text-wire-primary"
       }
     >
       {icon}
