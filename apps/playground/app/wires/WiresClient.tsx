@@ -816,13 +816,13 @@ export function WiresClient({
           >
             <RailKeyboardShortcuts />
             <ToolRail>
-              <div className="wire-eyebrow wire-eyebrow--muted px-1 pb-2 pt-1 text-[11px] text-wire-tertiary">Add Node</div>
+              <div className="mx-[6px] mb-2 mt-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-wire-rail-section-fg">Add node</div>
               {RAIL_KINDS.map((entry) => (
                 <RailAddNodeButton key={entry.kind} entry={entry} />
               ))}
             </ToolRail>
 
-            <section className="grid min-h-0 min-w-0 grid-rows-[50px_minmax(0,1fr)]">
+            <section className="grid min-h-0 min-w-0 grid-rows-[50px_minmax(0,1fr)] bg-wire-canvas">
               <div className="flex h-[50px] shrink-0 items-center gap-2 border-b border-[var(--wire-rail-divider)] px-[18px]">
                 <div className="inline-flex gap-[2px] rounded-lg bg-[rgba(15,23,42,0.04)] p-[2px]">
                   <SegmentedButton active={mode === "canvas"} onClick={() => setMode("canvas")} icon={<Play size={12} strokeWidth={2} />}>

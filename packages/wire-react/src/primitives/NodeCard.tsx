@@ -55,7 +55,7 @@ export function NodeCard({
     <div
       aria-selected={ariaSelected ?? selected}
       className={cx(
-        "group/node flex flex-col gap-1 rounded-[9px] border px-3 py-[10px] transition-shadow duration-150",
+        "group/node flex flex-col gap-1 rounded-[9px] border px-3 pb-[10px] pt-[9px] transition-shadow duration-150",
         selected ? "border-wire-focus" : "border-wire",
         className
       )}

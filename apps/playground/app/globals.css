@@ -307,6 +307,7 @@
   --color-wire-code: var(--wire-bg-code);
   --color-wire-canvas: var(--wire-bg-canvas);
   --color-wire-rail: var(--wire-rail-bg);
+  --color-wire-rail-section-fg: var(--wire-rail-section-fg);
   --color-wire-chat: var(--wire-chat-bg);
   --color-wire-nav: var(--wire-nav-bg);
   --color-wire-nav-hover: var(--wire-nav-bg-hover);

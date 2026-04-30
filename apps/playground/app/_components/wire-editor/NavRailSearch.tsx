@@ -12,7 +12,7 @@ export function NavRailSearch({
   placeholder?: string;
 }) {
   return (
-    <label className="flex h-8 items-center gap-2 rounded-md border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.06)] px-[10px] text-wire-nav-fg transition-colors focus-within:border-[rgba(96,165,250,0.6)] focus-within:bg-[rgba(255,255,255,0.1)] focus-within:shadow-[0_0_0_2px_rgba(96,165,250,0.18)]">
+    <label className="flex h-8 items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.06)] px-[10px] text-wire-nav-fg transition-colors focus-within:border-[rgba(96,165,250,0.6)] focus-within:bg-[rgba(255,255,255,0.1)] focus-within:shadow-[0_0_0_2px_rgba(96,165,250,0.18)]">
       <Search size={13} strokeWidth={1.75} className="text-wire-nav-fg-dim" />
       <input
         value={value}

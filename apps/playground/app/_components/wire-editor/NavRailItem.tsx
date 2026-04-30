@@ -19,8 +19,9 @@ export function NavRailItem({
   onClick?: () => void;
 }) {
   const baseClass =
-    "relative grid min-h-[44px] rounded-md px-3 py-2 text-left transition-colors";
-  const activeClass = "bg-wire-nav-active text-white";
+    "relative grid min-h-[44px] rounded-[7px] border border-transparent px-[10px] py-2 text-left transition-colors";
+  const activeClass =
+    "border-[rgba(255,255,255,0.06)] bg-wire-nav-active text-white shadow-[0_1px_2px_rgba(0,0,0,0.25)]";
   const inactiveClass =
     "text-wire-nav-fg hover:bg-wire-nav-hover hover:text-white";
 
@@ -29,7 +30,7 @@ export function NavRailItem({
       {active ? (
         <span
           aria-hidden
-          className="absolute left-[-6px] top-2 bottom-2 w-[2px] rounded-sm bg-[var(--wire-nav-accent)]"
+          className="absolute left-[-8px] top-2 bottom-2 w-[2px] rounded-sm bg-[var(--wire-nav-accent)]"
         />
       ) : null}
       <span className="flex min-w-0 items-center gap-2">
@@ -37,7 +38,7 @@ export function NavRailItem({
           className={
             active
               ? "truncate text-[12.5px] font-semibold text-white"
-              : "truncate text-[12.5px] font-medium text-wire-nav-fg"
+              : "truncate text-[12.5px] font-semibold text-wire-nav-fg"
           }
         >
           {title}

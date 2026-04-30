@@ -626,7 +626,7 @@ function WireCanvasInner({
       minHeight: 420,
       position: "relative",
       overflow: "hidden",
-      backgroundColor: "#f8fafc",
+      backgroundColor: "transparent",
       touchAction: "none",
       userSelect: dragPositions || connection ? "none" : undefined,
       cursor: panStateRef.current ? "grabbing" : canPan ? "grab" : "default",
@@ -943,7 +943,7 @@ function WireControls({
       </ControlButton>
       <ControlButton label="Fit view" onClick={onFit} divider wide>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-        <span style={{ marginLeft: 5, fontSize: 11.5, fontWeight: 600, color: "#334155" }}>Fit</span>
+        <span style={{ marginLeft: 5, fontSize: 11.5, fontWeight: 600, color: "var(--wire-fg-secondary)" }}>Fit</span>
       </ControlButton>
     </div>
   );
@@ -980,7 +980,7 @@ function ControlButton({
         border: 0,
         borderLeft: divider ? "1px solid rgba(15,23,42,0.08)" : "0",
         background: "transparent",
-        color: "#475569",
+        color: "var(--wire-fg-secondary)",
         cursor: "pointer"
       }}
     >
@@ -1047,11 +1047,10 @@ function WireMiniMap({
           y={toY(frame.y)}
           width={Math.max(2, frame.width * scale)}
           height={Math.max(2, frame.height * scale)}
-          rx={2}
-          fill={frame.node.kind === "group" ? "#f1f5f9" : "#64748b"}
-          stroke={frame.node.kind === "group" ? "#94a3b8" : "#475569"}
-          strokeWidth={0.8}
-          opacity={frame.node.kind === "group" ? 0.75 : 0.9}
+          rx={1}
+          fill={frame.node.kind === "group" ? "#f1f5f9" : "#cbd5e1"}
+          stroke="none"
+          opacity={frame.node.kind === "group" ? 0.75 : 1}
         />
       ))}
       <rect
