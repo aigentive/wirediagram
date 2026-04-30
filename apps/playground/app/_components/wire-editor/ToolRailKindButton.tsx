@@ -48,15 +48,15 @@ export function ToolRailKindButton({
     <button
       type="button"
       onClick={onAdd}
-      className="flex h-9 items-center gap-2 rounded-md border border-wire bg-wire-surface px-3 transition-colors hover:border-wire-strong"
+      className="flex h-10 items-center gap-2 rounded-md border border-wire bg-wire-surface px-3 transition-colors hover:border-wire-strong"
     >
       <span className={`grid place-items-center ${KIND_HUE[kind]}`} aria-hidden>
         {icon}
       </span>
-      <span className="flex-1 text-left text-[13px] font-semibold text-wire-primary">
+      <span className="flex-1 text-left text-[14px] font-semibold text-wire-primary">
         {label}
       </span>
-      <kbd className="rounded-sm border border-wire bg-wire-sunken px-1.5 py-0.5 font-mono text-[11px] text-wire-tertiary">
+      <kbd className="grid h-5 w-5 place-items-center rounded-sm bg-wire-sunken font-mono text-[11px] font-semibold text-wire-tertiary">
         {shortcut}
       </kbd>
     </button>

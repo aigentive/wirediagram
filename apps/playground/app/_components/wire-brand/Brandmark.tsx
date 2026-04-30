@@ -18,7 +18,7 @@ export function Brandmark({
       className="flex items-center gap-2 text-wire-primary no-underline"
     >
       <BrandmarkTile />
-      <span className="text-[15px] font-bold tracking-tight">{label}</span>
+      <span className="text-[16px] font-bold tracking-tight">{label}</span>
       {version ? (
         <span className="hidden font-mono text-[11px] text-wire-tertiary sm:inline">
           {version}

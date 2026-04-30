@@ -21,8 +21,10 @@ import {
   FileJson,
   HelpCircle,
   ImageIcon,
+  Info,
   KeyRound,
   Loader2,
+  LogOut,
   MessageSquare,
   Play,
   Plus,
@@ -48,14 +50,15 @@ import {
   WireValidationPanel,
   useWireDiagram,
   useWireDispatch,
-  useWireHistory
+  useWireHistory,
+  useWireSelection
 } from "@aigentive/wire-react";
 import { EditorHeader } from "../_components/wire-brand";
 import {
   Avatar,
   DotPill,
-  DotPillStatic,
-  StatusPill as StatusPillBase
+  StatusPill as StatusPillBase,
+  shortName
 } from "../_components/wire-pill";
 import {
   ChatBubble as SharedChatBubble,
@@ -139,13 +142,13 @@ type RailKind = {
 };
 
 const RAIL_KINDS: RailKind[] = [
-  { kind: "trigger", label: "Trigger", shortcut: "T", icon: <Play size={16} strokeWidth={1.5} /> },
-  { kind: "ai", label: "AI", shortcut: "A", icon: <Sparkles size={16} strokeWidth={1.5} /> },
-  { kind: "tool", label: "Tool", shortcut: "L", icon: <Wrench size={16} strokeWidth={1.5} /> },
-  { kind: "action", label: "Action", shortcut: "N", icon: <ArrowRight size={16} strokeWidth={1.5} /> },
-  { kind: "condition", label: "Condition", shortcut: "C", icon: <HelpCircle size={16} strokeWidth={1.5} /> },
-  { kind: "human", label: "Human", shortcut: "H", icon: <User size={16} strokeWidth={1.5} /> },
-  { kind: "retrieval", label: "Retrieval", shortcut: "R", icon: <Database size={16} strokeWidth={1.5} /> }
+  { kind: "trigger", label: "Trigger", shortcut: "T", icon: <Play size={18} strokeWidth={1.5} /> },
+  { kind: "ai", label: "AI", shortcut: "A", icon: <Sparkles size={18} strokeWidth={1.5} /> },
+  { kind: "tool", label: "Tool", shortcut: "L", icon: <Wrench size={18} strokeWidth={1.5} /> },
+  { kind: "action", label: "Action", shortcut: "N", icon: <ArrowRight size={18} strokeWidth={1.5} /> },
+  { kind: "condition", label: "Condition", shortcut: "C", icon: <HelpCircle size={18} strokeWidth={1.5} /> },
+  { kind: "human", label: "Human", shortcut: "H", icon: <User size={18} strokeWidth={1.5} /> },
+  { kind: "retrieval", label: "Retrieval", shortcut: "R", icon: <Database size={18} strokeWidth={1.5} /> }
 ];
 
 const RAIL_KIND_BY_KEY = new Map(RAIL_KINDS.map((entry) => [entry.shortcut.toLowerCase(), entry.kind]));
@@ -237,6 +240,7 @@ export function WiresClient({
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [canvasRevision, setCanvasRevision] = useState(0);
   const [connectOpen, setConnectOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(true);
   const [cloudUrl, setCloudUrl] = useState("https://reefagent-mcp-wire.vercel.app");
   const [apiKeys, setApiKeys] = useState<ApiKeySummary[]>([]);
   const [apiKeyName, setApiKeyName] = useState("Local MCP");
@@ -681,18 +685,22 @@ export function WiresClient({
       <EditorHeader
         breadcrumb={
           <>
-            <span className="text-wire-tertiary">Wires</span>
+            <span className="text-[14px] font-semibold text-wire-tertiary">Wires</span>
             {workspace ? (
               <>
-                <span aria-hidden className="text-wire-muted">/</span>
-                <span className="truncate font-bold text-wire-primary">{workspace.wire.title}</span>
+                <span aria-hidden className="text-wire-tertiary">/</span>
+                <BreadcrumbTitleEdit
+                  key={workspace.wire.id}
+                  title={workspace.wire.title}
+                  onCommit={(next) => void renameWire(next)}
+                />
               </>
             ) : null}
           </>
         }
       >
         {saveStatus === "saved" ? (
-          <StatusPillBase kind="valid" dot icon={<Check size={13} strokeWidth={1.5} />}>
+          <StatusPillBase kind="valid" dot>
             Saved
           </StatusPillBase>
         ) : null}
@@ -712,13 +720,6 @@ export function WiresClient({
             Error
           </StatusPillBase>
         ) : null}
-        <DotPill
-          dotColor="slate"
-          icon={<KeyRound size={13} strokeWidth={1.5} />}
-          onClick={openConnectGuide}
-        >
-          Connect local MCP
-        </DotPill>
         {workspace ? (
           <DotPill
             icon={<Share2 size={13} strokeWidth={1.5} />}
@@ -727,21 +728,49 @@ export function WiresClient({
             Share
           </DotPill>
         ) : null}
+        <DotPill
+          dotColor="emerald"
+          icon={<KeyRound size={13} strokeWidth={1.5} />}
+          onClick={openConnectGuide}
+        >
+          Connect local MCP
+        </DotPill>
+        {workspace && !chatOpen ? (
+          <button
+            type="button"
+            onClick={() => setChatOpen(true)}
+            className="grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary transition-colors hover:border-wire-strong hover:text-wire-primary"
+            aria-label="Open chat"
+            title="Open chat"
+          >
+            <MessageSquare size={14} strokeWidth={1.5} />
+          </button>
+        ) : null}
+        {workspace ? (
+          <button
+            type="button"
+            onClick={deleteWire}
+            className="grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary transition-colors hover:bg-wire-status-invalid-bg hover:text-wire-status-invalid"
+            aria-label="Delete wire"
+            title="Delete wire"
+          >
+            <Trash2 size={14} strokeWidth={1.5} />
+          </button>
+        ) : null}
         <span className="hidden items-center gap-2 sm:flex">
           <Avatar name={user.name} email={user.email} />
-          <span className="hidden max-w-[160px] truncate text-[12px] font-semibold text-wire-secondary md:inline">
-            {user.name ?? user.email}
+          <span className="hidden max-w-[160px] truncate text-[13px] font-semibold text-wire-primary md:inline">
+            {shortName(user.name, user.email)}
           </span>
         </span>
-        <a href="/api/auth/signout" className="no-underline">
-          <DotPillStatic>Sign out</DotPillStatic>
-        </a>
       </EditorHeader>
 
       <main
         className={
           workspace
-            ? "grid min-h-0 flex-1 grid-cols-[260px_220px_minmax(0,1fr)_390px]"
+            ? chatOpen
+              ? "grid min-h-0 flex-1 grid-cols-[260px_220px_minmax(0,1fr)_390px]"
+              : "grid min-h-0 flex-1 grid-cols-[260px_220px_minmax(0,1fr)]"
             : "grid min-h-0 flex-1 grid-cols-[260px_minmax(0,1fr)]"
         }
       >
@@ -758,9 +787,22 @@ export function WiresClient({
               <NavRailSearch value={query} onChange={setQuery} />
             </>
           }
+          footer={
+            <a
+              href="/api/auth/signout"
+              className="flex items-center gap-2 text-[13px] font-semibold no-underline transition-colors"
+              style={{ color: "var(--wire-nav-fg-muted)" }}
+            >
+              <LogOut size={14} strokeWidth={1.5} />
+              Sign out
+            </a>
+          }
         >
-          <div className="wire-eyebrow wire-eyebrow--muted mb-2" style={{ color: "var(--wire-nav-fg-muted)" }}>
-            Active Wires
+          <div className="mb-2 flex items-center" style={{ color: "var(--wire-nav-fg-muted)" }}>
+            <span className="wire-eyebrow wire-eyebrow--muted">Active Wires</span>
+            <span className="wire-tabular ml-auto text-[11px]" style={{ color: "var(--wire-nav-fg-muted)" }}>
+              {wires.length}
+            </span>
           </div>
           <div className="grid gap-1">
             {filteredWires.map((wire) => (
@@ -768,7 +810,7 @@ export function WiresClient({
                 key={wire.id}
                 active={workspace?.wire.id === wire.id}
                 title={wire.title}
-                meta={`${wire.nodeCount} nodes`}
+                meta={`${wire.nodeCount} nodes · edited ${formatRelativeTime(wire.updatedAt)}`}
                 loading={loadingWireId === wire.id}
                 onClick={() => void loadWire(wire.id)}
               />
@@ -791,43 +833,14 @@ export function WiresClient({
             onChange={(next) => updateDiagram(next, "manual")}
           >
             <RailKeyboardShortcuts />
-            <ToolRail topbar={<ToolRailTopbar />}>
-              <div className="wire-eyebrow wire-eyebrow--muted mb-1 px-1">Add Node</div>
+            <ToolRail>
+              <div className="wire-eyebrow wire-eyebrow--muted px-1 pb-2 pt-1 text-[11px] text-wire-tertiary">Add Node</div>
               {RAIL_KINDS.map((entry) => (
                 <RailAddNodeButton key={entry.kind} entry={entry} />
               ))}
             </ToolRail>
 
-            <section className="grid min-h-0 min-w-0 grid-rows-[48px_48px_minmax(0,1fr)] border-r border-wire">
-              <div className="flex h-12 min-w-0 items-center gap-2 border-b border-wire bg-wire-surface px-3">
-                <input
-                  defaultValue={workspace.wire.title}
-                  key={workspace.wire.id}
-                  onBlur={(event) => void renameWire(event.currentTarget.value)}
-                  className="min-w-0 flex-1 border-0 bg-transparent text-[14px] font-bold text-wire-primary outline-none"
-                />
-                {shareMessage ? <span className="text-[12px] font-semibold text-wire-tertiary">{shareMessage}</span> : null}
-                {shareResult?.urls?.view ? (
-                  <a
-                    href={shareResult.urls.view}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="max-w-[180px] truncate rounded-md border border-wire bg-wire-surface px-2.5 py-1.5 text-[12px] font-bold text-wire-secondary no-underline hover:border-wire-strong hover:text-wire-primary"
-                  >
-                    Open link
-                  </a>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={deleteWire}
-                  className="grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary hover:bg-wire-status-invalid-bg hover:text-wire-status-invalid"
-                  aria-label="Delete wire"
-                  title="Delete wire"
-                >
-                  <Trash2 size={14} strokeWidth={1.5} />
-                </button>
-              </div>
-
+            <section className="grid min-h-0 min-w-0 grid-rows-[48px_minmax(0,1fr)] border-r border-wire">
               <div className="flex h-12 shrink-0 items-center gap-2 border-b border-wire bg-wire-surface px-3">
                 <SegmentedButton active={mode === "canvas"} onClick={() => setMode("canvas")} icon={<Play size={14} strokeWidth={1.5} />}>
                   Canvas
@@ -841,6 +854,17 @@ export function WiresClient({
                 <SegmentedButton active={mode === "mermaid"} onClick={() => setMode("mermaid")} icon={<Workflow size={14} strokeWidth={1.5} />}>
                   Mermaid
                 </SegmentedButton>
+                {shareMessage ? <span className="ml-2 text-[12px] font-semibold text-wire-tertiary">{shareMessage}</span> : null}
+                {shareResult?.urls?.view ? (
+                  <a
+                    href={shareResult.urls.view}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="max-w-[180px] truncate rounded-md border border-wire bg-wire-surface px-2.5 py-1.5 text-[12px] font-bold text-wire-secondary no-underline hover:border-wire-strong hover:text-wire-primary"
+                  >
+                    Open link
+                  </a>
+                ) : null}
                 {mode !== "canvas" ? (
                   <>
                     <button
@@ -864,27 +888,16 @@ export function WiresClient({
                     {exportMessage ? <span className="text-[12px] font-semibold text-wire-tertiary">{exportMessage}</span> : null}
                   </>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={resetWire}
-                  className={
-                    mode === "canvas"
-                      ? "ml-auto inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-bold text-wire-secondary hover:border-wire-strong hover:text-wire-primary"
-                      : "inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-bold text-wire-secondary hover:border-wire-strong hover:text-wire-primary"
-                  }
-                >
-                  <RefreshCcw size={13} strokeWidth={1.5} />
-                  Reset
-                </button>
+                <CanvasModeBarRight
+                  alignRight={mode === "canvas"}
+                  onReset={resetWire}
+                />
               </div>
 
               {mode === "canvas" ? (
                 <CanvasFrame
                   topRight={
-                    <>
-                      <WireValidationPanel className="rounded-md border border-wire bg-wire-surface p-[10px] shadow-wire-sm" />
-                      <WireInspector className="max-h-[220px] overflow-auto rounded-md border border-wire bg-wire-surface p-[10px] shadow-wire-sm" />
-                    </>
+                    <CanvasOverlays validationValid={validation.valid} />
                   }
                 >
                   <WireCanvas
@@ -926,13 +939,31 @@ export function WiresClient({
               )}
             </section>
 
+            {chatOpen ? (
             <aside className="flex min-h-0 min-w-0 flex-col bg-wire-surface">
               <div className="flex h-12 shrink-0 items-center gap-2 border-b border-wire px-4">
-                <MessageSquare size={15} strokeWidth={1.5} className="text-wire-tertiary" />
-                <span className="text-[13px] font-bold">Chat</span>
-                <span className="ml-auto text-[12px] font-semibold text-wire-tertiary">
+                <span className="text-[14px] font-bold text-wire-primary">Chat</span>
+                <span className="font-mono text-[12px] text-wire-tertiary">
                   {workspace.diagram.nodes.length} nodes
                 </span>
+                <button
+                  type="button"
+                  onClick={() => {}}
+                  className="ml-auto grid h-7 w-7 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
+                  aria-label="Chat info"
+                  title={workspace.wire.id}
+                >
+                  <Info size={14} strokeWidth={1.5} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChatOpen(false)}
+                  className="grid h-7 w-7 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
+                  aria-label="Close chat"
+                  title="Close chat"
+                >
+                  <X size={14} strokeWidth={1.5} />
+                </button>
               </div>
 
               <div ref={chatScrollRef} className="min-h-0 flex-1 overflow-auto px-4 py-3">
@@ -963,6 +994,7 @@ export function WiresClient({
                 footerSlot={<ComposerFooter />}
               />
             </aside>
+            ) : null}
           </WireProvider>
         ) : (
           <section className="grid min-h-0 place-items-center bg-wire-page">
@@ -1029,39 +1061,68 @@ function RailAddNodeButton({ entry }: { entry: RailKind }) {
   );
 }
 
-function ToolRailTopbar() {
+function CanvasModeBarRight({
+  alignRight,
+  onReset
+}: {
+  alignRight: boolean;
+  onReset: () => void;
+}) {
   const history = useWireHistory();
+  const pillClass =
+    "inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-bold text-wire-secondary hover:border-wire-strong hover:text-wire-primary";
+  const iconButtonClass =
+    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-wire bg-wire-surface text-wire-secondary hover:border-wire-strong hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50";
   return (
-    <>
+    <div className={alignRight ? "ml-auto flex items-center gap-1.5" : "flex items-center gap-1.5"}>
       <button
         type="button"
         onClick={history.undo}
         disabled={!history.canUndo}
-        className="grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary transition-colors hover:border-wire-strong hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50"
+        className={iconButtonClass}
         aria-label="Undo"
         title="Undo"
       >
-        <Undo2 size={14} strokeWidth={1.5} />
+        <Undo2 size={13} strokeWidth={1.5} />
       </button>
       <button
         type="button"
         onClick={history.redo}
         disabled={!history.canRedo}
-        className="grid h-8 w-8 place-items-center rounded-md border border-wire bg-wire-surface text-wire-tertiary transition-colors hover:border-wire-strong hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50"
+        className={iconButtonClass}
         aria-label="Redo"
         title="Redo"
       >
-        <Redo2 size={14} strokeWidth={1.5} />
+        <Redo2 size={13} strokeWidth={1.5} />
       </button>
-      <span
-        aria-label="View"
-        title="View"
-        className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-bold text-wire-secondary"
-      >
-        <Eye size={14} strokeWidth={1.5} />
+      <button type="button" className={pillClass} aria-label="View" title="View">
+        <Eye size={13} strokeWidth={1.5} />
         View
-      </span>
+      </button>
+      <button type="button" onClick={onReset} className={pillClass}>
+        <RefreshCcw size={13} strokeWidth={1.5} />
+        Reset
+      </button>
+    </div>
+  );
+}
+
+function CanvasOverlays({ validationValid }: { validationValid: boolean }) {
+  return (
+    <>
+      {!validationValid ? (
+        <WireValidationPanel className="rounded-md border border-wire bg-wire-surface p-[10px] shadow-wire-sm" />
+      ) : null}
+      <SelectedNodeInspector />
     </>
+  );
+}
+
+function SelectedNodeInspector() {
+  const [selection] = useWireSelection();
+  if (selection.nodeIds.length === 0) return null;
+  return (
+    <WireInspector className="max-h-[220px] overflow-auto rounded-md border border-wire bg-wire-surface p-[10px] shadow-wire-sm" />
   );
 }
 
@@ -1605,6 +1666,61 @@ function CodeBlock({
   );
 }
 
+function BreadcrumbTitleEdit({
+  title,
+  onCommit
+}: {
+  title: string;
+  onCommit: (next: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(title);
+
+  useEffect(() => {
+    setDraft(title);
+  }, [title]);
+
+  const commit = () => {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== title) onCommit(trimmed);
+    else setDraft(title);
+  };
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            setDraft(title);
+            setEditing(false);
+          }
+        }}
+        className="min-w-0 flex-1 truncate border-0 bg-transparent text-[14px] font-bold text-wire-primary outline-none"
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="min-w-0 truncate border-0 bg-transparent p-0 text-left text-[14px] font-bold text-wire-primary hover:underline"
+      title="Rename wire"
+    >
+      {title}
+    </button>
+  );
+}
+
 function SegmentedButton({
   active,
   onClick,
@@ -1623,7 +1739,7 @@ function SegmentedButton({
       className={
         active
           ? "inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[12px] font-bold text-white"
-          : "inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-3 text-[12px] font-bold text-wire-secondary hover:border-wire-strong hover:text-wire-primary"
+          : "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-bold text-wire-secondary hover:text-wire-primary"
       }
     >
       {icon}
@@ -1753,6 +1869,23 @@ function formatShortDate(value: string): string {
   } catch {
     return value;
   }
+}
+
+function formatRelativeTime(value: string): string {
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return "just now";
+  const diffMs = Date.now() - then;
+  if (diffMs < 60_000) return "just now";
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w ago`;
+  return formatShortDate(value);
 }
 
 async function readJsonResponse<T>(res: Response): Promise<T> {

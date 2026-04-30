@@ -19,7 +19,7 @@ type CommonProps = {
 };
 
 const BASE =
-  "inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-semibold text-wire-secondary hover:border-wire-strong hover:text-wire-primary no-underline";
+  "inline-flex h-7 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-2.5 text-[12px] font-medium text-wire-secondary hover:border-wire-strong hover:text-wire-primary no-underline";
 
 function Inner({
   dotColor,

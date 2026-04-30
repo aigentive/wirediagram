@@ -18,9 +18,8 @@ export function EditorHeader({
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-wire bg-wire-surface px-4">
       <Brandmark href={brandHref} label={brandLabel} version={version} />
       {breadcrumb ? (
-        <span className="hidden min-w-0 items-center gap-2 text-[13px] font-semibold text-wire-tertiary sm:flex">
-          <span aria-hidden>/</span>
-          <span className="min-w-0 truncate">{breadcrumb}</span>
+        <span className="hidden min-w-0 items-center gap-2 text-[14px] font-semibold text-wire-tertiary sm:flex">
+          {breadcrumb}
         </span>
       ) : null}
       <div className="ml-auto flex min-w-0 items-center gap-2">{children}</div>

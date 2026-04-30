@@ -11,10 +11,12 @@ export function ChatBubble({
   cost?: ReactNode;
 }) {
   const assistant = role === "assistant";
-  const wrapperMargin = assistant ? "mr-5" : "ml-5";
+  const wrapperClass = assistant
+    ? "mr-auto max-w-[80%]"
+    : "ml-auto max-w-[80%]";
   const bubbleClass = assistant
-    ? "rounded-md border border-wire bg-wire-surface p-3 text-[13px] leading-5 text-wire-secondary"
-    : "rounded-md p-3 text-[13px] font-medium leading-5 text-white";
+    ? "rounded-lg border border-wire bg-wire-surface p-3 text-[13px] leading-5 text-wire-secondary"
+    : "rounded-lg p-3 text-[13px] font-medium leading-5 text-white";
   const userStyle = assistant
     ? undefined
     : {
@@ -22,7 +24,7 @@ export function ChatBubble({
         boxShadow: "var(--wire-chat-user-shadow)"
       };
   return (
-    <div className={wrapperMargin}>
+    <div className={wrapperClass}>
       <div className={bubbleClass} style={userStyle}>
         <ChatRoleLabel role={role} />
         {children}

@@ -45,19 +45,19 @@ export function ChatComposer({
           rows={3}
           disabled={disabled}
           placeholder={placeholder}
-          className="min-h-[76px] flex-1 resize-none rounded-md border border-wire bg-wire-surface px-3 py-2 text-[13px] leading-5 text-wire-primary outline-none focus:border-wire-focus"
+          className="min-h-[76px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[13px] leading-5 text-wire-primary outline-none focus:outline-none"
         />
         <button
           type="submit"
           disabled={submitDisabled}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-wire-sunken disabled:text-wire-muted"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-wire-sunken disabled:text-wire-muted"
           aria-label="Send"
           title="Send"
         >
           {busy ? (
-            <Loader2 size={16} strokeWidth={1.5} className="animate-spin" />
+            <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
           ) : (
-            <Send size={16} strokeWidth={1.5} />
+            <Send size={14} strokeWidth={1.5} />
           )}
         </button>
       </div>

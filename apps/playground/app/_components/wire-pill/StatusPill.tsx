@@ -31,7 +31,7 @@ export function StatusPill({
 }) {
   return (
     <span
-      className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-bold ${STATUS_BG[kind]}`}
+      className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium ${STATUS_BG[kind]}`}
       title={title}
     >
       {dot ? (

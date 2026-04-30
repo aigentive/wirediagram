@@ -1,7 +1,7 @@
 export function Avatar({
   name,
   email,
-  size = 28
+  size = 24
 }: {
   name?: string | null;
   email?: string | null;
@@ -17,6 +17,20 @@ export function Avatar({
       {initials}
     </span>
   );
+}
+
+export function shortName(
+  name: string | null | undefined,
+  email?: string | null | undefined
+): string {
+  if (name && name.trim().length > 0) {
+    const parts = name.trim().split(/\s+/u);
+    if (parts.length === 1) return parts[0]!;
+    const first = parts[0]!;
+    const lastInitial = (parts[parts.length - 1]![0] ?? "").toUpperCase();
+    return lastInitial ? `${first} ${lastInitial}.` : first;
+  }
+  return (email ?? "").trim();
 }
 
 function computeInitials(
