@@ -19,7 +19,7 @@ export function NavRailItem({
   onClick?: () => void;
 }) {
   const baseClass =
-    "relative grid min-h-[44px] rounded-[7px] border border-transparent px-[10px] py-2 text-left transition-colors";
+    "relative grid min-h-[44px] overflow-hidden rounded-[7px] border border-transparent pl-[12px] pr-[10px] py-2 text-left transition-colors";
   const activeClass =
     "border-[rgba(255,255,255,0.06)] bg-wire-nav-active text-white shadow-[0_1px_2px_rgba(0,0,0,0.25)]";
   const inactiveClass =
@@ -30,7 +30,7 @@ export function NavRailItem({
       {active ? (
         <span
           aria-hidden
-          className="absolute left-[-8px] top-2 bottom-2 w-[2px] rounded-sm bg-[var(--wire-nav-accent)]"
+          className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r-sm bg-[var(--wire-nav-accent)]"
         />
       ) : null}
       <span className="flex min-w-0 items-center gap-2">
