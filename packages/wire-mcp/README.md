@@ -112,6 +112,7 @@ sessions do not automatically gain newly added MCP tools.
 | Tool | Purpose |
 |---|---|
 | `v1_get_agent_guide` | Return the concise MCP agent operating guide for any client that wants live instructions |
+| `v1_get_docs_shape` | Return machine-readable docs chunks by topic or natural-language task |
 | `create_diagram` | Create a new diagram, optionally seeded from a template (`agent-workflow`, `approval-flow`, `rag-pipeline`) |
 | `load_diagram` | Load a stored diagram by id |
 | `save_diagram` | Overwrite a diagram with full JSON; validates before write |
@@ -191,6 +192,27 @@ ids.
 - `wire://templates/` — list templates
 - `wire://templates/{name}` — fetch a template
 - `wire://schemas/wire-diagram` — JSON schema info
+- `wire://docs/` — machine-readable docs manifest
+- `wire://docs/agent-guide.md` — prompt-ready agent guide
+- `wire://docs/{topic}.shape.json` — topic docs for `agent`, `mcp`, `react`, `cloud`, `schema`, `validation`, `examples`, or `recipes`
+- `wire://docs/examples/{name}.wire.json` — validated example diagrams
+- `wire://docs/recipes/{id}.json` — task recipes for agents
+
+## LLM Docs
+
+Use the docs shape before guessing from prose:
+
+```json
+{
+  "tool": "v1_get_docs_shape",
+  "arguments": {
+    "task": "Build a React workspace and connect local MCP to Wire Cloud"
+  }
+}
+```
+
+Hosted docs expose the same content under `/llm/*`, with discovery at
+`/.well-known/wire-docs.json`.
 
 ## Prompts
 

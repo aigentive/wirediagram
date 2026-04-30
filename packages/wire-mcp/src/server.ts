@@ -41,6 +41,15 @@ import { renderSvg, renderPng, summarizeDiagram } from "./render.js";
 import { getTemplate, listTemplates, TEMPLATES } from "./templates.js";
 import { PROMPTS } from "./prompts.js";
 import { WIRE_AGENT_GUIDE } from "./agent-guide.js";
+import {
+  WIRE_DOCS_MANIFEST,
+  getLlmDocsExample,
+  getLlmDocsRecipe,
+  getLlmDocsShape,
+  getLlmDocsTopic,
+  listLlmDocsExamples,
+  listLlmDocsRecipes
+} from "./docs-shape.js";
 
 // Re-exports for embedders (Next.js routes, custom servers)
 export { CloudStorage, FileStorage, MemoryStorage, createDefaultDiagram };
@@ -49,6 +58,22 @@ export { renderSvg, renderPng, summarizeDiagram };
 export { TEMPLATES, getTemplate, listTemplates };
 export { PROMPTS };
 export { WIRE_AGENT_GUIDE };
+export {
+  LLM_AGENT_GUIDE_MD,
+  LLM_DOCS_EXAMPLES,
+  LLM_DOCS_RECIPES,
+  LLM_DOCS_ROUTES,
+  LLM_DOCS_SHAPES,
+  WIRE_DOCS_MANIFEST,
+  WIRE_DOCS_UPDATED_AT,
+  WIRE_DOCS_VERSION,
+  getLlmDocsExample,
+  getLlmDocsRecipe,
+  getLlmDocsShape,
+  getLlmDocsTopic,
+  listLlmDocsExamples,
+  listLlmDocsRecipes
+} from "./docs-shape.js";
 
 type ToolResult = {
   content: Array<{ type: "text"; text: string } | { type: "image"; data: string; mimeType: string }>;
@@ -266,6 +291,11 @@ const ApplyActionsInput = z.object({
   actions: z.array(z.object({ type: z.string() }).passthrough()).min(1)
 });
 
+const DocsShapeInput = z.object({
+  topic: z.string().optional().describe("Optional docs topic: agent, mcp, react, cloud, schema, validation, examples, recipes."),
+  task: z.string().optional().describe("Optional natural-language task. The server returns the most relevant docs chunks.")
+});
+
 // ── Server bootstrap ────────────────────────────────────────────────────
 
 export interface ServerHandle {
@@ -291,7 +321,7 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
 
   const server = new McpServer({
     name: "@aigentive/wire-mcp",
-    version: "1.0.3"
+    version: "1.0.4"
   });
 
   // ── helpers ────────────────────────────────────────────────────────────
@@ -499,6 +529,19 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
       inputSchema: {}
     },
     async () => ok(WIRE_AGENT_GUIDE)
+  );
+
+  server.registerTool(
+    "v1_get_docs_shape",
+    {
+      title: "Get Wire docs shape",
+      description: "Return compact machine-readable Wire docs chunks by topic or task. Use this before uncertain diagram, React, MCP, cloud, or validation work.",
+      inputSchema: DocsShapeInput.shape
+    },
+    async (params) => {
+      const args = DocsShapeInput.parse(params);
+      return ok(getLlmDocsShape(args));
+    }
   );
 
   server.registerTool(
@@ -1088,6 +1131,90 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
   );
 
   // ── resources ──────────────────────────────────────────────────────────
+
+  // ── resources: LLM-first docs ──────────────────────────────────────────
+  server.registerResource(
+    "docs-index",
+    "wire://docs/",
+    { title: "Wire LLM docs manifest", description: "Machine-readable docs manifest and index." },
+    async (uri) => ({
+      contents: [{
+        uri: uri.href,
+        mimeType: "application/json",
+        text: JSON.stringify({
+          manifest: WIRE_DOCS_MANIFEST,
+          examples: listLlmDocsExamples(),
+          recipes: listLlmDocsRecipes()
+        }, null, 2)
+      }]
+    })
+  );
+
+  server.registerResource(
+    "docs-agent-guide",
+    "wire://docs/agent-guide.md",
+    { title: "Wire agent guide", description: "Prompt-ready guide for LLM agents using Wire." },
+    async (uri) => ({
+      contents: [{ uri: uri.href, mimeType: "text/markdown", text: WIRE_AGENT_GUIDE }]
+    })
+  );
+
+  server.registerResource(
+    "docs-shape",
+    new ResourceTemplate("wire://docs/{topic}.shape.json", { list: undefined }),
+    { title: "Wire docs shape topic", description: "Machine-readable docs topic chunk." },
+    async (uri, vars) => {
+      const topic = String(vars.topic);
+      const shape = getLlmDocsTopic(topic);
+      if (!shape) {
+        throw new Error(`Docs topic "${topic}" not found. Known: ${Object.keys(getLlmDocsShape().manifest.entrypoints).join(", ")}, examples, recipes.`);
+      }
+      return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(shape, null, 2) }] };
+    }
+  );
+
+  server.registerResource(
+    "docs-example",
+    new ResourceTemplate("wire://docs/examples/{name}.wire.json", { list: undefined }),
+    { title: "Wire docs example", description: "Validated example WireDiagram JSON." },
+    async (uri, vars) => {
+      const name = String(vars.name);
+      const example = getLlmDocsExample(name);
+      if (!example) {
+        throw new Error(`Docs example "${name}" not found. Known: ${listLlmDocsExamples().join(", ")}.`);
+      }
+      return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(example, null, 2) }] };
+    }
+  );
+
+  server.registerResource(
+    "docs-recipe",
+    new ResourceTemplate("wire://docs/recipes/{id}.json", { list: undefined }),
+    { title: "Wire docs recipe", description: "Task-oriented Wire recipe for LLM agents." },
+    async (uri, vars) => {
+      const id = String(vars.id);
+      const recipe = getLlmDocsRecipe(id);
+      if (!recipe) {
+        throw new Error(`Docs recipe "${id}" not found. Known: ${listLlmDocsRecipes().join(", ")}.`);
+      }
+      return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(recipe, null, 2) }] };
+    }
+  );
+
+  server.registerResource(
+    "docs-schema",
+    "wire://docs/schema/wire-diagram.json",
+    { title: "Wire docs schema", description: "JSON Schema for WireDiagram under the docs namespace." },
+    async (uri) => {
+      const schema = {
+        $schema: "https://json-schema.org/draft-07/schema",
+        $id: "https://aigentive.dev/schemas/wire-diagram.json",
+        ...wireDiagramJsonSchema()
+      };
+      void WireDiagramSchema;
+      return { contents: [{ uri: uri.href, mimeType: "application/schema+json", text: JSON.stringify(schema, null, 2) }] };
+    }
+  );
 
   // ── resources: wire://diagrams/{id}.{json,svg,png,mermaid} ────────────
   server.registerResource(

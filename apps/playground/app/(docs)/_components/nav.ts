@@ -74,6 +74,7 @@ export const NAV: NavSection[] = [
     icon: Wrench,
     items: [
       { href: "/mcp", label: "MCP server", badge: "new" },
+      { href: "/llm", label: "LLM docs", badge: "new" },
       { href: "/cli", label: "CLI", badge: "new" }
     ]
   },

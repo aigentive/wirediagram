@@ -4,6 +4,309 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* =============================================================
+   Wire Design System — tokens
+   Mirrors Wire Design System/colors_and_type.css.
+   Variable names are the public contract for Wire surfaces.
+   ============================================================= */
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/Inter-Variable.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("/fonts/JetBrainsMono-Variable.woff2") format("woff2-variations");
+}
+
+:root {
+  --wire-font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Helvetica, Arial, sans-serif;
+  --wire-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, "Liberation Mono", monospace;
+
+  --wire-text-eyebrow: 11px;
+  --wire-text-tiny: 11px;
+  --wire-text-xs: 12px;
+  --wire-text-sm: 13px;
+  --wire-text-base: 14px;
+  --wire-text-md: 15px;
+  --wire-text-lg: 16px;
+  --wire-text-xl: 18px;
+  --wire-text-2xl: 22px;
+  --wire-text-3xl: 28px;
+  --wire-text-4xl: 32px;
+  --wire-text-stat: 36px;
+
+  --wire-leading-tight: 1.2;
+  --wire-leading-snug: 1.35;
+  --wire-leading-body: 1.55;
+  --wire-leading-loose: 1.7;
+
+  --wire-tracking-eyebrow: 0.08em;
+  --wire-tracking-caps: 0.06em;
+  --wire-tracking-body: 0;
+
+  --wire-weight-regular: 400;
+  --wire-weight-medium: 500;
+  --wire-weight-semibold: 600;
+  --wire-weight-bold: 700;
+
+  --wire-slate-50: #f8fafc;
+  --wire-slate-100: #f1f5f9;
+  --wire-slate-200: #e2e8f0;
+  --wire-slate-300: #cbd5e1;
+  --wire-slate-400: #94a3b8;
+  --wire-slate-500: #64748b;
+  --wire-slate-600: #475569;
+  --wire-slate-700: #334155;
+  --wire-slate-800: #1e293b;
+  --wire-slate-900: #0f172a;
+  --wire-slate-950: #0b1220;
+
+  --wire-blue-50: #eff6ff;
+  --wire-blue-100: #dbeafe;
+  --wire-blue-500: #3b82f6;
+  --wire-blue-600: #2563eb;
+  --wire-blue-700: #1d4ed8;
+
+  --wire-kind-trigger: #047857;
+  --wire-kind-trigger-bg: #ecfdf5;
+  --wire-kind-ai: #2563eb;
+  --wire-kind-ai-bg: #eff6ff;
+  --wire-kind-retrieval: #4338ca;
+  --wire-kind-retrieval-bg: #eef2ff;
+  --wire-kind-tool: #0f766e;
+  --wire-kind-tool-bg: #f0fdfa;
+  --wire-kind-action: #c2410c;
+  --wire-kind-action-bg: #fff7ed;
+  --wire-kind-end: #475569;
+  --wire-kind-end-bg: #f1f5f9;
+  --wire-kind-human: #334155;
+  --wire-kind-human-bg: #f1f5f9;
+  --wire-kind-note: #b45309;
+  --wire-kind-note-bg: #fffbeb;
+
+  --wire-status-valid: #047857;
+  --wire-status-valid-bg: #ecfdf5;
+  --wire-status-reserved: #2563eb;
+  --wire-status-reserved-bg: #eff6ff;
+  --wire-status-warn: #c2410c;
+  --wire-status-warn-bg: #fff7ed;
+  --wire-status-invalid: #b91c1c;
+  --wire-status-invalid-bg: #fef2f2;
+
+  --wire-bg-page: var(--wire-slate-50);
+  --wire-bg-surface: #ffffff;
+  --wire-bg-sunken: var(--wire-slate-100);
+  --wire-bg-code: var(--wire-slate-950);
+  --wire-bg-canvas: #ffffff;
+  --wire-grid-dot: rgba(100, 116, 139, 0.2);
+
+  --wire-fg-primary: var(--wire-slate-900);
+  --wire-fg-secondary: var(--wire-slate-700);
+  --wire-fg-tertiary: var(--wire-slate-500);
+  --wire-fg-muted: var(--wire-slate-400);
+  --wire-fg-on-code: #e2e8f0;
+  --wire-fg-link: var(--wire-blue-600);
+
+  --wire-border: var(--wire-slate-200);
+  --wire-border-strong: var(--wire-slate-300);
+  --wire-border-focus: var(--wire-blue-500);
+
+  --wire-ring-focus: 0 0 0 2px var(--wire-blue-500) inset;
+  --wire-ring-selected: 0 0 0 2px var(--wire-blue-500);
+
+  --wire-rail-bg: #f4f6fa;
+  --wire-rail-divider: rgba(15, 23, 42, 0.06);
+  --wire-rail-section-fg: var(--wire-slate-500);
+
+  --wire-nav-bg: var(--wire-slate-800);
+  --wire-nav-bg-hover: rgba(255, 255, 255, 0.05);
+  --wire-nav-bg-active: rgba(255, 255, 255, 0.08);
+  --wire-nav-fg: var(--wire-slate-200);
+  --wire-nav-fg-muted: var(--wire-slate-400);
+  --wire-nav-fg-dim: var(--wire-slate-500);
+  --wire-nav-divider: rgba(255, 255, 255, 0.06);
+  --wire-nav-accent: #60a5fa;
+
+  --wire-canvas-bg: #f8fafc;
+  --wire-canvas-grid-major: rgba(15, 23, 42, 0.1);
+  --wire-canvas-grid-minor: rgba(15, 23, 42, 0.05);
+
+  --wire-chat-user-from: var(--wire-blue-600);
+  --wire-chat-user-to: #2256d5;
+  --wire-chat-user-shadow: 0 1px 2px rgba(37, 99, 235, 0.16);
+
+  --wire-space-1: 4px;
+  --wire-space-2: 8px;
+  --wire-space-3: 12px;
+  --wire-space-4: 16px;
+  --wire-space-5: 20px;
+  --wire-space-6: 24px;
+  --wire-space-8: 32px;
+  --wire-space-10: 40px;
+  --wire-space-14: 56px;
+  --wire-space-20: 80px;
+
+  --wire-radius-xs: 3px;
+  --wire-radius-sm: 4px;
+  --wire-radius-md: 6px;
+  --wire-radius-lg: 8px;
+  --wire-radius-pill: 999px;
+
+  --wire-shadow-none: none;
+  --wire-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --wire-shadow-md: 0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 12px rgba(15, 23, 42, 0.04);
+
+  --wire-duration-instant: 80ms;
+  --wire-duration-fast: 120ms;
+  --wire-duration-base: 200ms;
+  --wire-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.dark {
+  --wire-bg-page: var(--wire-slate-900);
+  --wire-bg-surface: var(--wire-slate-800);
+  --wire-bg-sunken: #0b1426;
+  --wire-bg-code: #06080f;
+  --wire-bg-canvas: var(--wire-slate-900);
+  --wire-grid-dot: rgba(148, 163, 184, 0.18);
+
+  --wire-fg-primary: #f8fafc;
+  --wire-fg-secondary: #cbd5e1;
+  --wire-fg-tertiary: #94a3b8;
+  --wire-fg-muted: #64748b;
+  --wire-fg-on-code: #e2e8f0;
+  --wire-fg-link: #60a5fa;
+
+  --wire-border: var(--wire-slate-700);
+  --wire-border-strong: var(--wire-slate-600);
+
+  --wire-kind-trigger-bg: rgba(4, 120, 87, 0.18);
+  --wire-kind-ai-bg: rgba(37, 99, 235, 0.18);
+  --wire-kind-retrieval-bg: rgba(67, 56, 202, 0.2);
+  --wire-kind-tool-bg: rgba(15, 118, 110, 0.18);
+  --wire-kind-action-bg: rgba(194, 65, 12, 0.18);
+  --wire-kind-end-bg: rgba(71, 85, 105, 0.3);
+  --wire-kind-human-bg: rgba(71, 85, 105, 0.3);
+  --wire-kind-note-bg: rgba(180, 83, 9, 0.2);
+
+  --wire-status-valid-bg: rgba(4, 120, 87, 0.18);
+  --wire-status-reserved-bg: rgba(37, 99, 235, 0.18);
+  --wire-status-warn-bg: rgba(194, 65, 12, 0.18);
+  --wire-status-invalid-bg: rgba(185, 28, 28, 0.18);
+
+  --wire-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --wire-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+
+  --wire-rail-bg: #0b1426;
+  --wire-rail-divider: rgba(255, 255, 255, 0.06);
+  --wire-rail-section-fg: var(--wire-slate-400);
+
+  --wire-canvas-bg: var(--wire-slate-900);
+  --wire-canvas-grid-major: rgba(148, 163, 184, 0.18);
+  --wire-canvas-grid-minor: rgba(148, 163, 184, 0.08);
+}
+
+/* =============================================================
+   Tailwind v4 theme bridge
+   Routes existing slate-*/blue-* classes through Wire variables
+   so dark-mode flips through the cascade and downstream code
+   doesn't need to change overnight.
+   ============================================================= */
+@theme inline {
+  --font-sans: var(--wire-font-sans);
+  --font-mono: var(--wire-font-mono);
+
+  --color-slate-50: var(--wire-slate-50);
+  --color-slate-100: var(--wire-slate-100);
+  --color-slate-200: var(--wire-slate-200);
+  --color-slate-300: var(--wire-slate-300);
+  --color-slate-400: var(--wire-slate-400);
+  --color-slate-500: var(--wire-slate-500);
+  --color-slate-600: var(--wire-slate-600);
+  --color-slate-700: var(--wire-slate-700);
+  --color-slate-800: var(--wire-slate-800);
+  --color-slate-900: var(--wire-slate-900);
+  --color-slate-950: var(--wire-slate-950);
+
+  --color-blue-50: var(--wire-blue-50);
+  --color-blue-100: var(--wire-blue-100);
+  --color-blue-500: var(--wire-blue-500);
+  --color-blue-600: var(--wire-blue-600);
+  --color-blue-700: var(--wire-blue-700);
+
+  /* Semantic surfaces — bg-wire-page, bg-wire-surface, etc. */
+  --color-wire-page: var(--wire-bg-page);
+  --color-wire-surface: var(--wire-bg-surface);
+  --color-wire-sunken: var(--wire-bg-sunken);
+  --color-wire-code: var(--wire-bg-code);
+  --color-wire-canvas: var(--wire-bg-canvas);
+  --color-wire-rail: var(--wire-rail-bg);
+  --color-wire-nav: var(--wire-nav-bg);
+  --color-wire-nav-hover: var(--wire-nav-bg-hover);
+  --color-wire-nav-active: var(--wire-nav-bg-active);
+
+  --color-wire-primary: var(--wire-fg-primary);
+  --color-wire-secondary: var(--wire-fg-secondary);
+  --color-wire-tertiary: var(--wire-fg-tertiary);
+  --color-wire-muted: var(--wire-fg-muted);
+  --color-wire-link: var(--wire-fg-link);
+  --color-wire-nav-fg: var(--wire-nav-fg);
+  --color-wire-nav-fg-muted: var(--wire-nav-fg-muted);
+  --color-wire-nav-fg-dim: var(--wire-nav-fg-dim);
+  --color-wire-nav-accent: var(--wire-nav-accent);
+
+  --color-wire-border: var(--wire-border);
+  --color-wire-border-strong: var(--wire-border-strong);
+  --color-wire-border-focus: var(--wire-border-focus);
+
+  /* Status palette as tailwind colors so we can write
+     bg-wire-status-valid / text-wire-status-warn etc. */
+  --color-wire-status-valid: var(--wire-status-valid);
+  --color-wire-status-valid-bg: var(--wire-status-valid-bg);
+  --color-wire-status-reserved: var(--wire-status-reserved);
+  --color-wire-status-reserved-bg: var(--wire-status-reserved-bg);
+  --color-wire-status-warn: var(--wire-status-warn);
+  --color-wire-status-warn-bg: var(--wire-status-warn-bg);
+  --color-wire-status-invalid: var(--wire-status-invalid);
+  --color-wire-status-invalid-bg: var(--wire-status-invalid-bg);
+
+  --color-wire-kind-trigger: var(--wire-kind-trigger);
+  --color-wire-kind-trigger-bg: var(--wire-kind-trigger-bg);
+  --color-wire-kind-ai: var(--wire-kind-ai);
+  --color-wire-kind-ai-bg: var(--wire-kind-ai-bg);
+  --color-wire-kind-retrieval: var(--wire-kind-retrieval);
+  --color-wire-kind-retrieval-bg: var(--wire-kind-retrieval-bg);
+  --color-wire-kind-tool: var(--wire-kind-tool);
+  --color-wire-kind-tool-bg: var(--wire-kind-tool-bg);
+  --color-wire-kind-action: var(--wire-kind-action);
+  --color-wire-kind-action-bg: var(--wire-kind-action-bg);
+  --color-wire-kind-end: var(--wire-kind-end);
+  --color-wire-kind-end-bg: var(--wire-kind-end-bg);
+  --color-wire-kind-human: var(--wire-kind-human);
+  --color-wire-kind-human-bg: var(--wire-kind-human-bg);
+  --color-wire-kind-note: var(--wire-kind-note);
+  --color-wire-kind-note-bg: var(--wire-kind-note-bg);
+
+  --radius-xs: var(--wire-radius-xs);
+  --radius-sm: var(--wire-radius-sm);
+  --radius-md: var(--wire-radius-md);
+  --radius-lg: var(--wire-radius-lg);
+
+  --shadow-wire-sm: var(--wire-shadow-sm);
+  --shadow-wire-md: var(--wire-shadow-md);
+}
+
 @layer base {
   html,
   body {
@@ -11,7 +314,36 @@
   }
 
   body {
-    @apply m-0 bg-slate-50 text-slate-950 antialiased dark:bg-slate-950 dark:text-slate-50;
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    @apply m-0 bg-wire-page text-wire-primary antialiased;
+    font-family: var(--wire-font-sans);
+    font-feature-settings: "cv11" 1, "ss01" 1;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--wire-font-mono);
+  }
+}
+
+/* =============================================================
+   Wire-prefixed utility classes — opt-in semantic primitives.
+   Used by Eyebrow, KindChip, StatusPill, CodeBlock, etc.
+   ============================================================= */
+@layer utilities {
+  .wire-eyebrow {
+    font-family: var(--wire-font-sans);
+    font-size: var(--wire-text-eyebrow);
+    font-weight: var(--wire-weight-semibold);
+    letter-spacing: var(--wire-tracking-eyebrow);
+    text-transform: uppercase;
+    color: var(--wire-blue-600);
+  }
+  .wire-eyebrow--muted {
+    color: var(--wire-fg-tertiary);
+  }
+  .wire-tabular {
+    font-feature-settings: "tnum" 1;
   }
 }
