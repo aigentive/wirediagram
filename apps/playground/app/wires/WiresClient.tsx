@@ -781,8 +781,10 @@ export function WiresClient({
             </a>
           }
         >
-          <div className="mb-2 flex items-baseline justify-between text-wire-nav-fg-muted">
-            <span className="wire-eyebrow wire-eyebrow--muted">Active wires</span>
+          <div className="mb-2 flex items-baseline justify-between">
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.1em] text-wire-nav-fg-muted">
+              Active wires
+            </span>
             <span className="wire-tabular font-mono text-[10.5px] text-wire-nav-fg-dim">
               {wires.length}
             </span>

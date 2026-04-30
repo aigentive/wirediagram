@@ -20,9 +20,9 @@ export function NavRailItem({
 }) {
   const baseClass =
     "relative grid min-h-[44px] rounded-md px-3 py-2 text-left transition-colors";
-  const activeClass = "bg-wire-nav-active text-wire-nav-fg";
+  const activeClass = "bg-wire-nav-active text-white";
   const inactiveClass =
-    "text-wire-nav-fg hover:bg-wire-nav-hover hover:text-wire-primary";
+    "text-wire-nav-fg hover:bg-wire-nav-hover hover:text-white";
 
   const content = (
     <>
@@ -36,8 +36,8 @@ export function NavRailItem({
         <span
           className={
             active
-              ? "truncate text-[13px] font-semibold text-wire-primary"
-              : "truncate text-[13px] font-medium text-wire-nav-fg"
+              ? "truncate text-[12.5px] font-semibold text-white"
+              : "truncate text-[12.5px] font-medium text-wire-nav-fg"
           }
         >
           {title}
