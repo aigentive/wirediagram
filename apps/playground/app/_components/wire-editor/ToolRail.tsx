@@ -14,7 +14,7 @@ export function ToolRail({
           {topbar}
         </div>
       ) : null}
-      <div className="grid min-h-0 flex-1 content-start gap-2 overflow-auto p-3">
+      <div className="grid min-h-0 flex-1 content-start gap-1.5 overflow-auto p-3">
         {children}
       </div>
     </aside>

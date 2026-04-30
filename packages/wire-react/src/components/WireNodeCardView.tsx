@@ -66,12 +66,12 @@ export function WireNodeCardView(ctx: WireNodeCardViewProps): ReactElement {
   const subtitle = subtitleForNode(ctx.node);
   const optionLine = optionSummary(ctx.node, ctx.optionSpecs);
   const title = cardContent?.title ?? ctx.node.title;
-  const description = cardContent?.description ?? subtitle;
+  const description = cardContent?.description;
   const customContent = ctx.children ?? ctx.content;
   const hasStructuredContent = hasStructuredCardContent(cardContent);
   const shouldRenderStructuredContent = customContent === undefined && hasStructuredContent;
   const showDefaultSummary = ctx.showDefaultSummary ?? (customContent === undefined && !hasStructuredContent);
-  const refLabel = ctx.node.id;
+  const refLabel = subtitle;
 
   return (
     <NodeCard

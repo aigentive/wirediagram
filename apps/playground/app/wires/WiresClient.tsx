@@ -933,7 +933,7 @@ export function WiresClient({
                 <button
                   type="button"
                   onClick={() => {}}
-                  className="ml-auto grid h-7 w-7 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
+                  className="ml-auto grid h-6 w-6 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
                   aria-label="Chat info"
                   title={workspace.wire.id}
                 >
@@ -942,7 +942,7 @@ export function WiresClient({
                 <button
                   type="button"
                   onClick={() => setChatOpen(false)}
-                  className="grid h-7 w-7 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
+                  className="grid h-6 w-6 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
                   aria-label="Close chat"
                   title="Close chat"
                 >

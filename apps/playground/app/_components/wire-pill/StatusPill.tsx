@@ -16,6 +16,13 @@ const STATUS_DOT: Record<StatusKind, string> = {
   invalid: "bg-wire-status-invalid"
 };
 
+const STATUS_FG: Record<StatusKind, string> = {
+  valid: "text-wire-status-valid",
+  reserved: "text-wire-status-reserved",
+  warn: "text-wire-status-warn",
+  invalid: "text-wire-status-invalid"
+};
+
 export function StatusPill({
   kind,
   dot = false,
@@ -29,9 +36,12 @@ export function StatusPill({
   children: ReactNode;
   title?: string;
 }) {
+  const surface = dot
+    ? `bg-transparent ${STATUS_FG[kind]}`
+    : STATUS_BG[kind];
   return (
     <span
-      className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium ${STATUS_BG[kind]}`}
+      className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium ${surface}`}
       title={title}
     >
       {dot ? (

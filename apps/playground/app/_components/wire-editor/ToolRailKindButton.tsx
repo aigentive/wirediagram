@@ -56,7 +56,7 @@ export function ToolRailKindButton({
       <span className="flex-1 text-left text-[14px] font-semibold text-wire-primary">
         {label}
       </span>
-      <kbd className="grid h-5 w-5 place-items-center rounded-sm bg-wire-sunken font-mono text-[11px] font-semibold text-wire-tertiary">
+      <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-wire-sunken px-1.5 font-mono text-[11px] font-semibold text-wire-tertiary">
         {shortcut}
       </kbd>
     </button>

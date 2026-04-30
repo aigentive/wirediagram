@@ -45,7 +45,7 @@ export function NodeCard({
         <KindChip kind={kind} />
         {refLabel ? <Ref>{refLabel}</Ref> : null}
       </div>
-      <div className="mt-0.5 text-[12.5px] font-semibold leading-snug text-wire-primary">
+      <div className="mt-0.5 text-[13px] font-bold leading-snug text-wire-primary">
         {title}
       </div>
       {meta ? (

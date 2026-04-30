@@ -30,7 +30,7 @@ export function ChatComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className="shrink-0 border-t border-wire bg-wire-surface p-3"
+      className="shrink-0 bg-wire-surface px-3 pb-3 pt-2"
     >
       <div className="flex items-end gap-2">
         <textarea

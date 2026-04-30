@@ -20,7 +20,7 @@ export function Brandmark({
       <BrandmarkTile />
       <span className="text-[16px] font-bold tracking-tight">{label}</span>
       {version ? (
-        <span className="hidden font-mono text-[11px] text-wire-tertiary sm:inline">
+        <span className="hidden font-mono text-[11px] text-wire-muted sm:inline">
           {version}
         </span>
       ) : null}
