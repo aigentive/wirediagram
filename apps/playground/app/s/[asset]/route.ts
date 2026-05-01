@@ -144,6 +144,7 @@ function publicShareHtml({
   const safeTitle = escapeHtml(title);
   const markdown = `![${title}](${urls.svg})`;
   const html = `<img src="${urls.svg}" alt="${escapeAttribute(title)}" />`;
+  const editHref = urls.edit ?? `/edit/inline?d=${encodeURIComponent(token)}`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -171,6 +172,7 @@ function publicShareHtml({
     <span>/</span>
     <span class="title">${safeTitle}</span>
     <div class="actions">
+      <a class="button" href="${editHref}">Edit</a>
       <a class="button" href="/wires/import?from=${encodeURIComponent(token)}">Open in my workspace</a>
       <a class="button" href="${urls.svg}">SVG</a>
       <a class="button" href="${urls.png}">PNG</a>

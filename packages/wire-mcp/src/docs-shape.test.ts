@@ -46,6 +46,8 @@ describe("LLM docs shape", () => {
   it("keeps the guide prompt-ready", () => {
     expect(LLM_AGENT_GUIDE_MD).toContain("wire__create_diagram");
     expect(LLM_AGENT_GUIDE_MD).toContain("v1_get_docs_shape");
+    expect(LLM_AGENT_GUIDE_MD).toContain("data.card");
+    expect(LLM_AGENT_GUIDE_MD).toContain("Wiring Rules");
     expect(LLM_AGENT_GUIDE_MD).toContain("@aigentive/wire-react");
     expect(LLM_AGENT_GUIDE_MD).toContain("Hosted Persistence Contract");
     expect(listLlmDocsRecipes()).toContain("connect-local-mcp");

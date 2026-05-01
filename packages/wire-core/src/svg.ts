@@ -39,16 +39,16 @@ const KIND_GLYPH: Record<WireNode["kind"], string> = {
 };
 
 const KIND_SHAPE: Record<WireNode["kind"], "rect" | "rounded" | "diamond" | "ellipse" | "note" | "group"> = {
-  trigger: "ellipse",
+  trigger: "rounded",
   action: "rounded",
   ai: "rounded",
   tool: "rounded",
-  condition: "diamond",
+  condition: "rounded",
   human: "rounded",
   memory: "rounded",
   retrieval: "rounded",
   guardrail: "rounded",
-  end: "ellipse",
+  end: "rounded",
   note: "note",
   group: "group"
 };
@@ -155,7 +155,7 @@ function nodeDims(node: WireNode, titleWrap: number): NodeDims {
   const longestTitle = Math.max(0, ...titleLines.map((l) => l.length));
   const longestDesc = Math.max(0, ...descLines.map((l) => l.length));
   const widthFromText = Math.max(longestTitle * TITLE_CHAR_W, longestDesc * DESC_CHAR_W);
-  const padX = node.kind === "note" ? 28 : node.kind === "condition" ? 60 : 36;
+  const padX = node.kind === "note" ? 28 : 36;
   const width = Math.max(node.size?.width ?? 220, Math.ceil(widthFromText + padX));
 
   const verticalContent = titleLines.length * TITLE_LINE_PX + (descLines.length ? descLines.length * DESC_LINE_PX + 4 : 0);

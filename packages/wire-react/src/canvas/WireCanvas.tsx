@@ -121,6 +121,18 @@ interface ConnectionState {
   to: Point;
 }
 
+interface CanvasSize {
+  width: number;
+  height: number;
+}
+
+interface MiniMapRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export function WireCanvas(props: WireCanvasProps): ReactElement {
   return <WireCanvasInner {...props} />;
 }
@@ -165,9 +177,12 @@ function WireCanvasInner({
   const pendingViewportRef = useRef<WireViewport | null>(null);
   const dragRafRef = useRef<number | null>(null);
   const pendingDragPositionsRef = useRef<Map<string, Point> | null>(null);
+  const modelBoundsRef = useRef<WireCanvasBounds | null>(null);
+  const initialFitDoneRef = useRef(!fitView);
   const [dragPositions, setDragPositions] = useState<Map<string, Point> | undefined>();
   const [connection, setConnection] = useState<ConnectionState | null>(null);
   const [fitReady, setFitReady] = useState(!fitView);
+  const [canvasSize, setCanvasSize] = useState<CanvasSize | undefined>();
   const [measuredSizes, setMeasuredSizes] = useState<Map<string, { width: number; height: number }> | undefined>();
 
   const effectiveMode = mode ?? ctx.mode;
@@ -185,6 +200,7 @@ function WireCanvasInner({
     () => buildWireCanvasModel(ctx.diagram, { positionOverrides: dragPositions, sizeOverrides: measuredSizes, edgeStyle, edgeRouting }),
     [ctx.diagram, dragPositions, edgeRouting, edgeStyle, measuredSizes]
   );
+  modelBoundsRef.current = model.bounds;
 
   const handleSlotsByFrame = useMemo(() => {
     const map = new Map<string, Map<Side, { source: number; target: number }>>();
@@ -221,7 +237,14 @@ function WireCanvasInner({
     const element = containerRef.current;
     if (!element) return undefined;
 
+    const measureCanvas = () => {
+      const rect = element.getBoundingClientRect();
+      const next = { width: Math.round(rect.width), height: Math.round(rect.height) };
+      setCanvasSize((current) => (sameCanvasSize(current, next) ? current : next));
+    };
+
     const measure = () => {
+      measureCanvas();
       const next = new Map<string, { width: number; height: number }>();
       element.querySelectorAll<HTMLElement>("[data-wire-node]").forEach((nodeElement) => {
         const id = nodeElement.dataset.wireNodeId;
@@ -236,6 +259,7 @@ function WireCanvasInner({
     measure();
     if (typeof ResizeObserver === "undefined") return undefined;
     const observer = new ResizeObserver(measure);
+    observer.observe(element);
     element.querySelectorAll<HTMLElement>("[data-wire-node]").forEach((nodeElement) => observer.observe(nodeElement));
     return () => observer.disconnect();
   }, [ctx.diagram, model.frames]);
@@ -298,23 +322,48 @@ function WireCanvasInner({
     setWireSelection({ nodeIds: [], edgeIds: [] });
   }, [setWireSelection]);
 
-  const fitToView = useCallback(() => {
+  const fitToView = useCallback((): boolean => {
     const element = containerRef.current;
-    if (!element) return;
+    if (!element) return false;
     const rect = element.getBoundingClientRect();
-    setWireViewport(fitViewportForBounds(model.bounds, rect.width, rect.height, fitViewPadding, minZoom, maxZoom));
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    const bounds = modelBoundsRef.current;
+    if (!bounds) return false;
+    setWireViewport(fitViewportForBounds(bounds, rect.width, rect.height, fitViewPadding, minZoom, maxZoom));
     setFitReady(true);
-  }, [fitViewPadding, maxZoom, minZoom, model.bounds, setWireViewport]);
+    return true;
+  }, [fitViewPadding, maxZoom, minZoom, setWireViewport]);
 
   useIsomorphicLayoutEffect(() => {
     if (!fitView) {
+      initialFitDoneRef.current = false;
       setFitReady(true);
       return undefined;
     }
-    fitToView();
+    if (initialFitDoneRef.current) {
+      setFitReady(true);
+      return undefined;
+    }
+
+    const attemptInitialFit = () => {
+      if (!initialFitDoneRef.current && fitToView()) {
+        initialFitDoneRef.current = true;
+        return true;
+      }
+      return false;
+    };
+
+    if (attemptInitialFit()) return undefined;
+
     const element = containerRef.current;
-    if (!element || typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver(() => fitToView());
+    if (!element || typeof ResizeObserver === "undefined") {
+      setFitReady(true);
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(() => {
+      if (attemptInitialFit()) observer.disconnect();
+    });
     observer.observe(element);
     return () => observer.disconnect();
   }, [fitToView, fitView]);
@@ -736,7 +785,7 @@ function WireCanvasInner({
         })}
       </div>
 
-      {showMiniMap ? <WireMiniMap model={model} viewport={ctx.viewport} /> : null}
+      {showMiniMap ? <WireMiniMap model={model} viewport={ctx.viewport} canvasSize={canvasSize} /> : null}
       {showControls ? (
         <WireControls
           onFit={fitToView}
@@ -991,10 +1040,12 @@ function ControlButton({
 
 function WireMiniMap({
   model,
-  viewport
+  viewport,
+  canvasSize
 }: {
   model: ReturnType<typeof buildWireCanvasModel>;
   viewport: WireViewport;
+  canvasSize?: CanvasSize;
 }): ReactElement {
   const width = 184;
   const height = 104;
@@ -1005,10 +1056,13 @@ function WireMiniMap({
   );
   const toX = (x: number) => pad + (x - model.bounds.minX) * scale;
   const toY = (y: number) => pad + (y - model.bounds.minY) * scale;
-  const viewW = width / viewport.zoom * scale;
-  const viewH = height / viewport.zoom * scale;
-  const viewX = pad + (-viewport.x / viewport.zoom - model.bounds.minX) * scale;
-  const viewY = pad + (-viewport.y / viewport.zoom - model.bounds.minY) * scale;
+  const viewportRect = miniMapViewportRect({
+    bounds: model.bounds,
+    viewport,
+    canvasSize,
+    pad,
+    scale
+  });
 
   return (
     <svg
@@ -1053,18 +1107,55 @@ function WireMiniMap({
           opacity={frame.node.kind === "group" ? 0.75 : 1}
         />
       ))}
-      <rect
-        x={viewX}
-        y={viewY}
-        width={Math.max(8, viewW)}
-        height={Math.max(8, viewH)}
-        rx={3}
-        fill="none"
-        stroke="#2563eb"
-        strokeWidth={1.2}
-      />
+      {viewportRect ? (
+        <rect
+          x={viewportRect.x}
+          y={viewportRect.y}
+          width={viewportRect.width}
+          height={viewportRect.height}
+          rx={3}
+          fill="none"
+          stroke="#2563eb"
+          strokeWidth={1.2}
+        />
+      ) : null}
     </svg>
   );
+}
+
+export function miniMapViewportRect({
+  bounds,
+  viewport,
+  canvasSize,
+  pad,
+  scale
+}: {
+  bounds: WireCanvasBounds;
+  viewport: WireViewport;
+  canvasSize?: CanvasSize;
+  pad: number;
+  scale: number;
+}): MiniMapRect | null {
+  if (!canvasSize || canvasSize.width <= 0 || canvasSize.height <= 0 || viewport.zoom <= 0) return null;
+  const contentRect = {
+    x: pad,
+    y: pad,
+    width: Math.max(1, bounds.width * scale),
+    height: Math.max(1, bounds.height * scale)
+  };
+  const visibleWorld = {
+    x: -viewport.x / viewport.zoom,
+    y: -viewport.y / viewport.zoom,
+    width: canvasSize.width / viewport.zoom,
+    height: canvasSize.height / viewport.zoom
+  };
+  const rawRect = {
+    x: pad + (visibleWorld.x - bounds.minX) * scale,
+    y: pad + (visibleWorld.y - bounds.minY) * scale,
+    width: visibleWorld.width * scale,
+    height: visibleWorld.height * scale
+  };
+  return clipMiniMapRect(rawRect, contentRect);
 }
 
 function WireMarkerDefs({
@@ -1275,6 +1366,24 @@ function sameMeasuredSizes(
     if (!existing || existing.width !== size.width || existing.height !== size.height) return false;
   }
   return true;
+}
+
+function sameCanvasSize(current: CanvasSize | undefined, next: CanvasSize): boolean {
+  return Boolean(current && current.width === next.width && current.height === next.height);
+}
+
+function clipMiniMapRect(rect: MiniMapRect, bounds: MiniMapRect): MiniMapRect | null {
+  const x1 = Math.max(rect.x, bounds.x);
+  const y1 = Math.max(rect.y, bounds.y);
+  const x2 = Math.min(rect.x + rect.width, bounds.x + bounds.width);
+  const y2 = Math.min(rect.y + rect.height, bounds.y + bounds.height);
+  if (x2 <= x1 || y2 <= y1) return null;
+  return {
+    x: x1,
+    y: y1,
+    width: x2 - x1,
+    height: y2 - y1
+  };
 }
 
 function gridBackground(showBackground: boolean): CSSProperties {

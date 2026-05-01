@@ -193,4 +193,26 @@ describe("validate", () => {
     });
     expect(r.issues.find((i) => i.code === "group.child-parent-mismatch")).toBeTruthy();
   });
+
+  it("warns on common LLM wiring gaps", () => {
+    const r = validate({
+      nodes: [
+        { id: "start", kind: "trigger", title: "Start" },
+        { id: "route", kind: "condition", title: "Route", branches: ["yes", "no"], from: "start" },
+        { id: "done", kind: "end", title: "Done", from: "route.yes" },
+        { id: "floating", kind: "action", title: "Floating" }
+      ]
+    });
+    expect(r.issues.find((i) => i.code === "condition.unused-branch")).toBeTruthy();
+    expect(r.issues.find((i) => i.code === "flow.unreachable")).toBeTruthy();
+  });
+
+  it("warns on invalid serializable card content", () => {
+    const r = validate({
+      nodes: [
+        { id: "a", kind: "trigger", title: "A", data: { card: { html: "<div />" } } }
+      ]
+    });
+    expect(r.issues.find((i) => i.code === "node.card-invalid")).toBeTruthy();
+  });
 });

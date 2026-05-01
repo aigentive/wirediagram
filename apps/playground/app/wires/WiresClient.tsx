@@ -50,7 +50,8 @@ import {
   useWireDiagram,
   useWireDispatch,
   useWireHistory,
-  useWireSelection
+  useWireSelection,
+  type WireEvent
 } from "@aigentive/wire-react";
 import { EditorHeader } from "../_components/wire-brand";
 import {
@@ -132,6 +133,7 @@ type Workspace = {
 
 type WorkspaceMode = "canvas" | "json" | "svg" | "mermaid";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+type RightPanel = "chat" | "options" | "closed";
 
 type RailKind = {
   kind: WireNodeKind;
@@ -239,7 +241,7 @@ export function WiresClient({
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [canvasRevision, setCanvasRevision] = useState(0);
   const [connectOpen, setConnectOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(true);
+  const [rightPanel, setRightPanel] = useState<RightPanel>("chat");
   const [cloudUrl, setCloudUrl] = useState("https://reefagent-mcp-wire.vercel.app");
   const [apiKeys, setApiKeys] = useState<ApiKeySummary[]>([]);
   const [apiKeyName, setApiKeyName] = useState("Local MCP");
@@ -247,6 +249,9 @@ export function WiresClient({
   const [apiKeyStatus, setApiKeyStatus] = useState<string | null>(null);
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveVersionRef = useRef(0);
+  const pendingSaveRef = useRef<{ diagram: WireDiagram; source: "manual" | "json" | "reset" } | null>(null);
+  const workspaceRef = useRef<Workspace | null>(null);
   const initialWireLoadedRef = useRef(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -275,6 +280,33 @@ export function WiresClient({
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    workspaceRef.current = workspace;
+  }, [workspace]);
+
+  useEffect(() => {
+    const flushPendingSave = () => {
+      const current = workspaceRef.current;
+      const pending = pendingSaveRef.current;
+      if (!current || !pending) return;
+      void fetch(`/api/wires/${encodeURIComponent(current.wire.id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ diagram: pending.diagram, source: pending.source }),
+        keepalive: true
+      });
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flushPendingSave();
+    };
+    window.addEventListener("pagehide", flushPendingSave);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("pagehide", flushPendingSave);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -356,6 +388,12 @@ export function WiresClient({
   }, []);
 
   const acceptWorkspace = useCallback((next: Workspace) => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    pendingSaveRef.current = null;
+    saveVersionRef.current += 1;
     setWorkspace(next);
     setJsonDraft(formatJson(next.diagram));
     setJsonError(null);
@@ -372,6 +410,7 @@ export function WiresClient({
     setTraces([]);
     setCanvasRevision((revision) => revision + 1);
     setSaveStatus("saved");
+    setRightPanel("chat");
     setWires((current) => upsertWire(current, next.wire));
     const nextPath = `/wires/${encodeURIComponent(next.wire.id)}`;
     if (window.location.pathname !== nextPath) {
@@ -382,6 +421,9 @@ export function WiresClient({
   const loadWire = useCallback(
     async (wireId: string) => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      pendingSaveRef.current = null;
+      saveVersionRef.current += 1;
       setLoadingWireId(wireId);
       setApiError(null);
       try {
@@ -437,9 +479,10 @@ export function WiresClient({
   }, [acceptWorkspace, refreshList]);
 
   const persistDiagram = useCallback(
-    async (diagram: WireDiagram, source: "manual" | "json" | "reset") => {
+    async (diagram: WireDiagram, source: "manual" | "json" | "reset", version: number) => {
       if (!workspace) return;
       setSaveStatus("saving");
+      const requestedDiagramJson = JSON.stringify(diagram);
       try {
         const res = await fetch(`/api/wires/${workspace.wire.id}`, {
           method: "PATCH",
@@ -454,13 +497,20 @@ export function WiresClient({
         const savedDiagram = data.diagram;
         setWorkspace((current) =>
           current && current.wire.id === savedWire.id
-            ? { ...current, wire: savedWire, diagram: savedDiagram }
+            ? {
+              ...current,
+              wire: savedWire,
+              diagram: JSON.stringify(current.diagram) === requestedDiagramJson ? savedDiagram : current.diagram
+            }
             : current
         );
         setWires((current) => upsertWire(current, savedWire));
-        setSaveStatus("saved");
+        if (version === saveVersionRef.current) {
+          pendingSaveRef.current = null;
+          setSaveStatus("saved");
+        }
       } catch (err) {
-        setSaveStatus("error");
+        if (version === saveVersionRef.current) setSaveStatus("error");
         setApiError(err instanceof Error ? err.message : String(err));
       }
     },
@@ -470,10 +520,14 @@ export function WiresClient({
   const scheduleSave = useCallback(
     (diagram: WireDiagram, source: "manual" | "json" | "reset" = "manual") => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      const version = saveVersionRef.current + 1;
+      saveVersionRef.current = version;
+      pendingSaveRef.current = { diagram, source };
       setSaveStatus("saving");
       saveTimerRef.current = setTimeout(() => {
-        void persistDiagram(diagram, source);
-      }, 650);
+        saveTimerRef.current = null;
+        void persistDiagram(diagram, source, version);
+      }, 300);
     },
     [persistDiagram]
   );
@@ -513,12 +567,25 @@ export function WiresClient({
     );
   }, [updateDiagram, workspace]);
 
+  const handleWireEvent = useCallback((event: WireEvent) => {
+    if (event.type === "node.inspect" || event.type === "node.click") {
+      setRightPanel("options");
+      return;
+    }
+    if (event.type === "pane.click") {
+      setRightPanel((current) => (current === "options" ? "closed" : current));
+    }
+  }, []);
+
   const renameWire = useCallback(
     async (title: string) => {
       if (!workspace) return;
       const trimmed = title.trim();
       if (!trimmed || trimmed === workspace.wire.title) return;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      pendingSaveRef.current = null;
+      saveVersionRef.current += 1;
       const renamedDiagram = { ...workspace.diagram, title: trimmed };
       setSaveStatus("saving");
       try {
@@ -558,6 +625,7 @@ export function WiresClient({
       window.history.replaceState({}, "", "/wires");
       setWires((current) => current.filter((wire) => wire.id !== wireId));
       setMessages([assistantIntro()]);
+      setRightPanel("chat");
       setSaveStatus("idle");
     } catch (err) {
       setApiError(err instanceof Error ? err.message : String(err));
@@ -679,6 +747,8 @@ export function WiresClient({
     [busy, input, messages, workspace]
   );
 
+  const hasRightPanel = Boolean(workspace && rightPanel !== "closed");
+
   return (
     <div className="flex h-dvh min-h-0 flex-col bg-wire-page text-wire-primary">
       <EditorHeader
@@ -730,17 +800,6 @@ export function WiresClient({
         <DotPill dotColor="emerald" variant="sunken" onClick={openConnectGuide}>
           Connect local MCP
         </DotPill>
-        {workspace && !chatOpen ? (
-          <button
-            type="button"
-            onClick={() => setChatOpen(true)}
-            className="grid h-7 w-7 place-items-center rounded-md text-wire-tertiary transition-colors hover:text-wire-primary"
-            aria-label="Open chat"
-            title="Open chat"
-          >
-            <MessageSquare size={14} strokeWidth={1.5} />
-          </button>
-        ) : null}
         <span className="ml-2 hidden h-7 items-center gap-2 border-l border-wire pl-3 sm:flex">
           <Avatar name={user.name} email={user.email} />
           <span className="hidden max-w-[160px] truncate text-[12.5px] font-medium text-wire-primary md:inline">
@@ -752,7 +811,7 @@ export function WiresClient({
       <main
         className={
           workspace
-            ? chatOpen
+            ? hasRightPanel
               ? "grid min-h-0 flex-1 grid-cols-[224px_196px_minmax(0,1fr)_320px]"
               : "grid min-h-0 flex-1 grid-cols-[224px_196px_minmax(0,1fr)]"
             : "grid min-h-0 flex-1 grid-cols-[224px_minmax(0,1fr)]"
@@ -813,6 +872,7 @@ export function WiresClient({
             key={`${workspace.wire.id}:${canvasRevision}`}
             diagram={workspace.diagram}
             onChange={(next) => updateDiagram(next, "manual")}
+            onEvent={handleWireEvent}
           >
             <RailKeyboardShortcuts />
             <ToolRail>
@@ -875,6 +935,8 @@ export function WiresClient({
                 <CanvasModeBarRight
                   alignRight={mode === "canvas"}
                   onReset={resetWire}
+                  onOpenChat={() => setRightPanel("chat")}
+                  chatActive={rightPanel === "chat"}
                 />
               </div>
 
@@ -923,61 +985,66 @@ export function WiresClient({
               )}
             </section>
 
-            {chatOpen ? (
-            <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-wire bg-wire-chat">
-              <div className="flex h-[50px] shrink-0 items-center gap-[6px] border-b border-wire bg-wire-surface px-4">
-                <span className="text-[14px] font-bold text-wire-primary">Chat</span>
-                <span className="font-mono text-[11px] text-wire-tertiary">
-                  {workspace.diagram.nodes.length} nodes
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {}}
-                  className="ml-auto grid h-6 w-6 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
-                  aria-label="Chat info"
-                  title={workspace.wire.id}
-                >
-                  <Info size={14} strokeWidth={1.5} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChatOpen(false)}
-                  className="grid h-6 w-6 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
-                  aria-label="Close chat"
-                  title="Close chat"
-                >
-                  <X size={14} strokeWidth={1.5} />
-                </button>
-              </div>
+            {rightPanel === "options" ? (
+              <OptionsSidebar
+                onOpenChat={() => setRightPanel("chat")}
+                onClose={() => setRightPanel("closed")}
+              />
+            ) : rightPanel === "chat" ? (
+              <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-wire bg-wire-chat">
+                <div className="flex h-[50px] shrink-0 items-center gap-[6px] border-b border-wire bg-wire-surface px-4">
+                  <span className="text-[14px] font-bold text-wire-primary">Chat</span>
+                  <span className="font-mono text-[11px] text-wire-tertiary">
+                    {workspace.diagram.nodes.length} nodes
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {}}
+                    className="ml-auto grid h-6 w-6 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
+                    aria-label="Chat info"
+                    title={workspace.wire.id}
+                  >
+                    <Info size={14} strokeWidth={1.5} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRightPanel("closed")}
+                    className="grid h-6 w-6 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
+                    aria-label="Close chat"
+                    title="Close chat"
+                  >
+                    <X size={14} strokeWidth={1.5} />
+                  </button>
+                </div>
 
-              <div ref={chatScrollRef} className="min-h-0 flex-1 overflow-auto px-4 py-3">
-                <div className="grid gap-3">
-                  {messages.map((message, index) => (
-                    <ChatBubble key={`${message.role}-${index}`} message={message} />
-                  ))}
-                  {busy ? (
-                    <div className="flex items-center gap-2 text-[13px] font-semibold text-wire-tertiary">
-                      <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
-                      Running tools
+                <div ref={chatScrollRef} className="min-h-0 flex-1 overflow-auto px-4 py-3">
+                  <div className="grid gap-3">
+                    {messages.map((message, index) => (
+                      <ChatBubble key={`${message.role}-${index}`} message={message} />
+                    ))}
+                    {busy ? (
+                      <div className="flex items-center gap-2 text-[13px] font-semibold text-wire-tertiary">
+                        <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+                        Running tools
+                      </div>
+                    ) : null}
+                  </div>
+                  <ToolTraceList traces={traces} />
+                  {apiError ? (
+                    <div className="mt-3 rounded-md bg-wire-status-invalid-bg p-3 text-[12px] font-semibold leading-5 text-wire-status-invalid">
+                      {apiError}
                     </div>
                   ) : null}
                 </div>
-                <ToolTraceList traces={traces} />
-                {apiError ? (
-                  <div className="mt-3 rounded-md bg-wire-status-invalid-bg p-3 text-[12px] font-semibold leading-5 text-wire-status-invalid">
-                    {apiError}
-                  </div>
-                ) : null}
-              </div>
 
-              <ChatComposer
-                value={input}
-                onChange={setInput}
-                onSubmit={() => void submit()}
-                busy={busy}
-                footerSlot={<ComposerFooter />}
-              />
-            </aside>
+                <ChatComposer
+                  value={input}
+                  onChange={setInput}
+                  onSubmit={() => void submit()}
+                  busy={busy}
+                  footerSlot={<ComposerFooter />}
+                />
+              </aside>
             ) : null}
           </WireProvider>
         ) : (
@@ -1047,10 +1114,14 @@ function RailAddNodeButton({ entry }: { entry: RailKind }) {
 
 function CanvasModeBarRight({
   alignRight,
-  onReset
+  onReset,
+  onOpenChat,
+  chatActive
 }: {
   alignRight: boolean;
   onReset: () => void;
+  onOpenChat: () => void;
+  chatActive: boolean;
 }) {
   const history = useWireHistory();
   const ghostText =
@@ -1084,6 +1155,16 @@ function CanvasModeBarRight({
         <Eye size={12} strokeWidth={1.75} />
         View
       </button>
+      <button
+        type="button"
+        onClick={onOpenChat}
+        className={chatActive ? `${ghostText} bg-wire-sunken text-wire-primary` : ghostText}
+        aria-label="Open chat"
+        title="Open chat"
+      >
+        <MessageSquare size={12} strokeWidth={1.75} />
+        Chat
+      </button>
       <button type="button" onClick={onReset} className={ghostText}>
         <RefreshCcw size={12} strokeWidth={1.75} />
         Reset
@@ -1098,16 +1179,53 @@ function CanvasOverlays({ validationValid }: { validationValid: boolean }) {
       {!validationValid ? (
         <WireValidationPanel className="wire-canvas-overlay rounded-[10px]" />
       ) : null}
-      <SelectedNodeInspector />
     </>
   );
 }
 
-function SelectedNodeInspector() {
+function OptionsSidebar({
+  onOpenChat,
+  onClose
+}: {
+  onOpenChat: () => void;
+  onClose: () => void;
+}) {
+  const diagram = useWireDiagram();
   const [selection] = useWireSelection();
-  if (selection.nodeIds.length === 0) return null;
+  const node = selection.nodeIds.length === 1
+    ? diagram.nodes.find((candidate) => candidate.id === selection.nodeIds[0])
+    : undefined;
+
   return (
-    <WireInspector className="wire-canvas-overlay max-h-[200px] overflow-auto rounded-[10px] p-[10px]" />
+    <aside className="flex min-h-0 min-w-0 flex-col overflow-hidden border-l border-wire bg-wire-surface">
+      <div className="flex h-[50px] shrink-0 items-center gap-[6px] border-b border-wire px-4">
+        <span className="text-[14px] font-bold text-wire-primary">Card options</span>
+        {node ? (
+          <span className="min-w-0 truncate font-mono text-[11px] text-wire-tertiary">{node.id}</span>
+        ) : null}
+        <button
+          type="button"
+          onClick={onOpenChat}
+          className="ml-auto grid h-6 w-6 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
+          aria-label="Open chat"
+          title="Open chat"
+        >
+          <MessageSquare size={14} strokeWidth={1.5} />
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="grid h-6 w-6 place-items-center rounded-md text-wire-tertiary hover:text-wire-primary"
+          aria-label="Close options"
+          title="Close options"
+        >
+          <X size={14} strokeWidth={1.5} />
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto p-4">
+        <WireInspector className="rounded-none p-0" />
+      </div>
+    </aside>
   );
 }
 

@@ -59,6 +59,20 @@ describe("renderToSvg", () => {
     expect(svg).toMatch(/<marker id="wire-arrow-end-[a-zA-Z0-9]+"/);
   });
 
+  it("renders workflow node kinds as card rectangles in static exports", () => {
+    const d = parseWireDiagram({
+      nodes: [
+        { id: "start", kind: "trigger", title: "Start" },
+        { id: "route", kind: "condition", title: "Route", branches: ["yes", "no"], from: "start" },
+        { id: "done", kind: "end", title: "Done", from: "route.yes" }
+      ]
+    });
+    const svg = renderToSvg(d);
+    expect(svg).toContain("<rect");
+    expect(svg).not.toContain("<ellipse");
+    expect(svg).not.toContain("<polygon");
+  });
+
   it("honors per-edge stroke + dash + marker overrides", () => {
     const d = parseWireDiagram({
       nodes: [

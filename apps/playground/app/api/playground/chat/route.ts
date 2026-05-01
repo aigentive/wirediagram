@@ -82,6 +82,9 @@ Expected outcome:
 - Use only Wire schema fields. Never emit React Flow JSON, SVG, Markdown diagrams, or prose as the primary artifact.
 - Valid tones are only default, success, warning, error, info, ai. Never use danger.
 - Prefer clear workflow-wireframe diagrams with 4-8 nodes unless the user asks for more detail.
+- Every non-group workflow node renders as a card. Use node.kind for the card category, node.title for the card header, and node.description for body copy.
+- For tool/integration cards, use kind: "tool" and put the tool/function/MCP name in ref. Do not create fake "card" nodes or emit HTML/SVG cards.
+- Use node.data.card only for extra serializable card content: title, description, badges, meta, progress, and footer.
 - First use MCP tool mcp_wire_validate_diagram with diagram_json set to JSON.stringify(the full updated diagram).
 - If validation returns invalid, fix the graph and call mcp_wire_validate_diagram again.
 - Only after validation returns valid should you call mcp_wire_save_diagram exactly once with the same complete canonical diagram.
@@ -106,6 +109,7 @@ WIRING RULES (validation will reject anything that breaks these):
   Valid examples: "trigger", "classify_intent", "route", "notify-sales", "step1".
   Invalid examples: "user input", "Customer Support", "trigger:hook", "team.sales", "router/branch", "🚀launch".
 - Connect nodes by setting the target node's "from" field. Prefer this over the top-level "edges" array.
+    - A -> B means B has "from": "A". Do not put "to", "next", "target", or "connectsTo" on nodes.
     - Single source: "from": "classify"
     - Fan-in (multiple sources): "from": ["validate", "review"]
     - From a condition branch: "from": "route.sales" (one dot only — pattern is <nodeId>.<branch>, both slug-safe)

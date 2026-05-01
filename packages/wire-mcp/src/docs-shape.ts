@@ -29,7 +29,7 @@ export interface WireDocsShape {
 }
 
 export const WIRE_DOCS_VERSION = 1;
-export const WIRE_DOCS_UPDATED_AT = "2026-04-30T00:00:00.000Z";
+export const WIRE_DOCS_UPDATED_AT = "2026-05-01T00:00:00.000Z";
 
 export const LLM_DOCS_ROUTES = [
   { path: "/llm/wire-docs.shape.json", mediaType: "application/json", purpose: "Root machine-readable docs manifest." },
@@ -48,7 +48,7 @@ export const LLM_DOCS_ROUTES = [
   { path: "/llm/recipes/repair-invalid-diagram.json", mediaType: "application/json", purpose: "Recipe for repairing invalid Wire JSON." }
 ] as const;
 
-export const LLM_AGENT_GUIDE_MD = `# Wire Agent Guide
+export const LLM_AGENT_GUIDE_MD = `# Wire MCP Agent Guide
 
 Wire is an LLM-first workflow diagram system. Always treat Wire JSON as the
 source of truth. Humans may use the canvas, but agents should mutate diagrams
@@ -90,6 +90,28 @@ note, group.
 Use node.from for ordinary connections. Use "conditionId.branch" for condition
 branches. Do not invent connectsTo, next, source, target, type, label-only
 Mermaid, or React Flow JSON as the primary contract.
+
+## Cards and Visual Content
+
+Every non-group workflow node renders as a card in React and in static/share
+exports. Pick the card kind with node.kind, then put the visible card header in
+title and body copy in description. Use kind-specific fields for semantics:
+- tool cards: kind="tool", title names the tool action, ref stores the MCP/tool/function name.
+- ai cards: kind="ai", model and prompt are optional details.
+- condition cards: kind="condition", branches declares the outgoing branch names.
+
+Use node.data.card only for extra serializable card content: title,
+description, badges, meta, progress, and footer. Do not emit HTML/SVG/React
+components in data.card. Do not create separate "card" nodes; create workflow
+nodes and let Wire render them as cards.
+
+## Wiring Rules
+
+Wire direction is target-centric. To connect A -> B, set B.from = "A". For a
+condition branch, set the target's from to "conditionId.branch" and ensure the
+branch exists in the condition node's branches array. Use explicit edges only
+for labels, custom handles, edge styles, routing, or stable edge ids. Never
+create the same connection in both node.from and edges[].
 
 ## Tool Selection
 
@@ -331,9 +353,11 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
       "Use version: 1.",
       "Use layout LR/TB/RL/BT.",
       "Every node needs id, kind, and title.",
+      "Every workflow node renders as a card; use title and description for the card content.",
       "Use node.from for ordinary connections.",
       "Use explicit edges only when edge metadata is required.",
-      "Condition branches must be declared on the condition node."
+      "Condition branches must be declared on the condition node.",
+      "Use node.data.card only for extra badges, meta rows, progress, or footer."
     ],
     avoid: [
       "Do not use null for from; omit the field instead.",
@@ -368,6 +392,12 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
       { code: "edge.to-missing", severity: "error", repair: "Add the target node or update the explicit edge target." },
       { code: "edge.unknown-branch", severity: "error", repair: "Add the branch to the condition node or use a known branch name." },
       { code: "edge.duplicate-connection", severity: "error", repair: "Keep one connection and remove the duplicate from ref or explicit edge." },
+      { code: "flow.no-trigger", severity: "warning", repair: "Add a trigger node or confirm the diagram intentionally starts elsewhere." },
+      { code: "trigger.no-outgoing", severity: "warning", repair: "Connect the trigger to the first workflow step." },
+      { code: "end.no-incoming", severity: "warning", repair: "Connect a preceding workflow step to the end node." },
+      { code: "condition.unused-branch", severity: "warning", repair: "Add a target node with from '<conditionId>.<branch>' or remove the unused branch." },
+      { code: "flow.unreachable", severity: "warning", repair: "Wire the node into a path from a trigger or add a trigger for that branch." },
+      { code: "node.card-invalid", severity: "warning", repair: "Keep data.card serializable and limited to title, description, badges, meta, progress, and footer." },
       { code: "node.forbidden-field", severity: "warning", repair: "Replace connectsTo/connects_to with from on the target node." },
       { code: "node.orphan", severity: "warning", repair: "Connect the node with from or confirm it should stay isolated." },
       { code: "flow.cycle", severity: "warning", repair: "Break the loop or add a guard that explains the repeated path." }

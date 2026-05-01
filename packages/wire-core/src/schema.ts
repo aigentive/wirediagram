@@ -323,7 +323,12 @@ function foldAfterIntoFrom(node: Record<string, unknown>): Record<string, unknow
  */
 const FORBIDDEN_NODE_FIELDS: ReadonlySet<string> = new Set([
   "connectsTo",
-  "connects_to"
+  "connects_to",
+  "next",
+  "source",
+  "target",
+  "to",
+  "type"
 ]);
 
 export interface PreprocessSidecar {

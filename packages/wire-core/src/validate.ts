@@ -1,5 +1,6 @@
 import {
   type WireDiagram,
+  type WireNode,
   getPreprocessSidecar,
   safeParseWireDiagram,
   splitFromRef
@@ -69,9 +70,9 @@ export function validate(input: WireDiagram | unknown): ValidationResult {
       issues.push({
         severity: WARNING,
         code: "node.forbidden-field",
-        message: `Node "${nodeId}" used "${field}" — Wire uses 'from' for connections (LLM-friendly directionality). Field was dropped.`,
+        message: `Node "${nodeId}" used "${field}" — Wire nodes use 'from' on the target node for connections. Field was dropped.`,
         nodeId,
-        hint: `Replace with from: "<sourceId>" on this node.`
+        hint: `To connect source -> this node, set from: "<sourceId>" on this node. For visual card content, use title, description, and data.card.`
       });
     }
   }
@@ -223,10 +224,93 @@ export function validate(input: WireDiagram | unknown): ValidationResult {
   // 6. orphan warning — nodes with no incoming or outgoing edges (excluding triggers, ends, notes).
   const inEdges = new Map<string, number>();
   const outEdges = new Map<string, number>();
+  const outgoingBranches = new Map<string, Set<string>>();
+  const adjacency = new Map<string, Set<string>>();
+  for (const node of diagram.nodes) adjacency.set(node.id, new Set());
   for (const edge of resolvedEdges) {
     outEdges.set(edge.from, (outEdges.get(edge.from) ?? 0) + 1);
     inEdges.set(edge.to, (inEdges.get(edge.to) ?? 0) + 1);
+    if (edge.fromBranch) {
+      const branches = outgoingBranches.get(edge.from) ?? new Set<string>();
+      branches.add(edge.fromBranch);
+      outgoingBranches.set(edge.from, branches);
+    }
+    if (nodeIndex.has(edge.from) && nodeIndex.has(edge.to)) {
+      adjacency.get(edge.from)?.add(edge.to);
+    }
   }
+
+  const triggers = diagram.nodes.filter((node) => node.kind === "trigger");
+  if (diagram.nodes.some((node) => node.kind !== "note" && node.kind !== "group") && triggers.length === 0) {
+    issues.push({
+      severity: WARNING,
+      code: "flow.no-trigger",
+      message: "Diagram has workflow nodes but no trigger node.",
+      hint: 'Add a trigger node for the entry point, or confirm the diagram intentionally starts elsewhere.'
+    });
+  }
+
+  for (const trigger of triggers) {
+    if ((outEdges.get(trigger.id) ?? 0) === 0) {
+      issues.push({
+        severity: WARNING,
+        code: "trigger.no-outgoing",
+        message: `Trigger node "${trigger.id}" has no outgoing connection.`,
+        nodeId: trigger.id,
+        hint: `Connect the first workflow step with from: "${trigger.id}".`
+      });
+    }
+  }
+
+  for (const node of diagram.nodes) {
+    if (node.kind === "end" && (inEdges.get(node.id) ?? 0) === 0) {
+      issues.push({
+        severity: WARNING,
+        code: "end.no-incoming",
+        message: `End node "${node.id}" has no incoming connection.`,
+        nodeId: node.id,
+        hint: "Connect a preceding workflow step to this end node."
+      });
+    }
+  }
+
+  for (const node of diagram.nodes) {
+    if (node.kind !== "condition") continue;
+    const used = outgoingBranches.get(node.id) ?? new Set<string>();
+    for (const branch of node.branches) {
+      if (used.has(branch)) continue;
+      issues.push({
+        severity: WARNING,
+        code: "condition.unused-branch",
+        message: `Condition "${node.id}" declares branch "${branch}" but no target uses from="${node.id}.${branch}".`,
+        nodeId: node.id,
+        hint: `Add a downstream node with from: "${node.id}.${branch}" or remove the unused branch.`
+      });
+    }
+  }
+
+  if (triggers.length > 0) {
+    const reachable = new Set<string>();
+    const stack = triggers.map((node) => node.id);
+    while (stack.length) {
+      const id = stack.pop()!;
+      if (reachable.has(id)) continue;
+      reachable.add(id);
+      for (const next of adjacency.get(id) ?? []) stack.push(next);
+    }
+    for (const node of diagram.nodes) {
+      if (node.kind === "trigger" || node.kind === "note" || node.kind === "group") continue;
+      if (reachable.has(node.id)) continue;
+      issues.push({
+        severity: WARNING,
+        code: "flow.unreachable",
+        message: `Node "${node.id}" is not reachable from any trigger.`,
+        nodeId: node.id,
+        hint: 'Wire it into the flow with `from` on this node, or add a trigger for this branch.'
+      });
+    }
+  }
+
   for (const node of diagram.nodes) {
     if (
       node.kind === "trigger" ||
@@ -247,6 +331,18 @@ export function validate(input: WireDiagram | unknown): ValidationResult {
         hint: 'Connect it via `from: "<sourceId>"` on this node or another.'
       });
     }
+  }
+
+  for (const node of diagram.nodes) {
+    const cardIssue = invalidCardContentMessage(node);
+    if (!cardIssue) continue;
+    issues.push({
+      severity: WARNING,
+      code: "node.card-invalid",
+      message: `Node "${node.id}" has invalid data.card content: ${cardIssue}`,
+      nodeId: node.id,
+      hint: "Keep data.card serializable and limited to title, description, badges, meta, progress, and footer."
+    });
   }
 
   // 6b. duplicate `from` refs on the same node.
@@ -336,6 +432,70 @@ export function validate(input: WireDiagram | unknown): ValidationResult {
 
   const valid = !issues.some((i) => i.severity === ERROR);
   return { valid, issues };
+}
+
+function invalidCardContentMessage(node: WireNode): string | undefined {
+  const card = node.data?.card;
+  if (card === undefined) return undefined;
+  if (!isRecord(card)) return "data.card must be an object.";
+
+  const allowed = new Set(["title", "description", "badges", "meta", "progress", "footer"]);
+  const unknown = Object.keys(card).filter((key) => !allowed.has(key));
+  if (unknown.length > 0) return `unsupported fields: ${unknown.join(", ")}.`;
+
+  if (card.title !== undefined && typeof card.title !== "string") return "title must be a string.";
+  if (card.description !== undefined && typeof card.description !== "string") return "description must be a string.";
+  if (card.footer !== undefined && typeof card.footer !== "string") return "footer must be a string.";
+
+  if (card.badges !== undefined) {
+    if (!Array.isArray(card.badges)) return "badges must be an array.";
+    if (!card.badges.every(isCardBadge)) return "badges must contain strings or { label, tone? } objects.";
+  }
+
+  if (card.meta !== undefined) {
+    if (!Array.isArray(card.meta)) return "meta must be an array.";
+    if (!card.meta.every(isCardMetaItem)) return "meta must contain strings, numbers, booleans, or { label?, value } objects.";
+  }
+
+  if (card.progress !== undefined && typeof card.progress !== "number" && !isCardProgress(card.progress)) {
+    return "progress must be a number or { value, max?, label?, steps?, showPercent? } object.";
+  }
+
+  return undefined;
+}
+
+function isCardBadge(value: unknown): boolean {
+  return typeof value === "string" ||
+    (isRecord(value) &&
+      typeof value.label === "string" &&
+      (value.tone === undefined ||
+        value.tone === "default" ||
+        value.tone === "info" ||
+        value.tone === "success" ||
+        value.tone === "warning" ||
+        value.tone === "error"));
+}
+
+function isCardMetaItem(value: unknown): boolean {
+  return typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    (isRecord(value) &&
+      (value.label === undefined || typeof value.label === "string") &&
+      (typeof value.value === "string" || typeof value.value === "number" || typeof value.value === "boolean"));
+}
+
+function isCardProgress(value: unknown): boolean {
+  return isRecord(value) &&
+    typeof value.value === "number" &&
+    (value.max === undefined || typeof value.max === "number") &&
+    (value.label === undefined || typeof value.label === "string") &&
+    (value.steps === undefined || typeof value.steps === "number") &&
+    (value.showPercent === undefined || typeof value.showPercent === "boolean");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 /**

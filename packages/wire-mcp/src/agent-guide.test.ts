@@ -8,6 +8,8 @@ describe("Wire agent guide", () => {
     expect(WIRE_AGENT_GUIDE).toContain("update_edge");
     expect(WIRE_AGENT_GUIDE).toContain("fromHandle");
     expect(WIRE_AGENT_GUIDE).toContain("toHandle");
+    expect(WIRE_AGENT_GUIDE).toContain("data.card");
+    expect(WIRE_AGENT_GUIDE).toContain("Every non-group workflow node renders as a card");
     expect(WIRE_AGENT_GUIDE).toContain("Hosted Persistence Contract");
     expect(WIRE_AGENT_GUIDE).toContain("validate");
     expect(WIRE_AGENT_GUIDE).toContain("render_preview");
