@@ -44,13 +44,14 @@ export function NodeCard({
   showKindChip = true
 }: NodeCardProps): ReactElement {
   const tint = KIND_TINT[kindChipKey(kind)];
+  const hasAuxContent = Boolean(showKindChip || refLabel || meta || children || footer);
   const cardStyle: CSSProperties = {
     backgroundImage: `linear-gradient(180deg, ${tint} 0%, var(--wire-bg-surface) 80%)`,
     backgroundColor: "var(--wire-bg-surface)",
     boxShadow: selected
       ? "var(--wire-card-shadow-selected)"
       : "var(--wire-card-shadow)",
-    minWidth: 132,
+    minWidth: 220,
     ...style
   };
   return (
@@ -58,6 +59,7 @@ export function NodeCard({
       aria-selected={ariaSelected ?? selected}
       className={cx(
         "group/node flex flex-col gap-1 rounded-lg border px-3 pb-[10px] pt-[9px] transition-shadow duration-150",
+        hasAuxContent ? null : "justify-center",
         selected ? "border-wire-focus" : "border-wire",
         className
       )}
@@ -69,7 +71,7 @@ export function NodeCard({
           {refLabel ? <Ref>{refLabel}</Ref> : null}
         </div>
       ) : null}
-      <div className="mt-0.5 text-[13px] font-semibold leading-snug tracking-[-0.005em] text-wire-primary">
+      <div className={cx(hasAuxContent ? "mt-0.5" : null, "text-[13px] font-semibold leading-snug tracking-[-0.005em] text-wire-primary")}>
         {title}
       </div>
       {meta ? (

@@ -3,6 +3,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { list, put } from "@vercel/blob";
+import { readBlobJson } from "@/lib/blob-json";
 import type { CurrentUser } from "@/lib/current-user";
 import { stableStringify } from "@/lib/wire-canonical";
 
@@ -62,18 +63,9 @@ function apiKeyPath(ownerKey: string, id: string): string {
   return `${CLOUD_PREFIX}/users/${ownerKey}/api-keys/${id}.json`;
 }
 
-function publicBlobUrl(pathname: string): string {
-  const base = process.env.BLOB_PUBLIC_BASE_URL;
-  if (!base) throw new Error("BLOB_PUBLIC_BASE_URL is required for public Blob reads.");
-  return `${base.replace(/\/$/, "")}/${pathname}`;
-}
-
 async function readJson<T>(pathname: string): Promise<T | null> {
   if (useBlobStore()) {
-    const res = await fetch(publicBlobUrl(pathname), { cache: "no-store" });
-    if (res.status === 404) return null;
-    if (!res.ok) throw new Error(`Vercel Blob read failed (${res.status}).`);
-    return (await res.json()) as T;
+    return readBlobJson<T>(pathname);
   }
 
   try {

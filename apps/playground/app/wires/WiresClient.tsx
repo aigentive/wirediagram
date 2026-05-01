@@ -51,6 +51,7 @@ import {
   useWireDispatch,
   useWireHistory,
   useWireSelection,
+  useWireViewport,
   type WireEvent
 } from "@aigentive/wire-react";
 import { EditorHeader } from "../_components/wire-brand";
@@ -1118,6 +1119,7 @@ export function WiresClient({
 function RailAddNodeButton({ entry }: { entry: RailKind }) {
   const diagram = useWireDiagram();
   const dispatch = useWireDispatch();
+  const [viewport] = useWireViewport();
 
   return (
     <ToolRailKindButton
@@ -1125,7 +1127,7 @@ function RailAddNodeButton({ entry }: { entry: RailKind }) {
       label={entry.label}
       icon={entry.icon}
       shortcut={entry.shortcut}
-      onAdd={() => addNodeOfKind(entry.kind, diagram.nodes, dispatch)}
+      onAdd={() => addNodeOfKind(entry.kind, diagram.nodes, dispatch, canvasCenterPosition(viewport))}
     />
   );
 }
@@ -1250,6 +1252,7 @@ function OptionsSidebar({
 function RailKeyboardShortcuts() {
   const diagram = useWireDiagram();
   const dispatch = useWireDispatch();
+  const [viewport] = useWireViewport();
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -1264,11 +1267,11 @@ function RailKeyboardShortcuts() {
       const kind = RAIL_KIND_BY_KEY.get(event.key.toLowerCase());
       if (!kind) return;
       event.preventDefault();
-      addNodeOfKind(kind, diagram.nodes, dispatch);
+      addNodeOfKind(kind, diagram.nodes, dispatch, canvasCenterPosition(viewport));
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [diagram, dispatch]);
+  }, [diagram, dispatch, viewport]);
 
   return null;
 }
@@ -1276,7 +1279,8 @@ function RailKeyboardShortcuts() {
 function addNodeOfKind(
   kind: WireNodeKind,
   existing: readonly WireNode[],
-  dispatch: (action: WireAction) => void
+  dispatch: (action: WireAction) => void,
+  position?: { x: number; y: number }
 ) {
   const used = new Set(existing.map((node) => node.id));
   let id = `${kind}-1`;
@@ -1294,9 +1298,29 @@ function addNodeOfKind(
       id,
       kind,
       title,
+      position,
       branches: kind === "condition" ? ["yes", "no"] : undefined
     } as WireNode
   });
+}
+
+function canvasCenterPosition(viewport: { x: number; y: number; zoom: number }): { x: number; y: number } | undefined {
+  if (typeof document === "undefined") return undefined;
+  const canvas = document.querySelector<HTMLElement>("[data-wire-canvas]");
+  if (!canvas) return undefined;
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0 || viewport.zoom <= 0) return undefined;
+
+  const worldCenterX = (rect.width / 2 - viewport.x) / viewport.zoom;
+  const worldCenterY = (rect.height / 2 - viewport.y) / viewport.zoom;
+  return {
+    x: snapToGrid(worldCenterX - 110),
+    y: snapToGrid(worldCenterY - 40)
+  };
+}
+
+function snapToGrid(value: number): number {
+  return Math.round(value / 24) * 24;
 }
 
 function ShareDialog({

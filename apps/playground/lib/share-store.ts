@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { readBlobJson } from "@/lib/blob-json";
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{8,64}$/;
 
@@ -34,6 +35,11 @@ export async function writeLocalShare(token: string, canonical: string): Promise
 export async function resolveShareToken(token: string): Promise<unknown | null> {
   const local = await readLocalShare(token);
   if (local) return local;
+
+  if (process.env.WIRE_SHARE_BACKEND !== "local" && process.env.BLOB_READ_WRITE_TOKEN) {
+    const blob = await readBlobJson<unknown>(`wires/${token}.json`, { useCache: true });
+    if (blob) return blob;
+  }
 
   const base = process.env.BLOB_PUBLIC_BASE_URL;
   if (!base) return null;

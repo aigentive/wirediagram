@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { put } from "@vercel/blob";
 import { parseWireDiagram, type WireDiagram } from "@aigentive/wire-core";
+import { readBlobJson } from "@/lib/blob-json";
 import type { CurrentUser } from "@/lib/current-user";
 import { resolveShareToken } from "@/lib/share-store";
 import { stableStringify } from "@/lib/wire-canonical";
@@ -65,12 +66,6 @@ function localPath(pathname: string): string {
   return path;
 }
 
-function publicBlobUrl(pathname: string): string {
-  const base = process.env.BLOB_PUBLIC_BASE_URL;
-  if (!base) throw new Error("BLOB_PUBLIC_BASE_URL is required for public Blob reads.");
-  return `${base.replace(/\/$/, "")}/${pathname}`;
-}
-
 function sharePath(token: string): string {
   if (!TOKEN_RE.test(token)) throw new Error("Invalid share token.");
   return `${CLOUD_PREFIX}/share-links/${token}.json`;
@@ -78,10 +73,7 @@ function sharePath(token: string): string {
 
 async function readJson<T>(pathname: string): Promise<T | null> {
   if (useBlobStore()) {
-    const res = await fetch(publicBlobUrl(pathname), { cache: "no-store" });
-    if (res.status === 404) return null;
-    if (!res.ok) throw new Error(`Vercel Blob read failed (${res.status}).`);
-    return (await res.json()) as T;
+    return readBlobJson<T>(pathname);
   }
 
   try {

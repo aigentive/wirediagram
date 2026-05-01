@@ -9,6 +9,7 @@ import {
   type ValidationResult,
   type WireDiagram
 } from "@aigentive/wire-core";
+import { readBlobJson } from "@/lib/blob-json";
 import type { CurrentUser } from "@/lib/current-user";
 import { resolveShareToken } from "@/lib/share-store";
 import { persistSharedDiagram, stableStringify } from "@/lib/wire-canonical";
@@ -79,18 +80,9 @@ function userWiresPrefix(user: CurrentUser): string {
   return `${CLOUD_PREFIX}/users/${user.key}/wires/`;
 }
 
-function publicBlobUrl(pathname: string): string {
-  const base = process.env.BLOB_PUBLIC_BASE_URL;
-  if (!base) throw new Error("BLOB_PUBLIC_BASE_URL is required for public Blob reads.");
-  return `${base.replace(/\/$/, "")}/${pathname}`;
-}
-
 async function readJson<T>(pathname: string): Promise<T | null> {
   if (useBlobStore()) {
-    const res = await fetch(publicBlobUrl(pathname), { cache: "no-store" });
-    if (res.status === 404) return null;
-    if (!res.ok) throw new Error(`Vercel Blob read failed (${res.status}).`);
-    return (await res.json()) as T;
+    return readBlobJson<T>(pathname);
   }
 
   try {
