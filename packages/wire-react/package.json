@@ -22,6 +22,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "test": "vitest run --root ../.. packages/wire-react/src",
+    "test:coverage": "vitest run --root ../.. packages/wire-react/src --coverage --coverage.include='packages/wire-react/src/**/*.{ts,tsx}' --coverage.exclude='packages/wire-react/src/**/*.test.{ts,tsx}' --coverage.exclude='packages/wire-react/src/index.ts' --coverage.exclude='packages/wire-react/src/primitives/index.ts' --coverage.exclude='packages/wire-react/src/provider/types.ts' --coverage.thresholds.lines=80 --coverage.thresholds.functions=80 --coverage.thresholds.branches=80 --coverage.thresholds.statements=80",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
