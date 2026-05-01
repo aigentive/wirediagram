@@ -56,6 +56,64 @@ test("wire-native canvas renders and edits without xyflow DOM", async ({ page })
   expect(errors).toEqual([]);
 });
 
+test("edit canvas keeps manual card layout stable while panning", async ({ page }) => {
+  const diagram = {
+    version: 1,
+    id: "drag-pan-stability",
+    title: "Drag Pan Stability",
+    layout: "LR",
+    nodes: [
+      { id: "plan", kind: "trigger", title: "1. Plan", description: "Sketch the approach." },
+      { id: "code", kind: "action", title: "2. Code", description: "Write the change.", from: "plan" },
+      { id: "test", kind: "action", title: "3. Test", description: "Run the suite.", from: "code" },
+      { id: "ship", kind: "end", title: "4. Ship", description: "Deploy.", from: "test" }
+    ],
+    edges: []
+  };
+  await gotoOk(page, `/edit/inline?d=${Buffer.from(JSON.stringify(diagram)).toString("base64url")}`);
+
+  const canvas = page.locator("[data-wire-canvas]").first();
+  const code = canvas.locator("[data-wire-node][data-wire-node-id='code']");
+  await expect(code).toBeVisible();
+
+  const beforeDrag = await code.boundingBox();
+  expect(beforeDrag).toBeTruthy();
+  await page.mouse.move(beforeDrag!.x + beforeDrag!.width / 2, beforeDrag!.y + beforeDrag!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    beforeDrag!.x + beforeDrag!.width / 2 + 48,
+    beforeDrag!.y + beforeDrag!.height / 2 + 160,
+    { steps: 12 }
+  );
+  await page.mouse.up();
+
+  await expect.poll(async () => {
+    const snapshot = await canvasSnapshot(page);
+    return snapshot.nodes.find((node) => node.id === "code")?.style ?? "";
+  }).toContain("top:");
+
+  const afterDrag = await canvasSnapshot(page);
+  const codeStyle = afterDrag.nodes.find((node) => node.id === "code")?.style ?? "";
+  expect(codeStyle).not.toContain("left: 330px; top: 20px");
+  expect(afterDrag.nodes.every((node) => node.style.includes("left:") && node.style.includes("top:"))).toBe(true);
+
+  const canvasBox = await canvas.boundingBox();
+  expect(canvasBox).toBeTruthy();
+  const panStart = {
+    x: canvasBox!.x + canvasBox!.width / 2,
+    y: canvasBox!.y + canvasBox!.height - 120
+  };
+  await page.mouse.move(panStart.x, panStart.y);
+  await page.mouse.down();
+  await page.mouse.move(panStart.x + 140, panStart.y, { steps: 10 });
+  await page.mouse.up();
+
+  const afterPan = await canvasSnapshot(page);
+  expect(afterPan.nodes).toEqual(afterDrag.nodes);
+  expect(afterPan.edges).toEqual(afterDrag.edges);
+  expect(afterPan.viewport).not.toEqual(afterDrag.viewport);
+});
+
 test("install docs show single package install", async ({ page }) => {
   await gotoOk(page, "/install");
   await expect(page.getByText("npm install @aigentive/wire-react")).toBeVisible();
@@ -138,4 +196,21 @@ function visibleCanvasPoint(
     x: Math.min(Math.max(box.x + 120, box.x + 24), box.x + box.width - 24),
     y: Math.min(Math.max(box.y + 140, 80), Math.min(box.y + box.height - 80, viewport.height - 80))
   };
+}
+
+async function canvasSnapshot(page: Page): Promise<{
+  viewport: string | null;
+  nodes: Array<{ id: string | null; style: string }>;
+  edges: Array<string | null>;
+}> {
+  return page.evaluate(() => ({
+    viewport: document.querySelector("[data-wire-canvas] > div")?.getAttribute("style") ?? null,
+    nodes: [...document.querySelectorAll("[data-wire-node]")]
+      .map((node) => ({
+        id: node.getAttribute("data-wire-node-id"),
+        style: node.getAttribute("style") ?? ""
+      }))
+      .sort((a, b) => String(a.id).localeCompare(String(b.id))),
+    edges: [...document.querySelectorAll("[data-wire-edge] path:first-child")].map((path) => path.getAttribute("d"))
+  }));
 }

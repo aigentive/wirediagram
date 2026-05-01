@@ -322,6 +322,16 @@ function WireCanvasInner({
     setWireSelection({ nodeIds: [], edgeIds: [] });
   }, [setWireSelection]);
 
+  const clearDragPreview = useCallback(() => {
+    if (dragRafRef.current !== null && typeof cancelAnimationFrame !== "undefined") {
+      cancelAnimationFrame(dragRafRef.current);
+      dragRafRef.current = null;
+    }
+    pendingDragPositionsRef.current = null;
+    dragPositionsRef.current = undefined;
+    setDragPositions(undefined);
+  }, []);
+
   const fitToView = useCallback((): boolean => {
     const element = containerRef.current;
     if (!element) return false;
@@ -470,6 +480,12 @@ function WireCanvasInner({
   const handlePanePointerMove = updatePan;
   const handlePanePointerUp = endPan;
 
+  const handlePanePointerCancel = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const pan = panStateRef.current;
+    if (!pan || pan.pointerId !== event.pointerId) return;
+    panStateRef.current = null;
+  }, []);
+
   const handlePaneClick = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>) => {
       if (suppressPaneClickRef.current) {
@@ -487,6 +503,7 @@ function WireCanvasInner({
     (event: ReactPointerEvent<HTMLDivElement>, frame: WireCanvasFrame) => {
       if (event.button !== 0) return;
       if (isHandleTarget(event.target)) return;
+      event.stopPropagation();
       if (!editable) {
         if (!canPan) return;
         panStateRef.current = {
@@ -519,11 +536,13 @@ function WireCanvasInner({
 
   const handleNodePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (!editable && panStateRef.current) {
+      event.stopPropagation();
       updatePan(event);
       return;
     }
     const drag = dragStateRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
+    event.stopPropagation();
     const viewport = viewportRef.current;
     const dx = (event.clientX - drag.startClient.x) / viewport.zoom;
     const dy = (event.clientY - drag.startClient.y) / viewport.zoom;
@@ -551,36 +570,41 @@ function WireCanvasInner({
   const handleNodePointerUp = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (!editable && panStateRef.current) {
+        event.stopPropagation();
         if (endPan(event)) suppressNodeClickRef.current = true;
         return;
       }
       const drag = dragStateRef.current;
       if (!drag || drag.pointerId !== event.pointerId) return;
+      event.stopPropagation();
       dragStateRef.current = null;
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
 
-      if (dragRafRef.current !== null && typeof cancelAnimationFrame !== "undefined") {
-        cancelAnimationFrame(dragRafRef.current);
-        dragRafRef.current = null;
-      }
-      pendingDragPositionsRef.current = null;
-
       const positions = dragPositionsRef.current;
-      setDragPositions(undefined);
+      clearDragPreview();
       if (!drag.moved || !positions) return;
 
       suppressNodeClickRef.current = true;
-      const nextActions: WireAction[] = [];
-      for (const [id, position] of positions) {
-        const start = drag.startPositions.get(id);
-        if (!start || (start.x === position.x && start.y === position.y)) continue;
-        nextActions.push({ type: "node.move", id, position });
-      }
+      const nextActions = wireActionsFromCanvasDragCommit(model.frames, positions);
       dispatchMany(nextActions);
     },
-    [dispatchMany, editable, endPan]
+    [clearDragPreview, dispatchMany, editable, endPan, model.frames]
+  );
+
+  const handleNodePointerCancel = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!editable && panStateRef.current?.pointerId === event.pointerId) {
+        panStateRef.current = null;
+        return;
+      }
+      const drag = dragStateRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      dragStateRef.current = null;
+      clearDragPreview();
+    },
+    [clearDragPreview, editable]
   );
 
   const handleConnectionPointerDown = useCallback(
@@ -695,6 +719,7 @@ function WireCanvasInner({
       onPointerDown={handlePanePointerDown}
       onPointerMove={handlePanePointerMove}
       onPointerUp={handlePanePointerUp}
+      onPointerCancel={handlePanePointerCancel}
       onClick={handlePaneClick}
     >
       <div
@@ -757,6 +782,8 @@ function WireCanvasInner({
               onPointerDown={(event) => handleNodePointerDown(event, frame)}
               onPointerMove={handleNodePointerMove}
               onPointerUp={handleNodePointerUp}
+              onPointerCancel={handleNodePointerCancel}
+              onLostPointerCapture={handleNodePointerCancel}
               onClick={(event) => handleNodeClick(event, frame.node)}
               style={{
                 position: "absolute",
@@ -1275,6 +1302,19 @@ export function resolveWireCanvasInteraction({
   };
 }
 
+export function wireActionsFromCanvasDragCommit(
+  frames: readonly WireCanvasFrame[],
+  movedPositions: ReadonlyMap<string, Point>
+): WireAction[] {
+  const actions: WireAction[] = [];
+  for (const frame of frames) {
+    const position = movedPositions.get(frame.id) ?? { x: frame.x, y: frame.y };
+    if (samePoint(frame.node.position, position)) continue;
+    actions.push({ type: "node.move", id: frame.id, position });
+  }
+  return actions;
+}
+
 function fitViewportForBounds(
   bounds: WireCanvasBounds,
   width: number,
@@ -1370,6 +1410,10 @@ function sameMeasuredSizes(
 
 function sameCanvasSize(current: CanvasSize | undefined, next: CanvasSize): boolean {
   return Boolean(current && current.width === next.width && current.height === next.height);
+}
+
+function samePoint(current: Point | undefined, next: Point): boolean {
+  return Boolean(current && current.x === next.x && current.y === next.y);
 }
 
 function clipMiniMapRect(rect: MiniMapRect, bounds: MiniMapRect): MiniMapRect | null {

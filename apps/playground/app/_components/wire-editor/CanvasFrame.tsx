@@ -13,7 +13,7 @@ export function CanvasFrame({
 }) {
   return (
     <div
-      className="relative min-h-0 flex-1 overflow-hidden"
+      className="relative h-full min-h-0 w-full flex-1 overflow-hidden"
       style={{
         backgroundColor: "var(--wire-canvas-bg)",
         backgroundImage:

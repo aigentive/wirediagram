@@ -949,6 +949,7 @@ export function WiresClient({
                   <WireCanvas
                     mode="edit"
                     fitView
+                    edgeRouting="smoothstep"
                     showMiniMap
                     showBackground={false}
                     showControls

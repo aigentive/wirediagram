@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { miniMapViewportRect, resolveWireCanvasInteraction } from "./WireCanvas.js";
+import {
+  miniMapViewportRect,
+  resolveWireCanvasInteraction,
+  wireActionsFromCanvasDragCommit
+} from "./WireCanvas.js";
 
 describe("resolveWireCanvasInteraction", () => {
   it("keeps edit mode selectable by default", () => {
@@ -110,5 +114,44 @@ describe("miniMapViewportRect", () => {
         scale: 0.1
       })
     ).toBeNull();
+  });
+});
+
+describe("wireActionsFromCanvasDragCommit", () => {
+  it("pins auto-laid-out cards when a manual drag commits", () => {
+    const actions = wireActionsFromCanvasDragCommit(
+      [
+        {
+          id: "plan",
+          node: { id: "plan", kind: "trigger", title: "Plan" },
+          x: 20,
+          y: 20,
+          width: 220,
+          height: 80
+        },
+        {
+          id: "code",
+          node: { id: "code", kind: "action", title: "Code", from: "plan" },
+          x: 330,
+          y: 20,
+          width: 220,
+          height: 80
+        },
+        {
+          id: "test",
+          node: { id: "test", kind: "action", title: "Test", from: "code", position: { x: 640, y: 20 } },
+          x: 640,
+          y: 20,
+          width: 220,
+          height: 80
+        }
+      ],
+      new Map([["code", { x: 360, y: 120 }]])
+    );
+
+    expect(actions).toEqual([
+      { type: "node.move", id: "plan", position: { x: 20, y: 20 } },
+      { type: "node.move", id: "code", position: { x: 360, y: 120 } }
+    ]);
   });
 });
