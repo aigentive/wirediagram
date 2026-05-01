@@ -153,10 +153,10 @@ export function blankWireDiagram(wireId: string, title: string): WireDiagram {
 
 export async function listUserWires(user: CurrentUser): Promise<WireSummary[]> {
   const paths = await listWirePaths(user);
-  const wires = await Promise.all(paths.map((path) => readJson<StoredWire>(path)));
+  const wires = await Promise.all(paths.map((path) => safeReadStoredWire(path)));
   return wires
-    .filter((wire): wire is StoredWire => Boolean(wire && wire.ownerKey === user.key && !wire.isDeleted))
-    .map(toSummary)
+    .map((wire) => summaryForStoredWire(user, wire))
+    .filter((wire): wire is WireSummary => Boolean(wire))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
@@ -356,6 +356,29 @@ export function toSummary(wire: StoredWire): WireSummary {
     nodeCount: wire.nodeCount,
     createdAt: wire.createdAt,
     updatedAt: wire.updatedAt
+  };
+}
+
+async function safeReadStoredWire(pathname: string): Promise<StoredWire | null> {
+  try {
+    return await readJson<StoredWire>(pathname);
+  } catch {
+    return null;
+  }
+}
+
+function summaryForStoredWire(user: CurrentUser, wire: StoredWire | null): WireSummary | null {
+  if (!wire || wire.ownerKey !== user.key || wire.isDeleted) return null;
+  if (typeof wire.id !== "string" || !WIRE_ID_RE.test(wire.id)) return null;
+  const updatedAt = typeof wire.updatedAt === "string" && wire.updatedAt ? wire.updatedAt : new Date(0).toISOString();
+  const createdAt = typeof wire.createdAt === "string" && wire.createdAt ? wire.createdAt : updatedAt;
+  return {
+    id: wire.id,
+    title: typeof wire.title === "string" && wire.title.trim() ? wire.title : "Untitled wire",
+    currentToken: typeof wire.currentToken === "string" ? wire.currentToken : "",
+    nodeCount: Number.isFinite(wire.nodeCount) ? wire.nodeCount : Array.isArray(wire.diagram?.nodes) ? wire.diagram.nodes.length : 0,
+    createdAt,
+    updatedAt
   };
 }
 

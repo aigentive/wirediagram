@@ -400,7 +400,7 @@ export function WiresClient({
       saveTimerRef.current = null;
     }
     pendingSaveRef.current = null;
-    saveVersionRef.current += 1;
+    saveVersionRef.current = nextClientMutationId(saveVersionRef.current);
     setWorkspace(next);
     setJsonDraft(formatJson(next.diagram));
     setJsonError(null);
@@ -431,7 +431,7 @@ export function WiresClient({
       const requestId = loadRequestRef.current + 1;
       loadRequestRef.current = requestId;
       flushPendingSave();
-      saveVersionRef.current += 1;
+      saveVersionRef.current = nextClientMutationId(saveVersionRef.current);
       setLoadingWireId(wireId);
       setApiError(null);
       try {
@@ -532,7 +532,7 @@ export function WiresClient({
   const scheduleSave = useCallback(
     (diagram: WireDiagram, source: "manual" | "json" | "reset" = "manual") => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      const version = saveVersionRef.current + 1;
+      const version = nextClientMutationId(saveVersionRef.current);
       saveVersionRef.current = version;
       pendingSaveRef.current = { diagram, source, version };
       setSaveStatus("saving");
@@ -597,7 +597,7 @@ export function WiresClient({
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
       pendingSaveRef.current = null;
-      saveVersionRef.current += 1;
+      saveVersionRef.current = nextClientMutationId(saveVersionRef.current);
       const renamedDiagram = { ...workspace.diagram, title: trimmed };
       setSaveStatus("saving");
       try {
@@ -1951,6 +1951,11 @@ function ExportSourcePanel({ mode, source }: { mode: "svg" | "mermaid"; source: 
 
 function formatJson(diagram: WireDiagram): string {
   return JSON.stringify(diagram, null, 2);
+}
+
+function nextClientMutationId(current: number): number {
+  const now = Date.now();
+  return now > current ? now : current + 1;
 }
 
 function downloadBlob(filename: string, body: string, type: string): void {
