@@ -1,6 +1,6 @@
 {
   "name": "@aigentive/wire-mcp",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Wire MCP server — agent-driven diagram editing over stdio + streamable-HTTP.",
   "license": "MIT",
   "type": "module",
@@ -22,7 +22,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@aigentive/wire-core": "^1.0.1",
+    "@aigentive/wire-core": "^1.0.2",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@resvg/resvg-js": "^2.6.2",
     "zod": "^3.24.2"

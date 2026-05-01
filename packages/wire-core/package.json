@@ -1,6 +1,6 @@
 {
   "name": "@aigentive/wire-core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Wire — canonical schema, validation, normalization, and layout for LLM-first diagrams.",
   "license": "MIT",
   "type": "module",

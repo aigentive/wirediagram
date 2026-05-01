@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@aigentive/wire-core": "^1.0.1",
-    "@aigentive/wire-mcp": "^1.0.5",
+    "@aigentive/wire-core": "^1.0.2",
+    "@aigentive/wire-mcp": "^1.0.6",
     "@aigentive/wire-react": "^1.0.0",
     "@aigentive/wire-renderers": "^1.0.0",
     "@resvg/resvg-js": "^2.6.2",

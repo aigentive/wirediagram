@@ -14,7 +14,7 @@ export const PROMPTS = [
 
 1. Inspect {{rootPath}} and identify the primary modules, data flows, and external services.
 2. Call \`create_diagram\` (or \`load_diagram\` if {{diagramId}} is provided) and use \`set_layout\` for the best direction.
-3. Use \`add_node\` for each major module with the right kind. Every non-group node renders as a card; put the card header in \`title\`, body copy in \`description\`, and only use \`data.card\` for optional badges/meta/progress/footer:
+3. Use \`add_node\` for each major module with the right kind. Every non-group node renders as a card; put the card header in \`title\`, body copy in \`description\`, only use \`data.card\` for optional badges/meta/progress/footer, and use \`node.tone\` or \`node.style\` for persisted card visual styling:
    - "trigger" for external entry points (HTTP, queue, cron)
    - "ai" for LLM calls
    - "tool" for outbound integrations
@@ -43,7 +43,7 @@ Logs:
 
 Steps:
 1. Identify each distinct stage by ordered timestamps and stage labels.
-2. Use \`create_diagram\` then \`add_node\` per stage. Treat each stage as a card: concise \`title\`, useful \`description\`, optional \`data.card\` badges/meta only when needed.
+2. Use \`create_diagram\` then \`add_node\` per stage. Treat each stage as a card: concise \`title\`, useful \`description\`, optional \`data.card\` badges/meta only when needed, and \`node.tone\` or \`node.style\` only for visual styling.
 3. Add \`condition\` nodes when log lines indicate a fork (different downstream stages).
 4. Mark the final stage with kind="end".
 5. Call \`validate\` and \`render_svg\`.`
@@ -58,7 +58,7 @@ Steps:
 
 {{description}}
 
-Use add_node + connect via canonical target-centric "from" syntax. Every workflow step is a rendered card, so use node title/description for visible content and data.card only for badges/meta/progress/footer. Add condition nodes for any "if/then/else" language and wire branch targets with "conditionId.branch". Add notes for explicit constraints. Validate and render at the end.`
+Use add_node + connect via canonical target-centric "from" syntax. Every workflow step is a rendered card, so use node title/description for visible content, data.card only for badges/meta/progress/footer, and node.tone/node.style only for visual styling. Add condition nodes for any "if/then/else" language and wire branch targets with "conditionId.branch". Add notes for explicit constraints. Validate and render at the end.`
   },
   {
     name: "review_diagram_for_clarity",

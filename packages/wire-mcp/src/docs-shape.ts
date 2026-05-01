@@ -105,6 +105,10 @@ description, badges, meta, progress, and footer. Do not emit HTML/SVG/React
 components in data.card. Do not create separate "card" nodes; create workflow
 nodes and let Wire render them as cards.
 
+Put card visual styling in node.tone and node.style, not in CSS or data.card.
+Use node.style.fill, stroke, strokeWidth, borderRadius, shadow, opacity, and
+textColor only when the diagram needs explicit visual overrides.
+
 ## Wiring Rules
 
 Wire direction is target-centric. To connect A -> B, set B.from = "A". For a
@@ -357,7 +361,8 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
       "Use node.from for ordinary connections.",
       "Use explicit edges only when edge metadata is required.",
       "Condition branches must be declared on the condition node.",
-      "Use node.data.card only for extra badges, meta rows, progress, or footer."
+      "Use node.data.card only for extra badges, meta rows, progress, or footer.",
+      "Use node.tone and node.style for persisted card visual style."
     ],
     avoid: [
       "Do not use null for from; omit the field instead.",

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
 export function NavRailItem({
@@ -16,7 +16,7 @@ export function NavRailItem({
   title: string;
   meta?: ReactNode;
   loading?: boolean;
-  onClick?: () => void;
+  onClick?: (event: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => void;
 }) {
   const baseClass =
     "relative grid min-h-[44px] overflow-hidden rounded-[7px] border border-transparent pl-[12px] pr-[10px] py-2 text-left transition-colors";
@@ -57,10 +57,11 @@ export function NavRailItem({
     </>
   );
 
-  if (href && !onClick) {
+  if (href) {
     return (
       <a
         href={href}
+        onClick={onClick}
         className={`${baseClass} no-underline ${active ? activeClass : inactiveClass}`}
       >
         {content}

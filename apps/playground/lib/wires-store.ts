@@ -43,6 +43,7 @@ export type StoredWire = WireSummary & {
   ownerKey: string;
   ownerEmail?: string;
   diagram?: WireDiagram;
+  lastClientMutationId?: number;
   isDeleted: boolean;
   versions: WireVersion[];
   chatMessages: StoredChatMessage[];
@@ -241,6 +242,7 @@ export async function saveUserWire({
   diagram,
   source,
   summary,
+  clientMutationId,
   chatMessages = []
 }: {
   user: CurrentUser;
@@ -248,6 +250,7 @@ export async function saveUserWire({
   diagram: unknown;
   source: WireSaveSource;
   summary?: string | null;
+  clientMutationId?: number;
   chatMessages?: StoredChatMessage[];
 }): Promise<{
   wire: StoredWire;
@@ -258,11 +261,17 @@ export async function saveUserWire({
   if (!existing || existing.ownerKey !== user.key || existing.isDeleted) {
     throw new WireNotFoundError();
   }
+  if (isStaleClientMutation(existing, clientMutationId)) {
+    return materializeStoredWire(existing);
+  }
 
   const shared = await persistSharedDiagram(diagram);
   const latest = await readJson<StoredWire>(wirePath(user, wireId));
   if (!latest || latest.ownerKey !== user.key || latest.isDeleted) {
     throw new WireNotFoundError();
+  }
+  if (isStaleClientMutation(latest, clientMutationId)) {
+    return materializeStoredWire(latest);
   }
   const nextDiagram = shared.diagram;
   const now = new Date().toISOString();
@@ -273,6 +282,7 @@ export async function saveUserWire({
     currentToken: shared.token,
     nodeCount: nextDiagram.nodes.length,
     diagram: nextDiagram,
+    lastClientMutationId: clientMutationId ?? latest.lastClientMutationId,
     updatedAt: now,
     versions: [
       ...latest.versions,
@@ -307,6 +317,23 @@ export async function renameUserWire(user: CurrentUser, wireId: string, title: s
     source: "rename",
     summary: "Renamed wire."
   });
+}
+
+async function materializeStoredWire(wire: StoredWire): Promise<{
+  wire: StoredWire;
+  diagram: WireDiagram;
+  validation: ValidationResult;
+}> {
+  const raw = wire.diagram ?? await resolveShareToken(wire.currentToken);
+  if (!raw) throw new Error("Stored wire diagram could not be found.");
+  const diagram = parseWireDiagram(raw);
+  return { wire, diagram, validation: validate(diagram) };
+}
+
+function isStaleClientMutation(wire: StoredWire, clientMutationId: number | undefined): boolean {
+  return clientMutationId !== undefined &&
+    typeof wire.lastClientMutationId === "number" &&
+    clientMutationId <= wire.lastClientMutationId;
 }
 
 export async function deleteUserWire(user: CurrentUser, wireId: string): Promise<void> {

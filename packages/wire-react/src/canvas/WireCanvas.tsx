@@ -103,6 +103,7 @@ interface DragState {
   pointerId: number;
   startClient: Point;
   startPositions: Map<string, Point>;
+  commitFrames: WireCanvasFrame[];
   moved: boolean;
 }
 
@@ -527,11 +528,12 @@ function WireCanvasInner({
         pointerId: event.pointerId,
         startClient: { x: event.clientX, y: event.clientY },
         startPositions,
+        commitFrames: model.frames.map((candidate) => ({ ...candidate })),
         moved: false
       };
       event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [canPan, ctx.diagram.nodes, editable, model.framesById]
+    [canPan, ctx.diagram.nodes, editable, model.frames, model.framesById]
   );
 
   const handleNodePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -543,15 +545,10 @@ function WireCanvasInner({
     const drag = dragStateRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     event.stopPropagation();
-    const viewport = viewportRef.current;
-    const dx = (event.clientX - drag.startClient.x) / viewport.zoom;
-    const dy = (event.clientY - drag.startClient.y) / viewport.zoom;
-    if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
+    const nextDrag = positionsForDragClient(drag, { x: event.clientX, y: event.clientY }, viewportRef.current);
+    if (nextDrag.moved) drag.moved = true;
     if (!drag.moved) return;
-    const next = new Map<string, Point>();
-    for (const [id, start] of drag.startPositions) {
-      next.set(id, { x: start.x + dx, y: start.y + dy });
-    }
+    const next = nextDrag.positions;
     dragPositionsRef.current = next;
     pendingDragPositionsRef.current = next;
     if (dragRafRef.current !== null) return;
@@ -567,6 +564,41 @@ function WireCanvasInner({
     });
   }, [editable, updatePan]);
 
+  const commitNodeDrag = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>, releaseCapture: boolean): boolean => {
+      const drag = dragStateRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return false;
+      event.stopPropagation();
+
+      const finalDrag = positionsForDragClient(drag, { x: event.clientX, y: event.clientY }, viewportRef.current);
+      if (finalDrag.moved) {
+        drag.moved = true;
+        dragPositionsRef.current = finalDrag.positions;
+      }
+
+      dragStateRef.current = null;
+      if (releaseCapture && event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+
+      const positions = dragPositionsRef.current;
+      if (!drag.moved || !positions) {
+        clearDragPreview();
+        return false;
+      }
+
+      suppressNodeClickRef.current = true;
+      const nextActions = wireActionsFromCanvasDragCommit(drag.commitFrames, positions);
+      try {
+        dispatchMany(nextActions);
+      } finally {
+        clearDragPreview();
+      }
+      return true;
+    },
+    [clearDragPreview, dispatchMany]
+  );
+
   const handleNodePointerUp = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (!editable && panStateRef.current) {
@@ -574,23 +606,9 @@ function WireCanvasInner({
         if (endPan(event)) suppressNodeClickRef.current = true;
         return;
       }
-      const drag = dragStateRef.current;
-      if (!drag || drag.pointerId !== event.pointerId) return;
-      event.stopPropagation();
-      dragStateRef.current = null;
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-
-      const positions = dragPositionsRef.current;
-      clearDragPreview();
-      if (!drag.moved || !positions) return;
-
-      suppressNodeClickRef.current = true;
-      const nextActions = wireActionsFromCanvasDragCommit(model.frames, positions);
-      dispatchMany(nextActions);
+      commitNodeDrag(event, true);
     },
-    [clearDragPreview, dispatchMany, editable, endPan, model.frames]
+    [commitNodeDrag, editable, endPan]
   );
 
   const handleNodePointerCancel = useCallback(
@@ -605,6 +623,17 @@ function WireCanvasInner({
       clearDragPreview();
     },
     [clearDragPreview, editable]
+  );
+
+  const handleNodeLostPointerCapture = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!editable && panStateRef.current?.pointerId === event.pointerId) {
+        panStateRef.current = null;
+        return;
+      }
+      commitNodeDrag(event, false);
+    },
+    [commitNodeDrag, editable]
   );
 
   const handleConnectionPointerDown = useCallback(
@@ -783,7 +812,7 @@ function WireCanvasInner({
               onPointerMove={handleNodePointerMove}
               onPointerUp={handleNodePointerUp}
               onPointerCancel={handleNodePointerCancel}
-              onLostPointerCapture={handleNodePointerCancel}
+              onLostPointerCapture={handleNodeLostPointerCapture}
               onClick={(event) => handleNodeClick(event, frame.node)}
               style={{
                 position: "absolute",
@@ -1354,6 +1383,23 @@ function clientPointToWorld(clientX: number, clientY: number, element: HTMLEleme
   return {
     x: (clientX - (rect?.left ?? 0) - viewport.x) / viewport.zoom,
     y: (clientY - (rect?.top ?? 0) - viewport.y) / viewport.zoom
+  };
+}
+
+function positionsForDragClient(
+  drag: DragState,
+  client: Point,
+  viewport: WireViewport
+): { positions: Map<string, Point>; moved: boolean } {
+  const dx = (client.x - drag.startClient.x) / viewport.zoom;
+  const dy = (client.y - drag.startClient.y) / viewport.zoom;
+  const positions = new Map<string, Point>();
+  for (const [id, start] of drag.startPositions) {
+    positions.set(id, { x: start.x + dx, y: start.y + dy });
+  }
+  return {
+    positions,
+    moved: Math.abs(dx) + Math.abs(dy) > 2
   };
 }
 

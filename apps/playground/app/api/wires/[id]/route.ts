@@ -55,6 +55,7 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Re
     diagram?: unknown;
     source?: unknown;
     title?: unknown;
+    clientMutationId?: unknown;
   };
 
   try {
@@ -77,7 +78,8 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Re
       user,
       wireId: id,
       diagram: payload.diagram,
-      source
+      source,
+      clientMutationId: parseClientMutationId(payload.clientMutationId)
     });
 
     return Response.json({
@@ -106,6 +108,10 @@ export async function DELETE(_req: NextRequest, context: RouteContext): Promise<
 function parseSource(value: unknown): WireSaveSource {
   if (value === "manual" || value === "json" || value === "reset" || value === "rename") return value;
   return "manual";
+}
+
+function parseClientMutationId(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : undefined;
 }
 
 function errorResponse(err: unknown): Response {

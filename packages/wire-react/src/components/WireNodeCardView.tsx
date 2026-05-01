@@ -1,5 +1,5 @@
-import type { ReactElement, ReactNode } from "react";
-import type { WireNode } from "@aigentive/wire-core";
+import type { CSSProperties, ReactElement, ReactNode } from "react";
+import type { NodeStyle, Tone, WireNode } from "@aigentive/wire-core";
 import {
   readWireOption,
   type WireOptionSpec
@@ -21,6 +21,8 @@ export interface WireGroupFrameProps extends WireNodeRenderContext {
 }
 
 export type WireCardBadgeTone = "default" | "info" | "success" | "warning" | "error";
+
+type CardCssProperties = CSSProperties & Record<`--${string}`, string | number | undefined>;
 
 export type WireCardBadge =
   | string
@@ -61,6 +63,15 @@ export interface WireCardContent {
   footer?: string;
 }
 
+const TONE_CARD_STYLE: Record<Tone, { fill: string; stroke: string; text: string }> = {
+  default: { fill: "#ffffff", stroke: "#d4d4d8", text: "#18181b" },
+  success: { fill: "#ecfdf5", stroke: "#34d399", text: "#064e3b" },
+  warning: { fill: "#fffbeb", stroke: "#fbbf24", text: "#78350f" },
+  error: { fill: "#fff1f2", stroke: "#fb7185", text: "#881337" },
+  info: { fill: "#f0f9ff", stroke: "#38bdf8", text: "#0c4a6e" },
+  ai: { fill: "#f5f3ff", stroke: "#a78bfa", text: "#4c1d95" }
+};
+
 export function WireNodeCardView(ctx: WireNodeCardViewProps): ReactElement {
   const cardContent = wireCardContentForNode(ctx.node);
   const subtitle = subtitleForNode(ctx.node);
@@ -80,6 +91,7 @@ export function WireNodeCardView(ctx: WireNodeCardViewProps): ReactElement {
       selected={ctx.selected}
       ariaSelected={ctx.selected}
       className={cx("box-border h-full w-full min-w-0", ctx.className)}
+      style={cardStyleForNode(ctx.node)}
     >
       {description ? (
         <span className="text-[12px] leading-snug text-wire-secondary">{description}</span>
@@ -94,6 +106,44 @@ export function WireNodeCardView(ctx: WireNodeCardViewProps): ReactElement {
       ) : null}
     </NodeCard>
   );
+}
+
+export function cardStyleForNode(node: WireNode): CSSProperties | undefined {
+  const nodeStyle = node.style;
+  const style: CardCssProperties = {};
+
+  if (node.tone) {
+    const toneStyle = TONE_CARD_STYLE[node.tone];
+    style.backgroundColor = toneStyle.fill;
+    style.backgroundImage = "none";
+    style.borderColor = toneStyle.stroke;
+    style["--wire-fg-primary"] = toneStyle.text;
+    style["--wire-fg-secondary"] = toneStyle.text;
+    style["--wire-fg-tertiary"] = toneStyle.text;
+  }
+  if (nodeStyle) Object.assign(style, cardCssStyleForNodeStyle(nodeStyle));
+
+  return Object.keys(style).length > 0 ? style : undefined;
+}
+
+function cardCssStyleForNodeStyle(style: NodeStyle): CardCssProperties {
+  const cardStyle: CardCssProperties = {};
+  if (style.fill) {
+    cardStyle.backgroundColor = style.fill;
+    cardStyle.backgroundImage = "none";
+  }
+  if (style.stroke) cardStyle.borderColor = style.stroke;
+  if (style.strokeWidth !== undefined) cardStyle.borderWidth = style.strokeWidth;
+  if (style.strokeDasharray) cardStyle.borderStyle = "dashed";
+  if (style.borderRadius !== undefined) cardStyle.borderRadius = style.borderRadius;
+  if (style.opacity !== undefined) cardStyle.opacity = style.opacity;
+  if (style.shadow === false) cardStyle.boxShadow = "none";
+  if (style.textColor) {
+    cardStyle["--wire-fg-primary"] = style.textColor;
+    cardStyle["--wire-fg-secondary"] = style.textColor;
+    cardStyle["--wire-fg-tertiary"] = style.textColor;
+  }
+  return cardStyle;
 }
 
 export function WireGroupFrame(ctx: WireGroupFrameProps): ReactElement {

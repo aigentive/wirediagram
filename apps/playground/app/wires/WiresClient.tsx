@@ -250,8 +250,9 @@ export function WiresClient({
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveVersionRef = useRef(0);
-  const pendingSaveRef = useRef<{ diagram: WireDiagram; source: "manual" | "json" | "reset" } | null>(null);
+  const pendingSaveRef = useRef<{ diagram: WireDiagram; source: "manual" | "json" | "reset"; version: number } | null>(null);
   const workspaceRef = useRef<Workspace | null>(null);
+  const loadRequestRef = useRef(0);
   const initialWireLoadedRef = useRef(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -287,18 +288,24 @@ export function WiresClient({
     workspaceRef.current = workspace;
   }, [workspace]);
 
+  const flushPendingSave = useCallback(() => {
+    const current = workspaceRef.current;
+    const pending = pendingSaveRef.current;
+    if (!current || !pending) return;
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    pendingSaveRef.current = null;
+    void fetch(`/api/wires/${encodeURIComponent(current.wire.id)}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ diagram: pending.diagram, source: pending.source, clientMutationId: pending.version }),
+      keepalive: true
+    });
+  }, []);
+
   useEffect(() => {
-    const flushPendingSave = () => {
-      const current = workspaceRef.current;
-      const pending = pendingSaveRef.current;
-      if (!current || !pending) return;
-      void fetch(`/api/wires/${encodeURIComponent(current.wire.id)}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ diagram: pending.diagram, source: pending.source }),
-        keepalive: true
-      });
-    };
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") flushPendingSave();
     };
@@ -308,7 +315,7 @@ export function WiresClient({
       window.removeEventListener("pagehide", flushPendingSave);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [flushPendingSave]);
 
   useEffect(() => {
     setCloudUrl(window.location.origin);
@@ -408,6 +415,7 @@ export function WiresClient({
     setShareResult(null);
     setExportMessage(null);
     setTraces([]);
+    setLoadingWireId(null);
     setCanvasRevision((revision) => revision + 1);
     setSaveStatus("saved");
     setRightPanel("chat");
@@ -420,9 +428,9 @@ export function WiresClient({
 
   const loadWire = useCallback(
     async (wireId: string) => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-      pendingSaveRef.current = null;
+      const requestId = loadRequestRef.current + 1;
+      loadRequestRef.current = requestId;
+      flushPendingSave();
       saveVersionRef.current += 1;
       setLoadingWireId(wireId);
       setApiError(null);
@@ -432,18 +440,21 @@ export function WiresClient({
         if (!res.ok || data.error || !data.wire || !data.diagram) {
           throw new Error(data.error ?? `Request failed with ${res.status}`);
         }
+        if (requestId !== loadRequestRef.current) return;
         acceptWorkspace({
           wire: data.wire,
           diagram: data.diagram,
           chatMessages: data.chatMessages ?? []
         });
       } catch (err) {
-        setApiError(err instanceof Error ? err.message : String(err));
+        if (requestId === loadRequestRef.current) {
+          setApiError(err instanceof Error ? err.message : String(err));
+        }
       } finally {
-        setLoadingWireId(null);
+        if (requestId === loadRequestRef.current) setLoadingWireId(null);
       }
     },
-    [acceptWorkspace]
+    [acceptWorkspace, flushPendingSave]
   );
 
   useEffect(() => {
@@ -465,6 +476,7 @@ export function WiresClient({
       if (!res.ok || data.error || !data.wire || !data.diagram) {
         throw new Error(data.error ?? `Request failed with ${res.status}`);
       }
+      loadRequestRef.current += 1;
       acceptWorkspace({
         wire: data.wire,
         diagram: data.diagram,
@@ -487,7 +499,7 @@ export function WiresClient({
         const res = await fetch(`/api/wires/${workspace.wire.id}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ diagram, source })
+          body: JSON.stringify({ diagram, source, clientMutationId: version })
         });
         const data = await readJsonResponse<WireLoadResponse>(res);
         if (!res.ok || data.error || !data.wire || !data.diagram) {
@@ -522,7 +534,7 @@ export function WiresClient({
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       const version = saveVersionRef.current + 1;
       saveVersionRef.current = version;
-      pendingSaveRef.current = { diagram, source };
+      pendingSaveRef.current = { diagram, source, version };
       setSaveStatus("saving");
       saveTimerRef.current = setTimeout(() => {
         saveTimerRef.current = null;
@@ -856,7 +868,12 @@ export function WiresClient({
                 title={wire.title}
                 meta={`${wire.nodeCount} nodes · edited ${formatRelativeTime(wire.updatedAt)}`}
                 loading={loadingWireId === wire.id}
-                onClick={() => void loadWire(wire.id)}
+                href={`/wires/${encodeURIComponent(wire.id)}`}
+                onClick={(event) => {
+                  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+                  event.preventDefault();
+                  void loadWire(wire.id);
+                }}
               />
             ))}
             {filteredWires.length === 0 ? (

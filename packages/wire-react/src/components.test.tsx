@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { emptyDiagram } from "@aigentive/wire-core";
 import { WirePalette } from "./components/WirePalette.js";
 import { WireOptionPanel } from "./components/WireOptionPanel.js";
-import { WireNodeCardView, wireCardContentForNode } from "./components/WireNodeCardView.js";
+import { WireNodeCardView, cardStyleForNode, wireCardContentForNode } from "./components/WireNodeCardView.js";
 import { WireNodeList } from "./components/WireNodeList.js";
 import { WireToolbar } from "./components/WireToolbar.js";
 import { WireValidationPanel } from "./components/WireValidationPanel.js";
@@ -128,6 +128,42 @@ describe("shared editor components", () => {
     expect(markup).toContain("Regular");
     expect(markup).toContain("100%");
     expect(markup).toContain("width:100%");
+  });
+
+  it("renders canonical node style overrides on card shells", () => {
+    const node = {
+      id: "styled",
+      kind: "action" as const,
+      title: "Styled card",
+      tone: "warning" as const,
+      style: {
+        fill: "#111827",
+        stroke: "#38bdf8",
+        strokeWidth: 2,
+        borderRadius: 6,
+        textColor: "#f8fafc",
+        shadow: false
+      }
+    };
+
+    const style = cardStyleForNode(node);
+    expect(style).toMatchObject({
+      backgroundColor: "#111827",
+      backgroundImage: "none",
+      borderColor: "#38bdf8",
+      borderWidth: 2,
+      borderRadius: 6,
+      boxShadow: "none"
+    });
+    expect((style as Record<string, unknown>)["--wire-fg-primary"]).toBe("#f8fafc");
+
+    const markup = renderToStaticMarkup(
+      <WireNodeCardView {...renderContextFor(node)} />
+    );
+
+    expect(markup).toContain("background-color:#111827");
+    expect(markup).toContain("border-color:#38bdf8");
+    expect(markup).toContain("--wire-fg-primary:#f8fafc");
   });
 
   it("allows React-only card body slots while keeping the default card shell", () => {

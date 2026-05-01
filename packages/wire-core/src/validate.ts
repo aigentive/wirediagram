@@ -72,7 +72,7 @@ export function validate(input: WireDiagram | unknown): ValidationResult {
         code: "node.forbidden-field",
         message: `Node "${nodeId}" used "${field}" — Wire nodes use 'from' on the target node for connections. Field was dropped.`,
         nodeId,
-        hint: `To connect source -> this node, set from: "<sourceId>" on this node. For visual card content, use title, description, and data.card.`
+        hint: `To connect source -> this node, set from: "<sourceId>" on this node. For visual card content, use title, description, and data.card. For card visual style, use tone and style.`
       });
     }
   }
