@@ -15,6 +15,7 @@ export interface NodeCardProps {
   className?: string;
   style?: CSSProperties;
   ariaSelected?: boolean;
+  showKindChip?: boolean;
 }
 
 const KIND_TINT: Record<WireKindChipKey, string> = {
@@ -39,7 +40,8 @@ export function NodeCard({
   footer,
   className,
   style,
-  ariaSelected
+  ariaSelected,
+  showKindChip = true
 }: NodeCardProps): ReactElement {
   const tint = KIND_TINT[kindChipKey(kind)];
   const cardStyle: CSSProperties = {
@@ -61,10 +63,12 @@ export function NodeCard({
       )}
       style={cardStyle}
     >
-      <div className="flex items-center justify-between gap-1.5">
-        <KindChip kind={kind} />
-        {refLabel ? <Ref>{refLabel}</Ref> : null}
-      </div>
+      {showKindChip || refLabel ? (
+        <div className="flex items-center justify-between gap-1.5">
+          {showKindChip ? <KindChip kind={kind} /> : <span />}
+          {refLabel ? <Ref>{refLabel}</Ref> : null}
+        </div>
+      ) : null}
       <div className="mt-0.5 text-[13px] font-semibold leading-snug tracking-[-0.005em] text-wire-primary">
         {title}
       </div>

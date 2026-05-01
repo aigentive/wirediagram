@@ -285,7 +285,7 @@ export async function saveUserWire({
     lastClientMutationId: clientMutationId ?? latest.lastClientMutationId,
     updatedAt: now,
     versions: [
-      ...latest.versions,
+      ...storedWireVersions(latest),
       {
         id: randomUUID(),
         token: shared.token,
@@ -294,7 +294,7 @@ export async function saveUserWire({
         createdAt: now
       }
     ].slice(-100),
-    chatMessages: [...latest.chatMessages, ...chatMessages].slice(-100)
+    chatMessages: [...storedWireChatMessages(latest), ...chatMessages].slice(-100)
   };
   await writeJson(wirePath(user, wireId), next);
   return { wire: next, diagram: nextDiagram, validation };
@@ -351,11 +351,11 @@ export async function deleteUserWire(user: CurrentUser, wireId: string): Promise
 export function toSummary(wire: StoredWire): WireSummary {
   return {
     id: wire.id,
-    title: wire.title,
-    currentToken: wire.currentToken,
-    nodeCount: wire.nodeCount,
-    createdAt: wire.createdAt,
-    updatedAt: wire.updatedAt
+    title: typeof wire.title === "string" && wire.title.trim() ? wire.title : "Untitled wire",
+    currentToken: typeof wire.currentToken === "string" ? wire.currentToken : "",
+    nodeCount: Number.isFinite(wire.nodeCount) ? wire.nodeCount : Array.isArray(wire.diagram?.nodes) ? wire.diagram.nodes.length : 0,
+    createdAt: typeof wire.createdAt === "string" && wire.createdAt ? wire.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof wire.updatedAt === "string" && wire.updatedAt ? wire.updatedAt : new Date(0).toISOString()
   };
 }
 
@@ -380,6 +380,14 @@ function summaryForStoredWire(user: CurrentUser, wire: StoredWire | null): WireS
     createdAt,
     updatedAt
   };
+}
+
+function storedWireVersions(wire: StoredWire): WireVersion[] {
+  return Array.isArray(wire.versions) ? wire.versions : [];
+}
+
+function storedWireChatMessages(wire: StoredWire): StoredChatMessage[] {
+  return Array.isArray(wire.chatMessages) ? wire.chatMessages : [];
 }
 
 export function makeChatMessage(

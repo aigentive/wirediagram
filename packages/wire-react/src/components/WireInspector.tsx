@@ -18,14 +18,26 @@ const INLINE_INPUT =
 const CLEAR_BUTTON =
   "shrink-0 rounded-md border border-wire px-2 py-1 text-[11px] font-medium text-wire-tertiary transition-colors hover:text-wire-primary";
 
-const TONE_OPTIONS: Array<{ value: "" | Tone; label: string }> = [
+type CardStyleMode = "" | Tone | "custom";
+
+const CARD_STYLE_PRESETS: Record<Tone, Pick<NodeStyle, "fill" | "stroke" | "textColor">> = {
+  default: { fill: "#ffffff", stroke: "#d4d4d8", textColor: "#18181b" },
+  success: { fill: "#ecfdf5", stroke: "#34d399", textColor: "#064e3b" },
+  warning: { fill: "#fffbeb", stroke: "#fbbf24", textColor: "#78350f" },
+  error: { fill: "#fff1f2", stroke: "#fb7185", textColor: "#881337" },
+  info: { fill: "#f0f9ff", stroke: "#38bdf8", textColor: "#0c4a6e" },
+  ai: { fill: "#f5f3ff", stroke: "#a78bfa", textColor: "#4c1d95" }
+};
+
+const TONE_OPTIONS: Array<{ value: CardStyleMode; label: string }> = [
   { value: "", label: "Kind default" },
   { value: "default", label: "Neutral" },
   { value: "success", label: "Success" },
   { value: "warning", label: "Warning" },
   { value: "error", label: "Error" },
   { value: "info", label: "Info" },
-  { value: "ai", label: "AI" }
+  { value: "ai", label: "AI" },
+  { value: "custom", label: "Custom" }
 ];
 
 export function WireInspector({ className, style }: WireInspectorProps): ReactElement {
@@ -48,11 +60,12 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
     );
   }
 
+  const appearance = cardAppearanceForNode(node);
   const dispatchStylePatch = (patch: Partial<Record<keyof NodeStyle, unknown>>): void => {
     actions.dispatch({
       type: "node.patch",
       id: node.id,
-      patch: patchNodeStyle(node, patch)
+      patch: { tone: null, ...patchNodeStyle(node, patch) }
     });
   };
 
@@ -111,14 +124,16 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
           <span className={FIELD_LABEL}>Card style</span>
           <select
             className={TEXT_INPUT}
-            value={node.tone ?? ""}
-            onChange={(event) =>
+            value={appearance.mode}
+            onChange={(event) => {
+              const mode = event.target.value as CardStyleMode;
+              if (mode === "custom") return;
               actions.dispatch({
                 type: "node.patch",
                 id: node.id,
-                patch: { tone: event.target.value || null }
-              })
-            }
+                patch: mode ? { tone: mode, style: styleForPreset(mode) } : { tone: null, style: null }
+              });
+            }}
           >
             {TONE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -130,20 +145,23 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
 
         <ColorField
           label="Fill"
-          value={node.style?.fill}
+          value={appearance.fill}
           fallback="#ffffff"
+          canClear={Boolean(node.style?.fill)}
           onChange={(value) => dispatchStylePatch({ fill: value })}
         />
         <ColorField
           label="Border"
-          value={node.style?.stroke}
+          value={appearance.stroke}
           fallback="#d4d4d8"
+          canClear={Boolean(node.style?.stroke)}
           onChange={(value) => dispatchStylePatch({ stroke: value })}
         />
         <ColorField
           label="Text"
-          value={node.style?.textColor}
+          value={appearance.textColor}
           fallback="#18181b"
+          canClear={Boolean(node.style?.textColor)}
           onChange={(value) => dispatchStylePatch({ textColor: value })}
         />
 
@@ -155,7 +173,7 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
               type="number"
               min={0}
               step={0.5}
-              value={node.style?.strokeWidth ?? ""}
+              value={appearance.strokeWidth ?? ""}
               onChange={(event) => {
                 const value = optionalNumberFromInput(event.target.value);
                 if (value !== undefined) dispatchStylePatch({ strokeWidth: value });
@@ -170,7 +188,7 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
               type="number"
               min={0}
               step={1}
-              value={node.style?.borderRadius ?? ""}
+              value={appearance.borderRadius ?? ""}
               onChange={(event) => {
                 const value = optionalNumberFromInput(event.target.value);
                 if (value !== undefined) dispatchStylePatch({ borderRadius: value });
@@ -184,7 +202,7 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
           <input
             type="checkbox"
             className="h-4 w-4 accent-blue-600"
-            checked={node.style?.shadow ?? true}
+            checked={appearance.shadow}
             onChange={(event) => dispatchStylePatch({ shadow: event.target.checked })}
           />
         </label>
@@ -201,11 +219,13 @@ function ColorField({
   label,
   value,
   fallback,
+  canClear,
   onChange
 }: {
   label: string;
   value: string | undefined;
   fallback: string;
+  canClear?: boolean;
   onChange: (value: string | null) => void;
 }): ReactElement {
   return (
@@ -226,7 +246,7 @@ function ColorField({
           placeholder={fallback}
           onChange={(event) => onChange(event.target.value || null)}
         />
-        {value ? (
+        {canClear ? (
           <button
             type="button"
             className={CLEAR_BUTTON}
@@ -250,6 +270,64 @@ function patchNodeStyle(
     else nextStyle[key] = value;
   }
   return { style: Object.keys(nextStyle).length > 0 ? nextStyle : null };
+}
+
+function cardAppearanceForNode(node: WireNode): {
+  mode: CardStyleMode;
+  fill: string | undefined;
+  stroke: string | undefined;
+  textColor: string | undefined;
+  strokeWidth: number | undefined;
+  borderRadius: number | undefined;
+  shadow: boolean;
+} {
+  const preset = node.tone ? CARD_STYLE_PRESETS[node.tone] : undefined;
+  const style = node.style;
+  const mode = cardStyleModeForNode(node, preset);
+  return {
+    mode,
+    fill: style?.fill ?? preset?.fill,
+    stroke: style?.stroke ?? preset?.stroke,
+    textColor: style?.textColor ?? preset?.textColor,
+    strokeWidth: style?.strokeWidth,
+    borderRadius: style?.borderRadius,
+    shadow: style?.shadow ?? true
+  };
+}
+
+function cardStyleModeForNode(
+  node: WireNode,
+  preset: Pick<NodeStyle, "fill" | "stroke" | "textColor"> | undefined
+): CardStyleMode {
+  if (!node.tone) return node.style ? "custom" : "";
+  if (!node.style) return node.tone;
+  return styleMatchesPreset(node.style, preset) ? node.tone : "custom";
+}
+
+function styleMatchesPreset(
+  style: NodeStyle,
+  preset: Pick<NodeStyle, "fill" | "stroke" | "textColor"> | undefined
+): boolean {
+  if (!preset) return false;
+  if (style.strokeWidth !== undefined ||
+    style.strokeDasharray !== undefined ||
+    style.borderRadius !== undefined ||
+    style.opacity !== undefined ||
+    style.shadow !== undefined) {
+    return false;
+  }
+  return (style.fill === undefined || style.fill === preset.fill) &&
+    (style.stroke === undefined || style.stroke === preset.stroke) &&
+    (style.textColor === undefined || style.textColor === preset.textColor);
+}
+
+function styleForPreset(tone: Tone): NodeStyle {
+  const preset = CARD_STYLE_PRESETS[tone];
+  return {
+    fill: preset.fill,
+    stroke: preset.stroke,
+    textColor: preset.textColor
+  };
 }
 
 function optionalNumberFromInput(value: string): number | null | undefined {

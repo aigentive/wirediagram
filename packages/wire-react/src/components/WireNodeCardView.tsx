@@ -92,6 +92,7 @@ export function WireNodeCardView(ctx: WireNodeCardViewProps): ReactElement {
       ariaSelected={ctx.selected}
       className={cx("box-border h-full w-full min-w-0", ctx.className)}
       style={cardStyleForNode(ctx.node)}
+      showKindChip={false}
     >
       {description ? (
         <span className="text-[12px] leading-snug text-wire-secondary">{description}</span>
