@@ -330,6 +330,11 @@
   --color-wire-border-strong: var(--wire-border-strong);
   --color-wire-border-focus: var(--wire-border-focus);
 
+  /* Shorthand aliases so border-wire / border-wire-strong (and text-/bg-)
+     resolve to the slate-200 / slate-300 design-system border tokens. */
+  --color-wire: var(--wire-border);
+  --color-wire-strong: var(--wire-border-strong);
+
   /* Status palette as tailwind colors so we can write
      bg-wire-status-valid / text-wire-status-warn etc. */
   --color-wire-status-valid: var(--wire-status-valid);
