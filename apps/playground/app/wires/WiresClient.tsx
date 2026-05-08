@@ -2034,9 +2034,10 @@ function ExportSourcePanel({ mode, source }: { mode: "svg" | "mermaid"; source: 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-wire-code">
       {mode === "svg" ? (
-        <div className="grid min-h-0 flex-[1.2] place-items-center overflow-auto border-b border-wire bg-wire-surface p-4">
-          <div className="max-h-full max-w-full [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:max-w-full" dangerouslySetInnerHTML={{ __html: source }} />
-        </div>
+        <div
+          className="flex min-h-0 flex-[1.2] items-center justify-center overflow-auto border-b border-wire bg-wire-surface p-4 [&>svg]:h-auto [&>svg]:max-h-full [&>svg]:w-auto [&>svg]:max-w-full"
+          dangerouslySetInnerHTML={{ __html: source }}
+        />
       ) : null}
       <div className="wire-eyebrow wire-eyebrow--muted flex h-9 shrink-0 items-center border-b border-wire px-3">
         {label} Source
