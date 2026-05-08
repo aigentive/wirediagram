@@ -64,7 +64,9 @@ import {
 import {
   ChatBubble as SharedChatBubble,
   ChatComposer,
-  InlineCode
+  InlineCode,
+  StoredKeyFooterPanel,
+  UserLockPanel
 } from "../_components/wire-chat";
 import {
   CanvasFrame,
@@ -249,6 +251,11 @@ export function WiresClient({
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
   const [apiKeyStatus, setApiKeyStatus] = useState<string | null>(null);
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
+  const [chatLocked, setChatLocked] = useState(false);
+  const [storedOpenAIKey, setStoredOpenAIKey] = useState<{ configured: boolean; last4: string | null }>({
+    configured: false,
+    last4: null
+  });
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveVersionRef = useRef(0);
   const pendingSaveRef = useRef<{ diagram: WireDiagram; source: "manual" | "json" | "reset"; version: number } | null>(null);
@@ -275,6 +282,60 @@ export function WiresClient({
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [messages, traces, busy, apiError]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/user/openai-key");
+        if (!res.ok) return;
+        const data = (await res.json()) as { configured?: boolean; last4?: string | null };
+        if (!cancelled && typeof data.configured === "boolean") {
+          setStoredOpenAIKey({ configured: data.configured, last4: data.last4 ?? null });
+        }
+      } catch {
+        // Best-effort.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const saveStoredOpenAIKey = useCallback(
+    async (key: string): Promise<string | null> => {
+      try {
+        const res = await fetch("/api/user/openai-key", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ key })
+        });
+        const data = (await res.json()) as {
+          configured?: boolean;
+          last4?: string | null;
+          error?: string;
+        };
+        if (!res.ok || data.error) {
+          return data.error ?? `Request failed with ${res.status}`;
+        }
+        setStoredOpenAIKey({ configured: Boolean(data.configured), last4: data.last4 ?? null });
+        setChatLocked(false);
+        setApiError(null);
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+      }
+    },
+    []
+  );
+
+  const clearStoredOpenAIKey = useCallback(async () => {
+    try {
+      await fetch("/api/user/openai-key", { method: "DELETE" });
+    } finally {
+      setStoredOpenAIKey({ configured: false, last4: null });
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -714,6 +775,7 @@ export function WiresClient({
     async (event?: FormEvent<HTMLFormElement>) => {
       event?.preventDefault();
       if (!workspace || busy) return;
+      if (chatLocked && !storedOpenAIKey.configured) return;
       const trimmed = input.trim();
       if (!trimmed) return;
 
@@ -733,7 +795,10 @@ export function WiresClient({
             history: messages
           })
         });
-        const data = await readJsonResponse<ChatResponse>(res);
+        const data = (await readJsonResponse<ChatResponse & { code?: string }>(res));
+        if (res.status === 429 && data.code === "user-quota-exceeded") {
+          setChatLocked(true);
+        }
         if (!res.ok || data.error || !data.diagram || !data.wire) {
           throw new Error(data.error ?? `Request failed with ${res.status}`);
         }
@@ -757,7 +822,7 @@ export function WiresClient({
         setBusy(false);
       }
     },
-    [busy, input, messages, workspace]
+    [busy, chatLocked, input, messages, storedOpenAIKey.configured, workspace]
   );
 
   const hasRightPanel = Boolean(workspace && rightPanel !== "closed");
@@ -1056,11 +1121,21 @@ export function WiresClient({
                   ) : null}
                 </div>
 
+                {chatLocked && !storedOpenAIKey.configured ? (
+                  <UserLockPanel busy={busy} onSaveKey={saveStoredOpenAIKey} />
+                ) : null}
+                {storedOpenAIKey.configured ? (
+                  <StoredKeyFooterPanel
+                    last4={storedOpenAIKey.last4}
+                    onClear={() => void clearStoredOpenAIKey()}
+                  />
+                ) : null}
                 <ChatComposer
                   value={input}
                   onChange={setInput}
                   onSubmit={() => void submit()}
                   busy={busy}
+                  disabled={chatLocked && !storedOpenAIKey.configured}
                   footerSlot={<ComposerFooter />}
                 />
               </aside>

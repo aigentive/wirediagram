@@ -38,7 +38,9 @@ import { DotPillStatic, StatusPill as StatusPillBase } from "../_components/wire
 import {
   ChatBubble as SharedChatBubble,
   ChatComposer,
-  InlineCode
+  InlineCode,
+  StoredKeyFooterPanel,
+  UserLockPanel
 } from "../_components/wire-chat";
 
 type Usage = {
@@ -77,6 +79,7 @@ type ChatResponse = {
   traces?: ToolTrace[];
   message?: string;
   error?: string;
+  code?: string;
   model?: string;
   usage?: Usage | null;
   costUsd?: number | null;
@@ -95,8 +98,12 @@ type WireCreateResponse = {
   error?: string;
 };
 
-const FREE_CHAT_LIMIT = 3;
-const AUTH_GATE_KEY = "wire.playground.authGate.v1";
+type LockReason = "ip" | "user" | null;
+
+type StoredKeyMeta = {
+  configured: boolean;
+  last4: string | null;
+};
 
 export function PlaygroundClient({
   initialDiagram,
@@ -131,7 +138,8 @@ export function PlaygroundClient({
   const [totalCostUsd, setTotalCostUsd] = useState(0);
   const [totalTokens, setTotalTokens] = useState(0);
   const [lastModel, setLastModel] = useState<string | null>(null);
-  const [authRequired, setAuthRequired] = useState(false);
+  const [lockReason, setLockReason] = useState<LockReason>(null);
+  const [storedKey, setStoredKey] = useState<StoredKeyMeta>({ configured: false, last4: null });
   const [cloudWires, setCloudWires] = useState<WireSummary[]>(initialWires);
   const [wireQuery, setWireQuery] = useState("");
   const [creatingWire, setCreatingWire] = useState(false);
@@ -195,21 +203,60 @@ export function PlaygroundClient({
     const el = chatScrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages, traces, busy, apiError, authRequired]);
+  }, [messages, traces, busy, apiError, lockReason]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (isAuthenticated) {
-      window.localStorage.removeItem(AUTH_GATE_KEY);
-      setAuthRequired(false);
+    if (!isAuthenticated) {
+      setStoredKey({ configured: false, last4: null });
       return;
     }
-    setAuthRequired(readAuthGate().authRequired);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/user/openai-key");
+        if (!res.ok) return;
+        const data = (await res.json()) as StoredKeyMeta;
+        if (!cancelled && typeof data.configured === "boolean") {
+          setStoredKey({ configured: data.configured, last4: data.last4 ?? null });
+        }
+      } catch {
+        // Best-effort. Lock panel still works without prefetched state.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthenticated]);
 
-  const requireAuth = useCallback(() => {
-    writeAuthGate({ ...readAuthGate(), authRequired: true });
-    setAuthRequired(true);
+  const saveStoredKey = useCallback(
+    async (key: string): Promise<string | null> => {
+      try {
+        const res = await fetch("/api/user/openai-key", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ key })
+        });
+        const data = (await res.json()) as StoredKeyMeta & { error?: string };
+        if (!res.ok || data.error) {
+          return data.error ?? `Request failed with ${res.status}`;
+        }
+        setStoredKey({ configured: data.configured, last4: data.last4 ?? null });
+        setLockReason(null);
+        setApiError(null);
+        return null;
+      } catch (err) {
+        return err instanceof Error ? err.message : String(err);
+      }
+    },
+    []
+  );
+
+  const clearStoredKey = useCallback(async () => {
+    try {
+      await fetch("/api/user/openai-key", { method: "DELETE" });
+    } finally {
+      setStoredKey({ configured: false, last4: null });
+    }
   }, []);
 
   const submit = useCallback(
@@ -217,17 +264,10 @@ export function PlaygroundClient({
       event?.preventDefault();
       const trimmed = input.trim();
       if (!trimmed || busy) return;
-      if (!isAuthenticated) {
-        const gate = readAuthGate();
-        if (gate.authRequired || gate.promptCount >= FREE_CHAT_LIMIT) {
-          requireAuth();
-          return;
-        }
-      }
+      if (lockReason && !storedKey.configured) return;
 
       const userMessage: ChatMessage = { role: "user", content: trimmed };
       const nextMessages = [...messages, userMessage];
-      const shouldRequireAuthAfterSend = !isAuthenticated && recordFreePrompt() >= FREE_CHAT_LIMIT;
       setMessages(nextMessages);
       setInput("");
       setBusy(true);
@@ -244,6 +284,10 @@ export function PlaygroundClient({
           })
         });
         const data = await readChatResponse(res);
+        if (res.status === 429) {
+          if (data.code === "ip-quota-exceeded") setLockReason("ip");
+          else if (data.code === "user-quota-exceeded") setLockReason("user");
+        }
         if (!res.ok || data.error) {
           throw new Error(data.error ?? `Request failed with ${res.status}`);
         }
@@ -284,13 +328,10 @@ export function PlaygroundClient({
           }
         ]);
       } finally {
-        if (shouldRequireAuthAfterSend) {
-          requireAuth();
-        }
         setBusy(false);
       }
     },
-    [acceptDiagram, busy, diagram, input, isAuthenticated, messages, requireAuth]
+    [acceptDiagram, busy, diagram, input, lockReason, messages, storedKey.configured]
   );
 
   const openGooglePopup = useCallback(async () => {
@@ -505,22 +546,28 @@ export function PlaygroundClient({
             ) : null}
           </div>
 
+          {lockReason === "ip" && !isAuthenticated ? (
+            <IpLockPanel
+              googleAuthConfigured={googleAuthConfigured}
+              onContinueWithGoogle={openGooglePopup}
+            />
+          ) : null}
+          {lockReason === "user" && isAuthenticated && !storedKey.configured ? (
+            <UserLockPanel busy={busy} onSaveKey={saveStoredKey} />
+          ) : null}
+          {storedKey.configured ? (
+            <StoredKeyFooterPanel last4={storedKey.last4} onClear={() => void clearStoredKey()} />
+          ) : null}
           <ChatComposer
             value={input}
             onChange={setInput}
             onSubmit={() => void submit()}
             busy={busy}
-            disabled={authRequired && !isAuthenticated}
+            disabled={Boolean(lockReason) && !storedKey.configured}
             footerSlot={<ComposerFooter model={lastModel} />}
           />
         </aside>
       </main>
-      {authRequired && !isAuthenticated ? (
-        <AuthGateModal
-          googleAuthConfigured={googleAuthConfigured}
-          onContinue={openGooglePopup}
-        />
-      ) : null}
     </div>
   );
 }
@@ -612,43 +659,42 @@ function AuthenticatedWireSidebar({
   );
 }
 
-function AuthGateModal({
+function IpLockPanel({
   googleAuthConfigured,
-  onContinue
+  onContinueWithGoogle
 }: {
   googleAuthConfigured: boolean;
-  onContinue: () => void;
+  onContinueWithGoogle: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 px-4">
-      <section className="grid w-full max-w-sm gap-4 rounded-lg border border-wire bg-wire-surface p-5 shadow-wire-md">
-        <div className="flex items-start gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-slate-900 text-white">
-            <ShieldCheck size={17} strokeWidth={1.5} />
-          </span>
-          <div className="grid gap-1">
-            <h2 className="m-0 text-[17px] font-bold tracking-tight text-wire-primary">Sign in to keep chatting</h2>
-            <p className="m-0 text-[13px] leading-5 text-wire-secondary">
-              The playground includes three free chat updates. Continue with Google to keep iterating on this wire.
-            </p>
-          </div>
+    <section className="grid gap-2.5 border-t border-wire bg-wire-page px-4 py-3">
+      <header className="flex items-start gap-2">
+        <ShieldCheck size={15} strokeWidth={1.5} className="mt-0.5 shrink-0 text-wire-tertiary" />
+        <div className="grid gap-0.5">
+          <h3 className="m-0 text-[13px] font-bold text-wire-primary">Free chat limit reached</h3>
+          <p className="m-0 text-[12px] leading-[1.45] text-wire-secondary">
+            Sign in to keep iterating on this wire.
+          </p>
         </div>
-        {!googleAuthConfigured ? (
-          <div className="rounded-md bg-wire-status-warn-bg p-3 text-[12px] font-semibold leading-5 text-wire-status-warn">
-            Google auth is not configured in this deployment yet.
-          </div>
-        ) : null}
-        <button
-          type="button"
-          onClick={onContinue}
-          className="h-10 rounded-md bg-slate-900 px-4 text-[13px] font-bold text-white hover:bg-slate-800"
-        >
-          Continue with Google
-        </button>
-      </section>
-    </div>
+      </header>
+      <button
+        type="button"
+        onClick={onContinueWithGoogle}
+        disabled={!googleAuthConfigured}
+        className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 text-[13px] font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-wire-sunken disabled:text-wire-muted"
+      >
+        <LogIn size={13} strokeWidth={1.5} />
+        Continue with Google
+      </button>
+      {!googleAuthConfigured ? (
+        <p className="m-0 text-[11px] leading-[1.4] text-wire-tertiary">
+          Google sign-in is not configured in this deployment.
+        </p>
+      ) : null}
+    </section>
   );
 }
+
 
 function StatusPill({ validation, busy }: { validation: ValidationResult; busy: boolean }) {
   if (busy) {
@@ -819,47 +865,6 @@ function ToolTraceList({ traces }: { traces: ToolTrace[] }) {
 
 function formatJson(diagram: WireDiagram): string {
   return JSON.stringify(diagram, null, 2);
-}
-
-type AuthGateState = {
-  promptCount: number;
-  authRequired: boolean;
-};
-
-function readAuthGate(): AuthGateState {
-  if (typeof window === "undefined") return { promptCount: 0, authRequired: false };
-  try {
-    const raw = window.localStorage.getItem(AUTH_GATE_KEY);
-    if (!raw) return { promptCount: 0, authRequired: false };
-    const parsed = JSON.parse(raw) as Partial<AuthGateState>;
-    return {
-      promptCount: typeof parsed.promptCount === "number" && parsed.promptCount > 0 ? parsed.promptCount : 0,
-      authRequired: parsed.authRequired === true
-    };
-  } catch {
-    return { promptCount: 0, authRequired: false };
-  }
-}
-
-function writeAuthGate(next: AuthGateState): void {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    AUTH_GATE_KEY,
-    JSON.stringify({
-      promptCount: Math.max(0, Math.floor(next.promptCount)),
-      authRequired: next.authRequired
-    })
-  );
-}
-
-function recordFreePrompt(): number {
-  const current = readAuthGate();
-  const promptCount = current.promptCount + 1;
-  writeAuthGate({
-    promptCount,
-    authRequired: current.authRequired || promptCount >= FREE_CHAT_LIMIT
-  });
-  return promptCount;
 }
 
 function isInternalPath(value: string): boolean {

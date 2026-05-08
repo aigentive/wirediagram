@@ -7,6 +7,18 @@ import {
 } from "@aigentive/wire-core";
 import { WIRE_AGENT_GUIDE } from "@aigentive/wire-mcp/dist/agent-guide.js";
 import type { NextRequest } from "next/server";
+import { getCurrentUser, type CurrentUser } from "@/lib/current-user";
+import {
+  IP_QUOTA_LIMIT,
+  USER_QUOTA_LIMIT,
+  hashIp,
+  incrementIpQuota,
+  incrementUserQuota,
+  readIpQuota,
+  readUserQuota,
+  resolveClientIp
+} from "@/lib/ip-quota-store";
+import { getUserOpenAIKey } from "@/lib/user-openai-key-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -311,12 +323,50 @@ async function handlePost(req: NextRequest): Promise<Response> {
     );
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const sessionUser = await resolveSessionUser(req.headers);
+  let storedKey: string | null = null;
+  if (sessionUser) {
+    storedKey = await getUserOpenAIKey(sessionUser);
+  }
+
+  const apiKey = storedKey ?? process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return jsonResponse(
       { error: "OPENAI_API_KEY is not set on the playground server." },
       503
     );
+  }
+
+  const usingStoredKey = storedKey !== null;
+  const ipHash = !usingStoredKey && !sessionUser ? hashIp(resolveClientIp(req.headers)) : null;
+  const userQuotaKey = !usingStoredKey && sessionUser ? sessionUser.key : null;
+
+  if (ipHash) {
+    const existing = await readIpQuota(ipHash);
+    if (existing && existing.count >= IP_QUOTA_LIMIT) {
+      return jsonResponse(
+        {
+          error: `Free chat limit reached (${IP_QUOTA_LIMIT} messages). Sign in to keep going.`,
+          code: "ip-quota-exceeded",
+          limit: IP_QUOTA_LIMIT
+        },
+        429
+      );
+    }
+  }
+
+  if (userQuotaKey) {
+    const existing = await readUserQuota(userQuotaKey);
+    if (existing && existing.count >= USER_QUOTA_LIMIT) {
+      return jsonResponse(
+        {
+          error: `Free chat limit reached (${USER_QUOTA_LIMIT} messages). Add your own OpenAI key to keep going.`,
+          code: "user-quota-exceeded",
+          limit: USER_QUOTA_LIMIT
+        },
+        429
+      );
+    }
   }
 
   const traces: ToolTrace[] = [];
@@ -348,6 +398,21 @@ async function handlePost(req: NextRequest): Promise<Response> {
   const usage = run.usage;
   const costUsd = usage ? computeCost(usage, responseModel) : null;
 
+  if (ipHash) {
+    try {
+      await incrementIpQuota(ipHash);
+    } catch {
+      // Counter best-effort; do not fail the chat response.
+    }
+  }
+  if (userQuotaKey) {
+    try {
+      await incrementUserQuota(userQuotaKey);
+    } catch {
+      // Counter best-effort; do not fail the chat response.
+    }
+  }
+
   return jsonResponse({
     diagram: run.saved.diagram,
     validation: run.saved.validation,
@@ -360,6 +425,20 @@ async function handlePost(req: NextRequest): Promise<Response> {
         ? run.saved.summary.trim()
         : "Wire diagram updated."
   });
+}
+
+async function resolveSessionUser(headers: Headers): Promise<CurrentUser | null> {
+  const internalUserKey = headers.get("x-wire-user-key")?.trim();
+  const internalUserEmail = headers.get("x-wire-user-email")?.trim();
+  if (internalUserKey && internalUserEmail) {
+    return {
+      key: internalUserKey,
+      email: internalUserEmail,
+      name: null,
+      image: null
+    };
+  }
+  return getCurrentUser();
 }
 
 async function runValidatedDiagramAgent({

@@ -62,7 +62,11 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
     const upstream = await runPlaygroundChat(
       new Request("http://wire.local/api/playground/chat", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "x-wire-user-key": user.key,
+          "x-wire-user-email": user.email
+        },
         body: JSON.stringify({
           message: payload.message,
           diagram: loaded.diagram,
