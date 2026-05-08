@@ -31,26 +31,28 @@ export function Brandmark({
 
 export function BrandmarkTile() {
   return (
-    <span
+    <svg
       aria-hidden
-      className="grid h-[26px] w-[26px] place-items-center rounded-md bg-slate-900"
+      viewBox="0 0 32 32"
+      width="28"
+      height="28"
+      fill="none"
+      className="text-blue-600"
     >
-      <svg
-        viewBox="0 0 32 32"
-        width="14"
-        height="14"
-        fill="none"
-        className="text-white"
-      >
-        <rect x="2" y="11" width="6" height="6" rx="1.5" fill="currentColor" />
-        <rect x="13" y="3" width="6" height="6" rx="1.5" fill="currentColor" />
-        <rect x="13" y="19" width="6" height="6" rx="1.5" fill="currentColor" />
-        <rect x="24" y="11" width="6" height="6" rx="1.5" fill="#60A5FA" />
-        <path d="M8 14 L13 6" stroke="currentColor" strokeWidth={1.5} />
-        <path d="M8 14 L13 22" stroke="currentColor" strokeWidth={1.5} />
-        <path d="M19 6 L24 14" stroke="currentColor" strokeWidth={1.5} />
-        <path d="M19 22 L24 14" stroke="currentColor" strokeWidth={1.5} />
-      </svg>
-    </span>
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 9 L11 22" />
+        <path d="M11 22 L16 13" />
+        <path d="M16 13 L21 22" />
+        <path d="M21 22 L26 9" />
+        <path d="M16 13 Q22 7 26 9" />
+      </g>
+      <g fill="var(--wire-bg-surface, #ffffff)" stroke="currentColor" strokeWidth="2">
+        <circle cx="6" cy="9" r="2.5" />
+        <circle cx="26" cy="9" r="2.5" />
+        <circle cx="16" cy="13" r="2.5" />
+        <circle cx="11" cy="22" r="2.5" />
+        <circle cx="21" cy="22" r="2.5" />
+      </g>
+    </svg>
   );
 }
