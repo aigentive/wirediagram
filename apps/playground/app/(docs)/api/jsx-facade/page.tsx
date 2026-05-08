@@ -77,7 +77,7 @@ export function SupportAgent() {
   return (
     <Flow layout="LR" id="support-agent" title="Support agent">
       <TriggerNode id="webhook" title="Webhook fires" />
-      <AINode id="classify" title="Classify intent" from="webhook" model="gpt-4.1" />
+      <AINode id="classify" title="Classify intent" from="webhook" model="gpt-5.4-mini" />
       <ConditionNode
         id="route"
         title="Route request"
@@ -234,7 +234,7 @@ function AgentPanel() {
   const diagram = useWireDiagram(
     <Flow layout="LR">
       <TriggerNode id="t" title="Tick" />
-      <AINode id="plan" title="Plan" from="t" model="gpt-4.1" />
+      <AINode id="plan" title="Plan" from="t" model="gpt-5.4-mini" />
     </Flow>
   );
   return (

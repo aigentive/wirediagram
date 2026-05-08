@@ -70,7 +70,7 @@ export default function ConceptsPage() {
   "nodes": [
     { "id": "webhook", "kind": "trigger", "title": "Ticket webhook" },
     { "id": "plan",    "kind": "ai",      "title": "Plan answer",
-      "from": "webhook", "model": "gpt-4.1" },
+      "from": "webhook", "model": "gpt-5.4-mini" },
     { "id": "respond", "kind": "action",  "title": "Send response",
       "from": "plan",   "tone": "success" }
   ],
@@ -241,7 +241,7 @@ type WireEventSource =
   "*":     [{ key: "owner", storage: "data" }],
   ai:      [
     { key: "model",       storage: "node", type: "select",
-      options: ["gpt-4.1", "gpt-4.1-mini", "o4-mini"] },
+      options: ["gpt-5.4-mini", "gpt-4.1-mini", "o4-mini"] },
     { key: "temperature", type: "number",  min: 0, max: 2, step: 0.1 },
     { key: "maxSteps",    type: "number",  min: 1, max: 20 }
   ],

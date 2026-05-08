@@ -14,7 +14,7 @@ export const OPTIONS: WireOptionCatalog = {
       label: "Model",
       storage: "node",
       type: "select",
-      options: ["gpt-4.1", "gpt-4.1-mini", "o4-mini"]
+      options: ["gpt-5.4-mini", "gpt-4.1-mini", "o4-mini"]
     },
     { key: "temperature", label: "Temperature", type: "number", min: 0, max: 2, step: 0.1 },
     { key: "mode", label: "Mode", type: "select", options: ["classify", "plan", "respond"] }
@@ -45,7 +45,7 @@ export const VERTICAL_DIAGRAM: WireDiagram = {
   layout: "TB",
   nodes: [
     { id: "in", kind: "trigger", title: "Webhook", data: { options: { event: "ticket.created" } } },
-    { id: "ai", kind: "ai", title: "Plan answer", from: "in", model: "gpt-4.1", data: { options: { mode: "plan", temperature: 0.3 } } },
+    { id: "ai", kind: "ai", title: "Plan answer", from: "in", model: "gpt-5.4-mini", data: { options: { mode: "plan", temperature: 0.3 } } },
     { id: "out", kind: "action", title: "Send reply", from: "ai", tone: "success", data: { options: { channel: "email" } } }
   ],
   edges: []
@@ -58,7 +58,7 @@ export const HORIZONTAL_DIAGRAM: WireDiagram = {
   layout: "LR",
   nodes: [
     { id: "in", kind: "trigger", title: "Webhook", data: { options: { event: "ticket.created" } } },
-    { id: "ai", kind: "ai", title: "Plan answer", from: "in", model: "gpt-4.1", data: { options: { mode: "plan", temperature: 0.3 } } },
+    { id: "ai", kind: "ai", title: "Plan answer", from: "in", model: "gpt-5.4-mini", data: { options: { mode: "plan", temperature: 0.3 } } },
     { id: "out", kind: "action", title: "Send reply", from: "ai", tone: "success", data: { options: { channel: "email" } } }
   ],
   edges: []

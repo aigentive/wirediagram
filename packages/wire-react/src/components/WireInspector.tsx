@@ -12,11 +12,11 @@ export interface WireInspectorProps {
 
 const FIELD_LABEL = "text-[11.5px] font-medium text-wire-secondary mb-[3px]";
 const TEXT_INPUT =
-  "w-full rounded-md border border-wire bg-wire-surface px-[9px] py-[5px] text-[12.5px] text-wire-primary outline-none transition-colors focus:border-wire-focus";
+  "w-full rounded-md border border-wire bg-wire-page px-2.5 py-[6px] text-[12.5px] text-wire-primary outline-none transition-colors placeholder:text-wire-muted hover:border-wire-strong focus:border-wire-focus focus:bg-wire-surface focus:shadow-[0_0_0_2px_rgba(37,99,235,0.12)]";
 const INLINE_INPUT =
-  "rounded-md border border-wire bg-wire-surface px-2 py-1.5 text-[12px] text-wire-primary outline-none transition-colors focus:border-wire-focus";
+  "w-full rounded-md border border-wire bg-wire-page px-2.5 py-1.5 text-[12px] text-wire-primary outline-none transition-colors placeholder:text-wire-muted hover:border-wire-strong focus:border-wire-focus focus:bg-wire-surface focus:shadow-[0_0_0_2px_rgba(37,99,235,0.12)]";
 const CLEAR_BUTTON =
-  "shrink-0 rounded-md border border-wire px-2 py-1 text-[11px] font-medium text-wire-tertiary transition-colors hover:text-wire-primary";
+  "shrink-0 rounded-md border border-wire bg-wire-surface px-2 py-1 text-[11px] font-medium text-wire-tertiary transition-colors hover:border-wire-strong hover:text-wire-primary";
 
 type CardStyleMode = "" | Tone | "custom";
 
@@ -62,10 +62,13 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
 
   const appearance = cardAppearanceForNode(node);
   const dispatchStylePatch = (patch: Partial<Record<keyof NodeStyle, unknown>>): void => {
+    const stripsTone = "fill" in patch || "stroke" in patch || "textColor" in patch;
     actions.dispatch({
       type: "node.patch",
       id: node.id,
-      patch: { tone: null, ...patchNodeStyle(node, patch) }
+      patch: stripsTone
+        ? { tone: null, ...patchNodeStyle(node, patch) }
+        : patchNodeStyle(node, patch)
     });
   };
 
@@ -168,37 +171,31 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
         <div className="grid grid-cols-2 gap-2">
           <label className="grid">
             <span className={FIELD_LABEL}>Border width</span>
-            <input
-              className={INLINE_INPUT}
-              type="number"
+            <NumberFieldWithUnit
+              value={appearance.strokeWidth}
+              placeholder="1"
+              unit="px"
               min={0}
               step={0.5}
-              value={appearance.strokeWidth ?? ""}
-              onChange={(event) => {
-                const value = optionalNumberFromInput(event.target.value);
-                if (value !== undefined) dispatchStylePatch({ strokeWidth: value });
-              }}
+              onChange={(value) => dispatchStylePatch({ strokeWidth: value })}
             />
           </label>
 
           <label className="grid">
             <span className={FIELD_LABEL}>Radius</span>
-            <input
-              className={INLINE_INPUT}
-              type="number"
+            <NumberFieldWithUnit
+              value={appearance.borderRadius}
+              placeholder="8"
+              unit="px"
               min={0}
               step={1}
-              value={appearance.borderRadius ?? ""}
-              onChange={(event) => {
-                const value = optionalNumberFromInput(event.target.value);
-                if (value !== undefined) dispatchStylePatch({ borderRadius: value });
-              }}
+              onChange={(value) => dispatchStylePatch({ borderRadius: value })}
             />
           </label>
         </div>
 
-        <label className="flex items-center justify-between gap-3 rounded-md border border-wire px-2.5 py-2">
-          <span className="text-[12px] font-medium text-wire-secondary">Shadow</span>
+        <label className="flex items-center justify-between gap-3 pt-1">
+          <span className="text-[12.5px] font-medium text-wire-secondary">Shadow</span>
           <input
             type="checkbox"
             className="h-4 w-4 accent-blue-600"
@@ -212,6 +209,42 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
         <StatusPill kind="valid">Valid</StatusPill>
       </footer>
     </aside>
+  );
+}
+
+function NumberFieldWithUnit({
+  value,
+  placeholder,
+  unit,
+  min,
+  step,
+  onChange
+}: {
+  value: number | undefined;
+  placeholder?: string;
+  unit: string;
+  min?: number;
+  step?: number;
+  onChange: (value: number | null) => void;
+}): ReactElement {
+  return (
+    <div className="relative">
+      <input
+        className={cx(INLINE_INPUT, "pr-7")}
+        type="number"
+        min={min}
+        step={step}
+        placeholder={placeholder}
+        value={value ?? ""}
+        onChange={(event) => {
+          const next = optionalNumberFromInput(event.target.value);
+          if (next !== undefined) onChange(next);
+        }}
+      />
+      <span className="pointer-events-none absolute inset-y-0 right-2 grid place-items-center font-mono text-[10.5px] font-semibold text-wire-muted">
+        {unit}
+      </span>
+    </div>
   );
 }
 

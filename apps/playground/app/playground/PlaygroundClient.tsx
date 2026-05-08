@@ -808,7 +808,7 @@ function ComposerFooter({ model }: { model: string | null }) {
       <span className="wire-eyebrow wire-eyebrow--muted">Wire MCP</span>
       <InlineCode>local</InlineCode>
       <span className="text-wire-muted">·</span>
-      <InlineCode>{model ?? "gpt-4.1"}</InlineCode>
+      <InlineCode>{model ?? "gpt-5.4-mini"}</InlineCode>
       <span className="ml-auto flex items-center gap-1.5">
         <InlineCode>↵</InlineCode>
         send
