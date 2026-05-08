@@ -33,6 +33,7 @@ import {
   Share2,
   Sparkles,
   Terminal,
+  Trash2,
   Undo2,
   User,
   Workflow,
@@ -708,6 +709,30 @@ export function WiresClient({
     }
   }, [workspace]);
 
+  const deleteWireById = useCallback(
+    async (wireId: string, title: string) => {
+      if (!window.confirm(`Delete "${title}"? This can't be undone.`)) return;
+      try {
+        const res = await fetch(`/api/wires/${wireId}`, { method: "DELETE" });
+        if (!res.ok) {
+          const data = await readJsonResponse<{ error?: string }>(res);
+          throw new Error(data.error ?? `Request failed with ${res.status}`);
+        }
+        setWires((current) => current.filter((wire) => wire.id !== wireId));
+        if (workspace?.wire.id === wireId) {
+          setWorkspace(null);
+          window.history.replaceState({}, "", "/wires");
+          setMessages([assistantIntro()]);
+          setRightPanel("chat");
+          setSaveStatus("idle");
+        }
+      } catch (err) {
+        setApiError(err instanceof Error ? err.message : String(err));
+      }
+    },
+    [workspace]
+  );
+
   const shareWire = useCallback(async () => {
     if (!workspace) return;
     setShareLoading(true);
@@ -940,6 +965,21 @@ export function WiresClient({
                   event.preventDefault();
                   void loadWire(wire.id);
                 }}
+                actions={
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      void deleteWireById(wire.id, wire.title);
+                    }}
+                    aria-label={`Delete ${wire.title}`}
+                    title="Delete wire"
+                    className="grid h-6 w-6 place-items-center rounded-md text-wire-nav-fg-muted hover:bg-[rgba(255,255,255,0.08)] hover:text-rose-300"
+                  >
+                    <Trash2 size={13} strokeWidth={1.5} />
+                  </button>
+                }
               />
             ))}
             {filteredWires.length === 0 ? (
@@ -2031,13 +2071,16 @@ function ToolTraceList({ traces }: { traces: ToolTrace[] }) {
 
 function ExportSourcePanel({ mode, source }: { mode: "svg" | "mermaid"; source: string }) {
   const label = mode === "svg" ? "SVG" : "Mermaid";
+  const responsiveSvg = mode === "svg" ? makeResponsiveSvg(source) : source;
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-wire-code">
       {mode === "svg" ? (
-        <div
-          className="flex min-h-0 flex-[1.2] items-center justify-center overflow-auto border-b border-wire bg-wire-surface p-4 [&>svg]:h-auto [&>svg]:max-h-full [&>svg]:w-auto [&>svg]:max-w-full"
-          dangerouslySetInnerHTML={{ __html: source }}
-        />
+        <div className="flex min-h-0 flex-[1.2] items-center justify-center overflow-auto border-b border-wire bg-wire-surface p-4">
+          <div
+            className="flex h-full w-full items-center justify-center"
+            dangerouslySetInnerHTML={{ __html: responsiveSvg }}
+          />
+        </div>
       ) : null}
       <div className="wire-eyebrow wire-eyebrow--muted flex h-9 shrink-0 items-center border-b border-wire px-3">
         {label} Source
@@ -2047,6 +2090,21 @@ function ExportSourcePanel({ mode, source }: { mode: "svg" | "mermaid"; source: 
       </WireCodeBlock>
     </div>
   );
+}
+
+function makeResponsiveSvg(source: string): string {
+  if (!source) return source;
+  const openTagMatch = source.match(/^\s*<svg\b[^>]*>/);
+  if (!openTagMatch) return source;
+  const tag = openTagMatch[0];
+  const stripped = tag
+    .replace(/\s(width|height)="[^"]*"/g, "")
+    .replace(/\s(width|height)='[^']*'/g, "");
+  const withStyle = stripped.replace(
+    /<svg\b/,
+    '<svg style="max-width:100%;max-height:100%;width:auto;height:auto;display:block"'
+  );
+  return source.replace(tag, withStyle);
 }
 
 function formatJson(diagram: WireDiagram): string {

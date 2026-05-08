@@ -9,7 +9,8 @@ export function NavRailItem({
   title,
   meta,
   loading = false,
-  onClick
+  onClick,
+  actions
 }: {
   active?: boolean;
   href?: string;
@@ -17,6 +18,7 @@ export function NavRailItem({
   meta?: ReactNode;
   loading?: boolean;
   onClick?: (event: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => void;
+  actions?: ReactNode;
 }) {
   const baseClass =
     "relative grid min-h-[44px] overflow-hidden rounded-[7px] border border-transparent pl-[12px] pr-[10px] py-2 text-left transition-colors";
@@ -33,7 +35,7 @@ export function NavRailItem({
           className="absolute left-0 top-2 bottom-2 w-[2px] rounded-r-sm bg-[var(--wire-nav-accent)]"
         />
       ) : null}
-      <span className="flex min-w-0 items-center gap-2">
+      <span className="flex min-w-0 items-center gap-2 pr-7">
         <span
           className={
             active
@@ -57,19 +59,15 @@ export function NavRailItem({
     </>
   );
 
-  if (href) {
-    return (
-      <a
-        href={href}
-        onClick={onClick}
-        className={`${baseClass} no-underline ${active ? activeClass : inactiveClass}`}
-      >
-        {content}
-      </a>
-    );
-  }
-
-  return (
+  const row = href ? (
+    <a
+      href={href}
+      onClick={onClick}
+      className={`${baseClass} no-underline ${active ? activeClass : inactiveClass}`}
+    >
+      {content}
+    </a>
+  ) : (
     <button
       type="button"
       onClick={onClick}
@@ -77,5 +75,16 @@ export function NavRailItem({
     >
       {content}
     </button>
+  );
+
+  if (!actions) return row;
+
+  return (
+    <div className="group/nav-item relative">
+      {row}
+      <span className="pointer-events-none absolute right-1.5 top-1.5 flex items-center opacity-0 transition-opacity group-hover/nav-item:pointer-events-auto group-hover/nav-item:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
+        {actions}
+      </span>
+    </div>
   );
 }

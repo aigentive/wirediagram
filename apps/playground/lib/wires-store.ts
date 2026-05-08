@@ -409,7 +409,6 @@ function cleanTitle(title: unknown): string | null {
   return trimmed.length > 0 ? trimmed.slice(0, 120) : null;
 }
 
-function titleForSave(existingTitle: string, diagramTitle: unknown, source: WireSaveSource): string {
-  if (source === "manual" || source === "reset") return existingTitle;
+function titleForSave(existingTitle: string, diagramTitle: unknown, _source: WireSaveSource): string {
   return cleanTitle(diagramTitle) ?? existingTitle;
 }
