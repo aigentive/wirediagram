@@ -523,6 +523,13 @@ function WireCanvasInner({
         event.currentTarget.setPointerCapture(event.pointerId);
         return;
       }
+      if (interaction.selectOnNodeClick && !selectionRef.current.nodeIds.includes(frame.id)) {
+        setWireSelection({ nodeIds: [frame.id], edgeIds: [] });
+      }
+      if (inspectOnNodeClick) {
+        ctx.eventActions.emit({ type: "node.inspect", source: "canvas", nodeId: frame.id });
+      }
+      ctx.eventActions.emit({ type: "node.click", source: "canvas", nodeId: frame.id });
       const ids = draggableNodeIds(frame.node, ctx.diagram.nodes, selectionRef.current);
       const startPositions = new Map<string, Point>();
       for (const id of ids) {
@@ -540,7 +547,7 @@ function WireCanvasInner({
       };
       event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [canPan, ctx.diagram.nodes, editable, model.frames, model.framesById]
+    [canPan, ctx.diagram.nodes, ctx.eventActions, editable, inspectOnNodeClick, interaction.selectOnNodeClick, model.frames, model.framesById, setWireSelection]
   );
 
   const handleNodePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
