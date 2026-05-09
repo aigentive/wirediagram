@@ -172,8 +172,10 @@ describe("wire component interactions", () => {
       patch: { tone: "success", style: { fill: "#ecfdf5", stroke: "#34d399", textColor: "#064e3b" } }
     });
     expect(actions[3]).toMatchObject({ patch: { tone: null, style: { stroke: "#fb7185", textColor: "#881337", fill: "#111827" } } });
-    expect(actions[4]).toMatchObject({ patch: { tone: null, style: expect.objectContaining({ borderRadius: 8 }) } });
-    expect(actions[5]).toMatchObject({ patch: { tone: null, style: expect.objectContaining({ shadow: false }) } });
+    expect(actions[4]).toMatchObject({ patch: { style: expect.objectContaining({ borderRadius: 8 }) } });
+    expect(actions[4].patch).not.toHaveProperty("tone");
+    expect(actions[5]).toMatchObject({ patch: { style: expect.objectContaining({ shadow: false }) } });
+    expect(actions[5].patch).not.toHaveProperty("tone");
     expect(actions[6]).toMatchObject({ patch: { tone: null, style: expect.not.objectContaining({ fill: expect.anything() }) } });
     expect(actions[7]).toMatchObject({ patch: { tone: null, style: null } });
   });

@@ -152,10 +152,10 @@ describe("shared editor components", () => {
       backgroundImage: "none",
       borderColor: "#38bdf8",
       borderWidth: 2,
-      borderRadius: 6,
-      boxShadow: "none"
+      borderRadius: 6
     });
     expect((style as Record<string, unknown>)["--wire-fg-primary"]).toBe("#f8fafc");
+    expect((style as Record<string, unknown>)["--wire-card-shadow"]).toBe("none");
 
     const markup = renderToStaticMarkup(
       <WireNodeCardView {...renderContextFor(node)} />
