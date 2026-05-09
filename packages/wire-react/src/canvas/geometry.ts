@@ -354,25 +354,17 @@ function resolveEdgeStyle(
 function attachPoint(
   frame: WireCanvasFrame,
   side: Side,
-  kind: WireNode["kind"] | undefined,
-  slotIndex: number,
-  slotCount: number
+  _kind: WireNode["kind"] | undefined,
+  _slotIndex: number,
+  _slotCount: number
 ): Point {
   const cx = frame.x + frame.width / 2;
   const cy = frame.y + frame.height / 2;
 
-  if (kind === "condition") {
-    if (side === "right") return { x: frame.x + frame.width, y: cy };
-    if (side === "left") return { x: frame.x, y: cy };
-    if (side === "top") return { x: cx, y: frame.y };
-    return { x: cx, y: frame.y + frame.height };
-  }
-
-  const t = slotCount <= 1 ? 0.5 : 0.25 + (slotIndex / (slotCount - 1)) * 0.5;
-  if (side === "right") return { x: frame.x + frame.width, y: frame.y + frame.height * t };
-  if (side === "left") return { x: frame.x, y: frame.y + frame.height * t };
-  if (side === "top") return { x: frame.x + frame.width * t, y: frame.y };
-  return { x: frame.x + frame.width * t, y: frame.y + frame.height };
+  if (side === "right") return { x: frame.x + frame.width, y: cy };
+  if (side === "left") return { x: frame.x, y: cy };
+  if (side === "top") return { x: cx, y: frame.y };
+  return { x: cx, y: frame.y + frame.height };
 }
 
 function handleNormal(side: Side): Point {

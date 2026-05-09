@@ -82,7 +82,7 @@ function userWiresPrefix(user: CurrentUser): string {
 
 async function readJson<T>(pathname: string): Promise<T | null> {
   if (useBlobStore()) {
-    return readBlobJson<T>(pathname);
+    return readBlobJson<T>(pathname, { bustCache: true });
   }
 
   try {

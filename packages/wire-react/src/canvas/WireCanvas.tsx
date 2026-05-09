@@ -1016,17 +1016,13 @@ function WireHandles({
   const sourceSides = sourceSidesForNode(frame.node, direction);
   const targetSides = targetSidesForNode(frame.node, direction);
   const sides = uniqueSides([...targetSides, ...sourceSides]);
-  const isCondition = frame.node.kind === "condition";
 
   return (
     <>
       {sides.flatMap((side) => {
         const isSource = sourceSides.includes(side);
         const isTarget = targetSides.includes(side);
-        const counts = slots?.get(side);
-        const sourceCount = counts?.source ?? 0;
-        const targetCount = counts?.target ?? 0;
-        const slotCount = isCondition ? 1 : Math.max(sourceCount, targetCount, 1);
+        const slotCount = 1;
         const isActiveSource = connectionSourceSide === side;
         const isActiveCandidate = candidateSide === side;
         const highlight = isActiveSource || isActiveCandidate;
@@ -1486,24 +1482,23 @@ function uniqueSides(sides: Side[]): Side[] {
 
 function handleSlotStyle(
   side: Side,
-  slotIndex: number,
-  slotCount: number,
+  _slotIndex: number,
+  _slotCount: number,
   frameWidth: number,
   frameHeight: number,
   highlight: boolean
 ): CSSProperties {
   const size = highlight ? HANDLE_SIZE + 4 : HANDLE_SIZE;
-  const t = slotCount <= 1 ? 0.5 : 0.25 + (slotIndex / (slotCount - 1)) * 0.5;
   if (side === "left") {
-    return { left: -size / 2, top: t * frameHeight - size / 2 };
+    return { left: -size / 2, top: frameHeight / 2 - size / 2 };
   }
   if (side === "right") {
-    return { right: -size / 2, top: t * frameHeight - size / 2 };
+    return { right: -size / 2, top: frameHeight / 2 - size / 2 };
   }
   if (side === "top") {
-    return { top: -size / 2, left: t * frameWidth - size / 2 };
+    return { top: -size / 2, left: frameWidth / 2 - size / 2 };
   }
-  return { bottom: -size / 2, left: t * frameWidth - size / 2 };
+  return { bottom: -size / 2, left: frameWidth / 2 - size / 2 };
 }
 
 function sameMeasuredSizes(
