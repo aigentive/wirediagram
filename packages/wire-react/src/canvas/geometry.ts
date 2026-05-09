@@ -110,8 +110,8 @@ export function buildWireCanvasModel(
       node,
       x: override?.x ?? frame.x,
       y: override?.y ?? frame.y,
-      width: Math.max(frame.width, measured?.width ?? 0),
-      height: Math.max(frame.height, measured?.height ?? 0)
+      width: measured?.width ?? frame.width,
+      height: measured?.height ?? frame.height
     });
   }
 
