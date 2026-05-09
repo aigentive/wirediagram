@@ -114,12 +114,19 @@ interface PanState {
   moved: boolean;
 }
 
+interface ConnectionCandidate {
+  nodeId: string;
+  side: Side;
+  point: Point;
+}
+
 interface ConnectionState {
   pointerId: number;
   sourceId: string;
   sourceSide: Side;
   from: Point;
   to: Point;
+  candidate: ConnectionCandidate | null;
 }
 
 interface CanvasSize {
@@ -642,12 +649,13 @@ function WireCanvasInner({
       event.preventDefault();
       event.stopPropagation();
       const from = handlePoint(frame, side);
-      const next = {
+      const next: ConnectionState = {
         pointerId: event.pointerId,
         sourceId: frame.id,
         sourceSide: side,
         from,
-        to: from
+        to: from,
+        candidate: null
       };
       connectionStateRef.current = next;
       setConnection(next);
@@ -659,11 +667,21 @@ function WireCanvasInner({
   const handleConnectionPointerMove = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
     const current = connectionStateRef.current;
     if (!current || current.pointerId !== event.pointerId) return;
-    const to = clientPointToWorld(event.clientX, event.clientY, containerRef.current, viewportRef.current);
-    const next = { ...current, to };
+    const candidate = findConnectionCandidate(
+      event.clientX,
+      event.clientY,
+      current.sourceId,
+      current.from,
+      model.framesById,
+      model.direction
+    );
+    const to = candidate
+      ? candidate.point
+      : clientPointToWorld(event.clientX, event.clientY, containerRef.current, viewportRef.current);
+    const next: ConnectionState = { ...current, to, candidate };
     connectionStateRef.current = next;
     setConnection(next);
-  }, []);
+  }, [model.direction, model.framesById]);
 
   const handleConnectionPointerUp = useCallback(
     (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -677,7 +695,16 @@ function WireCanvasInner({
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
 
-      const target = targetHandleFromPoint(event.clientX, event.clientY);
+      const target = current.candidate
+        ?? targetHandleFromPoint(event.clientX, event.clientY)
+        ?? findConnectionCandidate(
+          event.clientX,
+          event.clientY,
+          current.sourceId,
+          current.from,
+          model.framesById,
+          model.direction
+        );
       if (!target || target.nodeId === current.sourceId) return;
       actions.dispatch({
         type: "edge.connect",
@@ -689,7 +716,7 @@ function WireCanvasInner({
         }
       });
     },
-    [actions]
+    [actions, model.direction, model.framesById]
   );
 
   const handleNodeClick = useCallback(
@@ -789,6 +816,8 @@ function WireCanvasInner({
 
         {model.frames.map((frame) => {
           const selected = selectedNodeIds.has(frame.id);
+          const isConnectionSource = connection?.sourceId === frame.id;
+          const isConnectionCandidate = connection?.candidate?.nodeId === frame.id;
           const renderer = frame.node.kind === "group"
             ? renderGroup ?? renderNodeCard ?? WireNodeCard
             : renderNodeCard ?? WireNodeCard;
@@ -827,11 +856,27 @@ function WireCanvasInner({
               <div style={{ width: frame.width, minHeight: frame.height }}>
                 {renderer(renderContext)}
               </div>
+              {isConnectionCandidate ? (
+                <div
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    inset: -4,
+                    borderRadius: 12,
+                    border: "2px solid #2563eb",
+                    boxShadow: "0 0 0 4px rgba(37,99,235,0.12)",
+                    pointerEvents: "none"
+                  }}
+                />
+              ) : null}
               <WireHandles
                 frame={frame}
                 direction={model.direction}
                 editable={editable}
                 slots={handleSlotsByFrame.get(frame.id)}
+                connecting={Boolean(connection)}
+                connectionSourceSide={isConnectionSource ? connection?.sourceSide ?? null : null}
+                candidateSide={isConnectionCandidate ? connection?.candidate?.side ?? null : null}
                 onSourcePointerDown={handleConnectionPointerDown}
                 onSourcePointerMove={handleConnectionPointerMove}
                 onSourcePointerUp={handleConnectionPointerUp}
@@ -950,6 +995,9 @@ function WireHandles({
   direction,
   editable,
   slots,
+  connecting,
+  connectionSourceSide,
+  candidateSide,
   onSourcePointerDown,
   onSourcePointerMove,
   onSourcePointerUp
@@ -958,6 +1006,9 @@ function WireHandles({
   direction: LayoutDirection;
   editable: boolean;
   slots: Map<Side, { source: number; target: number }> | undefined;
+  connecting: boolean;
+  connectionSourceSide: Side | null;
+  candidateSide: Side | null;
   onSourcePointerDown: (event: ReactPointerEvent<HTMLButtonElement>, frame: WireCanvasFrame, side: Side) => void;
   onSourcePointerMove: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onSourcePointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => void;
@@ -976,6 +1027,9 @@ function WireHandles({
         const sourceCount = counts?.source ?? 0;
         const targetCount = counts?.target ?? 0;
         const slotCount = isCondition ? 1 : Math.max(sourceCount, targetCount, 1);
+        const isActiveSource = connectionSourceSide === side;
+        const isActiveCandidate = candidateSide === side;
+        const highlight = isActiveSource || isActiveCandidate;
         return Array.from({ length: slotCount }, (_, slotIndex) => (
           <button
             key={`${side}-${slotIndex}`}
@@ -993,17 +1047,23 @@ function WireHandles({
             onPointerUp={isSource ? onSourcePointerUp : undefined}
             style={{
               position: "absolute",
-              ...handleSlotStyle(side, slotIndex, slotCount, frame.width, frame.height),
-              width: HANDLE_SIZE,
-              height: HANDLE_SIZE,
+              ...handleSlotStyle(side, slotIndex, slotCount, frame.width, frame.height, highlight),
+              width: highlight ? HANDLE_SIZE + 4 : HANDLE_SIZE,
+              height: highlight ? HANDLE_SIZE + 4 : HANDLE_SIZE,
               borderRadius: 999,
-              border: "1.5px solid #94a3b8",
-              background: isSource && isTarget ? "#2563eb" : "#ffffff",
-              boxShadow: "none",
+              border: highlight ? "2px solid #2563eb" : "1.5px solid #94a3b8",
+              background: highlight
+                ? "#ffffff"
+                : isSource && isTarget
+                  ? "#2563eb"
+                  : "#ffffff",
+              boxShadow: highlight ? "0 0 0 3px rgba(37,99,235,0.18)" : "none",
               padding: 0,
               opacity: editable ? 1 : 0.68,
               cursor: editable && isSource ? "crosshair" : "default",
-              pointerEvents: editable || isTarget ? "auto" : "none"
+              pointerEvents: editable || isTarget ? "auto" : "none",
+              transition: "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
+              zIndex: highlight ? 4 : connecting ? 2 : 1
             }}
           />
         ));
@@ -1284,14 +1344,16 @@ function WireMarker({
 }
 
 function DraftConnection({ connection }: { connection: ConnectionState }): ReactElement {
+  const snapped = connection.candidate !== null;
   const d = `M ${connection.from.x} ${connection.from.y} L ${connection.to.x} ${connection.to.y}`;
   return (
     <path
       d={d}
       fill="none"
       stroke="#2563eb"
-      strokeWidth={1.75}
-      strokeDasharray="5 5"
+      strokeWidth={snapped ? 2.25 : 1.75}
+      strokeDasharray={snapped ? undefined : "5 5"}
+      strokeLinecap="round"
       markerEnd={`url(#${markerId("arrow", "#2563eb", "end")})`}
       pointerEvents="none"
     />
@@ -1427,19 +1489,21 @@ function handleSlotStyle(
   slotIndex: number,
   slotCount: number,
   frameWidth: number,
-  frameHeight: number
+  frameHeight: number,
+  highlight: boolean
 ): CSSProperties {
+  const size = highlight ? HANDLE_SIZE + 4 : HANDLE_SIZE;
   const t = slotCount <= 1 ? 0.5 : 0.25 + (slotIndex / (slotCount - 1)) * 0.5;
   if (side === "left") {
-    return { left: -HANDLE_SIZE / 2, top: t * frameHeight - HANDLE_SIZE / 2 };
+    return { left: -size / 2, top: t * frameHeight - size / 2 };
   }
   if (side === "right") {
-    return { right: -HANDLE_SIZE / 2, top: t * frameHeight - HANDLE_SIZE / 2 };
+    return { right: -size / 2, top: t * frameHeight - size / 2 };
   }
   if (side === "top") {
-    return { top: -HANDLE_SIZE / 2, left: t * frameWidth - HANDLE_SIZE / 2 };
+    return { top: -size / 2, left: t * frameWidth - size / 2 };
   }
-  return { bottom: -HANDLE_SIZE / 2, left: t * frameWidth - HANDLE_SIZE / 2 };
+  return { bottom: -size / 2, left: t * frameWidth - size / 2 };
 }
 
 function sameMeasuredSizes(
@@ -1484,7 +1548,7 @@ function gridBackground(showBackground: boolean): CSSProperties {
   };
 }
 
-function targetHandleFromPoint(clientX: number, clientY: number): { nodeId: string; side: Side } | undefined {
+function targetHandleFromPoint(clientX: number, clientY: number): ConnectionCandidate | undefined {
   if (typeof document === "undefined") return undefined;
   const element = document.elementFromPoint(clientX, clientY);
   const target = element instanceof HTMLElement
@@ -1493,7 +1557,41 @@ function targetHandleFromPoint(clientX: number, clientY: number): { nodeId: stri
   const nodeId = target?.dataset.wireNodeId;
   const side = target?.dataset.wireSide;
   if (!nodeId || !isSide(side)) return undefined;
-  return { nodeId, side };
+  return { nodeId, side, point: { x: 0, y: 0 } };
+}
+
+function findConnectionCandidate(
+  clientX: number,
+  clientY: number,
+  sourceId: string,
+  fromPoint: Point,
+  framesById: Map<string, WireCanvasFrame>,
+  direction: LayoutDirection
+): ConnectionCandidate | null {
+  if (typeof document === "undefined") return null;
+  const element = document.elementFromPoint(clientX, clientY);
+  if (!(element instanceof Element)) return null;
+  const nodeEl = element.closest<HTMLElement>("[data-wire-node]");
+  const nodeId = nodeEl?.dataset.wireNodeId;
+  if (!nodeId || nodeId === sourceId) return null;
+  const frame = framesById.get(nodeId);
+  if (!frame) return null;
+  const targetSides = targetSidesForNode(frame.node, direction);
+  if (targetSides.length === 0) return null;
+
+  let bestSide = targetSides[0]!;
+  let bestDistance = Infinity;
+  for (const side of targetSides) {
+    const point = handlePoint(frame, side);
+    const dx = point.x - fromPoint.x;
+    const dy = point.y - fromPoint.y;
+    const distance = dx * dx + dy * dy;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestSide = side;
+    }
+  }
+  return { nodeId, side: bestSide, point: handlePoint(frame, bestSide) };
 }
 
 function isInteractiveTarget(target: EventTarget): boolean {
