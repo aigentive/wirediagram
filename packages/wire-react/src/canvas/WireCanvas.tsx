@@ -855,12 +855,17 @@ function WireCanvasInner({
                 left: frame.x,
                 top: frame.y,
                 width: frame.width,
-                minHeight: frame.height,
+                ...(frame.node.kind === "group" ? { height: frame.height } : null),
                 zIndex: frame.node.kind === "group" ? 1 : frame.node.parent ? 3 : 2,
                 cursor: editable || canPan ? "grab" : "pointer"
               }}
             >
-              <div style={{ width: frame.width, minHeight: frame.height }}>
+              <div
+                style={{
+                  width: frame.width,
+                  ...(frame.node.kind === "group" ? { height: frame.height } : null)
+                }}
+              >
                 {renderer(renderContext)}
               </div>
               {isConnectionCandidate ? (
