@@ -112,6 +112,7 @@ export function WireNodeCardView(ctx: WireNodeCardViewProps): ReactElement {
 export function cardStyleForNode(node: WireNode): CSSProperties | undefined {
   const nodeStyle = node.style;
   const style: CardCssProperties = {};
+  let shadowSource: string | undefined;
 
   if (node.tone) {
     const toneStyle = TONE_CARD_STYLE[node.tone];
@@ -121,8 +122,18 @@ export function cardStyleForNode(node: WireNode): CSSProperties | undefined {
     style["--wire-fg-primary"] = toneStyle.text;
     style["--wire-fg-secondary"] = toneStyle.text;
     style["--wire-fg-tertiary"] = toneStyle.text;
+    shadowSource = toneStyle.stroke;
   }
-  if (nodeStyle) Object.assign(style, cardCssStyleForNodeStyle(nodeStyle));
+  if (nodeStyle) {
+    Object.assign(style, cardCssStyleForNodeStyle(nodeStyle));
+    if (nodeStyle.stroke) shadowSource = nodeStyle.stroke;
+  }
+
+  if (nodeStyle?.shadow === false) {
+    style["--wire-card-shadow"] = "none";
+  } else if (shadowSource) {
+    style["--wire-card-shadow"] = tintedShadow(shadowSource);
+  }
 
   return Object.keys(style).length > 0 ? style : undefined;
 }
@@ -138,13 +149,20 @@ function cardCssStyleForNodeStyle(style: NodeStyle): CardCssProperties {
   if (style.strokeDasharray) cardStyle.borderStyle = "dashed";
   if (style.borderRadius !== undefined) cardStyle.borderRadius = style.borderRadius;
   if (style.opacity !== undefined) cardStyle.opacity = style.opacity;
-  if (style.shadow === false) cardStyle.boxShadow = "none";
   if (style.textColor) {
     cardStyle["--wire-fg-primary"] = style.textColor;
     cardStyle["--wire-fg-secondary"] = style.textColor;
     cardStyle["--wire-fg-tertiary"] = style.textColor;
   }
   return cardStyle;
+}
+
+function tintedShadow(stroke: string): string {
+  return [
+    `0 1px 0 color-mix(in srgb, ${stroke} 18%, transparent)`,
+    `0 6px 14px color-mix(in srgb, ${stroke} 22%, transparent)`,
+    `0 2px 4px color-mix(in srgb, ${stroke} 14%, transparent)`
+  ].join(", ");
 }
 
 export function WireGroupFrame(ctx: WireGroupFrameProps): ReactElement {
