@@ -2071,15 +2071,20 @@ function ToolTraceList({ traces }: { traces: ToolTrace[] }) {
 
 function ExportSourcePanel({ mode, source }: { mode: "svg" | "mermaid"; source: string }) {
   const label = mode === "svg" ? "SVG" : "Mermaid";
-  const responsiveSvg = mode === "svg" ? makeResponsiveSvg(source) : source;
+  const svgDataUrl = mode === "svg" && source
+    ? `data:image/svg+xml;utf8,${encodeURIComponent(source)}`
+    : null;
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-wire-code">
       {mode === "svg" ? (
         <div className="flex min-h-0 flex-[1.2] items-center justify-center overflow-auto border-b border-wire bg-wire-surface p-4">
-          <div
-            className="flex h-full w-full items-center justify-center"
-            dangerouslySetInnerHTML={{ __html: responsiveSvg }}
-          />
+          {svgDataUrl ? (
+            <img
+              src={svgDataUrl}
+              alt="Diagram preview"
+              className="block max-h-full max-w-full"
+            />
+          ) : null}
         </div>
       ) : null}
       <div className="wire-eyebrow wire-eyebrow--muted flex h-9 shrink-0 items-center border-b border-wire px-3">
@@ -2090,21 +2095,6 @@ function ExportSourcePanel({ mode, source }: { mode: "svg" | "mermaid"; source: 
       </WireCodeBlock>
     </div>
   );
-}
-
-function makeResponsiveSvg(source: string): string {
-  if (!source) return source;
-  const openTagMatch = source.match(/^\s*<svg\b[^>]*>/);
-  if (!openTagMatch) return source;
-  const tag = openTagMatch[0];
-  const stripped = tag
-    .replace(/\s(width|height)="[^"]*"/g, "")
-    .replace(/\s(width|height)='[^']*'/g, "");
-  const withStyle = stripped.replace(
-    /<svg\b/,
-    '<svg style="max-width:100%;max-height:100%;width:auto;height:auto;display:block"'
-  );
-  return source.replace(tag, withStyle);
 }
 
 function formatJson(diagram: WireDiagram): string {
