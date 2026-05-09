@@ -53,24 +53,25 @@ export default function DocsLanding() {
       }
       showToc={false}
     >
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-3">
         {PATHS.map((path) => {
           const Icon = path.icon;
           return (
             <Link
               key={path.href}
               href={path.href}
-              className="group grid content-start gap-2 rounded-lg border border-wire bg-wire-surface p-5 no-underline transition-colors hover:border-wire-strong hover:bg-wire-sunken"
+              className="group grid content-start gap-3 rounded-lg border border-wire bg-wire-surface p-4 no-underline shadow-wire-sm transition-colors duration-150 hover:border-wire-strong hover:bg-wire-sunken lg:p-5"
             >
-              <span className="grid h-9 w-9 place-items-center rounded-lg bg-wire-sunken text-wire-primary">
+              <span className="grid h-9 w-9 place-items-center rounded-md border border-wire bg-wire-sunken text-wire-secondary transition-colors group-hover:text-wire-primary">
                 <Icon size={16} aria-hidden strokeWidth={1.5} />
               </span>
-              <span className="wire-eyebrow">{path.eyebrow}</span>
-              <span className="text-[17px] font-bold tracking-tight text-wire-primary">{path.title}</span>
-              <span className="text-[13px] leading-6 text-wire-secondary">{path.detail}</span>
-              <span aria-hidden className="mt-1 inline-flex items-center gap-1 text-[12px] font-bold text-blue-600">
-                Read
-                <span className="inline-block transition-transform group-hover:translate-x-0.5">{"→"}</span>
+              <span className="grid gap-1">
+                <span className="wire-eyebrow">{path.eyebrow}</span>
+                <span className="text-[17px] font-bold leading-snug tracking-tight text-wire-primary">{path.title}</span>
+                <span className="text-[13px] leading-6 text-wire-secondary">{path.detail}</span>
+              </span>
+              <span aria-hidden className="mt-1 inline-flex items-center gap-1 text-[12px] font-bold text-wire-link">
+                Read <span className="inline-block transition-transform group-hover:translate-x-0.5">{"→"}</span>
               </span>
             </Link>
           );
@@ -171,23 +172,23 @@ export default function DocsLanding() {
         {HIGHLIGHT_TASKS.map((task) => {
           const Icon = task.icon;
           return (
-          <Link
-            key={task.href}
-            href={task.href}
-            className="group grid content-start gap-1 rounded-lg border border-wire bg-wire-surface p-4 no-underline hover:border-wire-strong"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex items-center gap-2 text-[14px] font-bold text-wire-primary">
-                <Icon size={14} aria-hidden strokeWidth={1.5} className="text-wire-tertiary" />
-                {task.title}
-              </span>
-              <span aria-hidden className="text-[14px] font-bold text-blue-600 transition-transform group-hover:translate-x-0.5">
-                {"→"}
-              </span>
-            </div>
-            <span className="text-[13px] leading-6 text-wire-secondary">{task.detail}</span>
-          </Link>
-        );
+            <Link
+              key={task.href}
+              href={task.href}
+              className="group grid content-start gap-1 rounded-lg border border-wire bg-wire-surface p-4 no-underline shadow-wire-sm transition-colors duration-150 hover:border-wire-strong hover:bg-wire-sunken"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-[14px] font-bold text-wire-primary">
+                  <Icon size={14} aria-hidden strokeWidth={1.5} className="text-wire-tertiary" />
+                  {task.title}
+                </span>
+                <span aria-hidden className="text-[14px] font-bold text-wire-link transition-transform group-hover:translate-x-0.5">
+                  {"→"}
+                </span>
+              </div>
+              <span className="text-[13px] leading-6 text-wire-secondary">{task.detail}</span>
+            </Link>
+          );
         })}
       </section>
     </DocsPage>

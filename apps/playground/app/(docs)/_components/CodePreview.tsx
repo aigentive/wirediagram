@@ -21,7 +21,7 @@ export function CodePreview({
 
   return (
     <div className="not-prose grid gap-2">
-      <div className="flex w-fit items-center gap-0.5 rounded-md bg-slate-100 p-0.5 dark:bg-slate-800">
+      <div className="flex w-fit items-center gap-0.5 rounded-md bg-wire-sunken p-0.5">
         <Tab active={view === "code"} onClick={() => setView("code")} icon={Code2} label="Code" />
         <Tab active={view === "preview"} onClick={() => setView("preview")} icon={Eye} label="Preview" />
       </div>
@@ -29,7 +29,7 @@ export function CodePreview({
         <CodeBlock language={language}>{snippet}</CodeBlock>
       ) : (
         <div
-          className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+          className="overflow-hidden rounded-lg border border-wire bg-wire-surface"
           style={{ height }}
         >
           {preview}
@@ -55,10 +55,10 @@ function Tab({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+      className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition-colors duration-150 ${
         active
-          ? "bg-white text-slate-950 shadow-sm dark:bg-slate-950 dark:text-slate-50"
-          : "text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-50"
+          ? "bg-wire-surface text-wire-primary shadow-wire-sm"
+          : "text-wire-tertiary hover:text-wire-primary"
       }`}
     >
       <Icon size={11} aria-hidden strokeWidth={2.25} />

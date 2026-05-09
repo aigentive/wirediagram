@@ -190,7 +190,7 @@ function ToggleButton({
       aria-pressed={active}
       aria-label={`View ${label.toLowerCase()}`}
       title={`View ${label.toLowerCase()}`}
-      className={`flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${
+      className={`flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition-colors duration-150 ${
         active
           ? "bg-wire-surface text-wire-primary shadow-wire-sm"
           : "text-wire-tertiary hover:text-wire-primary"
@@ -217,7 +217,7 @@ function IconButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="grid h-7 w-7 place-items-center rounded-md border border-wire bg-wire-surface text-wire-secondary transition-colors hover:border-wire-strong hover:text-wire-primary"
+      className="grid h-7 w-7 place-items-center rounded-md border border-wire bg-wire-surface text-wire-secondary transition-colors duration-150 hover:border-wire-strong hover:text-wire-primary"
     >
       <Icon size={13} aria-hidden strokeWidth={1.5} />
     </button>

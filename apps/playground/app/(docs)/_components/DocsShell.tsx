@@ -17,9 +17,9 @@ export function DocsShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-wire-page text-wire-primary">
       <TopHeader onToggleSidebar={() => setSidebarOpen((open) => !open)} sidebarOpen={sidebarOpen} />
 
-      <div className="lg:flex">
+      <div className="lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
         <aside
-          className={`fixed inset-y-0 left-0 top-14 z-20 w-[260px] overflow-auto border-r border-wire bg-wire-surface transition-transform lg:sticky lg:top-14 lg:z-0 lg:h-[calc(100vh-3.5rem)] lg:shrink-0 lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 top-14 z-20 w-[248px] overflow-auto border-r border-wire-nav-divider bg-wire-nav transition-transform lg:sticky lg:top-14 lg:z-0 lg:h-[calc(100vh-3.5rem)] lg:translate-x-0 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           }`}
         >
@@ -36,7 +36,7 @@ export function DocsShell({ children }: { children: ReactNode }) {
           />
         ) : null}
 
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0">{children}</main>
       </div>
     </div>
   );

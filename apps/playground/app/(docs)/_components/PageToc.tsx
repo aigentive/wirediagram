@@ -57,10 +57,10 @@ export function PageToc() {
             <li key={heading.id} className="m-0 p-0">
               <a
                 href={`#${heading.id}`}
-                className={`block rounded-md px-2 py-1 text-[12px] leading-5 no-underline ${
+                className={`block rounded-md px-2 py-1 text-[12px] leading-5 no-underline transition-colors duration-150 ${
                   active
-                    ? "bg-wire-sunken font-semibold text-wire-primary"
-                    : "text-wire-tertiary hover:text-wire-primary"
+                    ? "bg-wire-surface font-semibold text-wire-primary shadow-wire-sm"
+                    : "text-wire-tertiary hover:bg-wire-sunken hover:text-wire-primary"
                 }`}
               >
                 {heading.text}

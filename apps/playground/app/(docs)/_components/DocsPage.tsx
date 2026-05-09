@@ -22,15 +22,15 @@ export function DocsPage({
   children: ReactNode;
 }) {
   const gridClass = showToc
-    ? "mx-auto grid w-full max-w-[1180px] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_240px]"
-    : "mx-auto grid w-full max-w-[860px] grid-cols-1";
+    ? "grid w-full grid-cols-1 xl:mx-8 xl:w-auto xl:max-w-[1160px] xl:grid-cols-[minmax(0,1fr)_216px] 2xl:mx-12"
+    : "mx-auto grid w-full max-w-[980px] grid-cols-1";
 
   return (
     <div className={gridClass}>
-      <article className="mx-auto grid w-full max-w-[820px] gap-8 px-5 py-8 lg:px-10 lg:py-12" data-toc-anchor="true">
-        <header className="grid gap-2">
+      <article className="grid w-full max-w-[860px] gap-9 px-5 py-8 lg:px-8 lg:py-12 xl:px-10" data-toc-anchor="true">
+        <header className="grid gap-3 border-b border-wire pb-8">
           {crumbs?.length ? (
-            <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-[12px] font-bold uppercase tracking-wider text-wire-tertiary">
+            <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-[11px] font-bold uppercase tracking-[0.08em] text-wire-tertiary">
               {crumbs.map((crumb, index) => (
                 <span key={`${crumb.label}-${index}`} className="flex items-center gap-1">
                   {crumb.href ? (
@@ -46,7 +46,7 @@ export function DocsPage({
             </nav>
           ) : null}
           {eyebrow ? <span className="wire-eyebrow">{eyebrow}</span> : null}
-          <h1 className="m-0 text-[32px] font-bold leading-tight tracking-tight">{title}</h1>
+          <h1 className="m-0 max-w-[16ch] text-[32px] font-bold leading-tight tracking-tight sm:max-w-none">{title}</h1>
           {description ? (
             <p className="m-0 max-w-[68ch] text-[16px] leading-7 text-wire-secondary">{description}</p>
           ) : null}
@@ -57,7 +57,7 @@ export function DocsPage({
         {next ? (
           <Link
             href={next.href}
-            className="not-prose group mt-4 flex items-center justify-between rounded-lg border border-wire bg-wire-surface px-5 py-4 no-underline shadow-wire-sm hover:border-wire-strong"
+            className="not-prose group mt-2 flex items-center justify-between rounded-lg border border-wire bg-wire-surface px-5 py-4 no-underline shadow-wire-sm transition-colors duration-150 hover:border-wire-strong hover:bg-wire-sunken"
           >
             <span className="grid gap-0.5">
               <span className="wire-eyebrow wire-eyebrow--muted">Next</span>
@@ -74,8 +74,8 @@ export function DocsPage({
       </article>
 
       {showToc ? (
-        <aside className="hidden border-l border-wire px-5 xl:block">
-          <div className="sticky top-14">
+        <aside className="hidden border-l border-wire bg-wire-page/60 px-4 xl:block">
+          <div className="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-auto">
             <PageToc />
           </div>
         </aside>

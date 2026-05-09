@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, Info, Sparkles, type LucideIcon } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, type LucideIcon } from "lucide-react";
 
 type Tone = "info" | "tip" | "warn";
 
@@ -14,7 +14,7 @@ const TONE_CONFIG: Record<
   },
   tip: {
     label: "text-wire-status-valid",
-    icon: Sparkles,
+    icon: CheckCircle2,
     defaultTitle: "Tip"
   },
   warn: {
@@ -38,7 +38,7 @@ export function Callout({
   const heading = title ?? cfg.defaultTitle;
 
   return (
-    <aside className="not-prose grid gap-1 rounded-md border border-wire bg-wire-sunken px-4 py-3">
+    <aside className="not-prose grid gap-1 rounded-md border border-wire bg-wire-surface px-4 py-3 shadow-wire-sm">
       <div className={`flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] ${cfg.label}`}>
         <Icon size={12} aria-hidden strokeWidth={1.5} />
         {heading}

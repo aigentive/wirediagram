@@ -125,10 +125,11 @@
   --wire-status-invalid: #b91c1c;
   --wire-status-invalid-bg: #fef2f2;
 
-  --wire-bg-page: #eef1f5;
+  --wire-bg-page: #f4f6f9;
   --wire-bg-surface: #ffffff;
   --wire-bg-sunken: var(--wire-slate-100);
-  --wire-bg-code: var(--wire-slate-950);
+  --wire-bg-code: #0d1322;
+  --wire-bg-code-header: rgba(15, 23, 42, 0.78);
   --wire-bg-canvas: #fafbfd;
   --wire-grid-dot: rgba(100, 116, 139, 0.2);
 
@@ -137,9 +138,22 @@
   --wire-fg-tertiary: var(--wire-slate-500);
   --wire-fg-muted: var(--wire-slate-400);
   --wire-fg-on-code: #e2e8f0;
+  --wire-fg-code-muted: #94a3b8;
+  --wire-code-token-text: #dbeafe;
+  --wire-code-token-punct: #94a3b8;
+  --wire-code-token-key: #fb7185;
+  --wire-code-token-string: #34d399;
+  --wire-code-token-number: #60a5fa;
+  --wire-code-token-boolean: #fbbf24;
+  --wire-code-token-keyword: #c084fc;
+  --wire-code-token-comment: #94a3b8;
+  --wire-code-token-type: #22d3ee;
+  --wire-code-token-tag: #fb7185;
+  --wire-code-token-attr: #fbbf24;
   --wire-fg-link: var(--wire-blue-600);
 
   --wire-border: var(--wire-slate-200);
+  --wire-border-code: rgba(148, 163, 184, 0.2);
   --wire-border-strong: var(--wire-slate-300);
   --wire-border-focus: var(--wire-blue-500);
 
@@ -204,6 +218,7 @@
   --wire-bg-surface: var(--wire-slate-800);
   --wire-bg-sunken: #0b1426;
   --wire-bg-code: #06080f;
+  --wire-bg-code-header: rgba(2, 6, 23, 0.78);
   --wire-bg-canvas: var(--wire-slate-900);
   --wire-grid-dot: rgba(148, 163, 184, 0.18);
 
@@ -212,9 +227,11 @@
   --wire-fg-tertiary: #94a3b8;
   --wire-fg-muted: #64748b;
   --wire-fg-on-code: #e2e8f0;
+  --wire-fg-code-muted: #94a3b8;
   --wire-fg-link: #60a5fa;
 
   --wire-border: var(--wire-slate-700);
+  --wire-border-code: rgba(148, 163, 184, 0.18);
   --wire-border-strong: var(--wire-slate-600);
 
   --wire-kind-trigger-bg: rgba(4, 120, 87, 0.18);
@@ -305,6 +322,7 @@
   --color-wire-surface: var(--wire-bg-surface);
   --color-wire-sunken: var(--wire-bg-sunken);
   --color-wire-code: var(--wire-bg-code);
+  --color-wire-code-header: var(--wire-bg-code-header);
   --color-wire-canvas: var(--wire-bg-canvas);
   --color-wire-rail: var(--wire-rail-bg);
   --color-wire-rail-section-fg: var(--wire-rail-section-fg);
@@ -320,13 +338,17 @@
   --color-wire-secondary: var(--wire-fg-secondary);
   --color-wire-tertiary: var(--wire-fg-tertiary);
   --color-wire-muted: var(--wire-fg-muted);
+  --color-wire-on-code: var(--wire-fg-on-code);
+  --color-wire-code-muted: var(--wire-fg-code-muted);
   --color-wire-link: var(--wire-fg-link);
   --color-wire-nav-fg: var(--wire-nav-fg);
   --color-wire-nav-fg-muted: var(--wire-nav-fg-muted);
   --color-wire-nav-fg-dim: var(--wire-nav-fg-dim);
   --color-wire-nav-accent: var(--wire-nav-accent);
+  --color-wire-nav-divider: var(--wire-nav-divider);
 
   --color-wire-border: var(--wire-border);
+  --color-wire-code-border: var(--wire-border-code);
   --color-wire-border-strong: var(--wire-border-strong);
   --color-wire-border-focus: var(--wire-border-focus);
 
@@ -391,6 +413,22 @@
   pre,
   samp {
     font-family: var(--wire-font-mono);
+  }
+
+  :where(a, button, input, textarea, select):focus-visible {
+    outline: 2px solid var(--wire-border-focus);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 1ms !important;
+    }
   }
 }
 
