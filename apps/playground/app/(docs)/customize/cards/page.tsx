@@ -46,21 +46,34 @@ const SAMPLE_NODES: WireNode[] = [
   }
 ];
 
-function makeContext(node: WireNode, selected = false): WireNodeRenderContext {
-  const tone = (node.tone ?? (node.kind === "ai" ? "ai" : "default")) as WireNodeRenderContext["tone"];
+function makeContext(
+  node: WireNode,
+  options: { selected?: boolean; tone?: WireNodeRenderContext["tone"] } = {}
+): WireNodeRenderContext {
+  const tone = options.tone
+    ?? (node.tone ?? (node.kind === "ai" ? "ai" : "default")) as WireNodeRenderContext["tone"];
   return {
     node,
     data: { title: node.title, description: node.description, kind: node.kind, tone, wire: node },
     kind: node.kind,
     tone,
     theme: { border: "#cbd5e1", background: "#ffffff", accent: "#475569" },
-    selected,
+    selected: options.selected ?? false,
     width: 220,
     height: 140,
     options: wireNodeOptions(node),
     optionSpecs: wireOptionSpecsForNode(CATALOG, node)
   };
 }
+
+const TONE_LABELS: Array<{ tone: WireNodeRenderContext["tone"]; caption: string }> = [
+  { tone: "default", caption: "Neutral · the default" },
+  { tone: "success", caption: "Success" },
+  { tone: "warning", caption: "Warning" },
+  { tone: "error", caption: "Error" },
+  { tone: "info", caption: "Info" },
+  { tone: "ai", caption: "AI" }
+];
 
 export default function CardsCustomizePage() {
   return (
@@ -108,10 +121,30 @@ function BannerCard(ctx: WireNodeRenderContext) {
 
       <Showcase
         rows={[
-          { card: <WireNodeCardView {...makeContext(SAMPLE_NODES[0]!)} />, caption: "trigger · single option" },
-          { card: <WireNodeCardView {...makeContext(SAMPLE_NODES[1]!, true)} />, caption: "ai · selected · model + temperature" },
-          { card: <WireNodeCardView {...makeContext(SAMPLE_NODES[2]!)} />, caption: "tool · ref + requiresApproval" }
+          { card: <WireNodeCardView {...makeContext(SAMPLE_NODES[0]!, {})} />, caption: "trigger · single option" },
+          { card: <WireNodeCardView {...makeContext(SAMPLE_NODES[1]!, { selected: true })} />, caption: "ai · selected · model + temperature" },
+          { card: <WireNodeCardView {...makeContext(SAMPLE_NODES[2]!, {})} />, caption: "tool · ref + requiresApproval" }
         ]}
+      />
+
+      <Prose>
+        <h2 id="tones">Built-in tones</h2>
+        <p>
+          Each card carries a <InlineCode>tone</InlineCode>. The inspector&rsquo;s <em>Card style</em> dropdown sets it
+          (Neutral is the default). Tones drive fill, border, and text colour together; for arbitrary colours, switch
+          to <em>Custom</em> and edit fill / border / text directly.
+        </p>
+      </Prose>
+
+      <Showcase
+        rows={TONE_LABELS.map(({ tone, caption }) => ({
+          card: (
+            <WireNodeCardView
+              {...makeContext(SAMPLE_NODES[1]!, { tone })}
+            />
+          ),
+          caption
+        }))}
       />
 
       <Prose>
@@ -134,9 +167,9 @@ function BannerCard(ctx: WireNodeRenderContext) {
 
       <Showcase
         rows={[
-          { card: <MinimalCard {...makeContext(SAMPLE_NODES[0]!)} />, caption: "Minimal — dashed border, centered, no shadow, no kind chip" },
-          { card: <TerminalCard {...makeContext(SAMPLE_NODES[1]!, true)} />, caption: "Terminal — slate-950 surface, monospace, emerald accents" },
-          { card: <RowCard {...makeContext(SAMPLE_NODES[2]!)} />, caption: "Row — kind dot, side-by-side meta, no shadow" }
+          { card: <MinimalCard {...makeContext(SAMPLE_NODES[0]!, {})} />, caption: "Minimal — dashed border, centered, no shadow, no kind chip" },
+          { card: <TerminalCard {...makeContext(SAMPLE_NODES[1]!, { selected: true })} />, caption: "Terminal — slate-950 surface, monospace, emerald accents" },
+          { card: <RowCard {...makeContext(SAMPLE_NODES[2]!, {})} />, caption: "Row — kind dot, side-by-side meta, no shadow" }
         ]}
       />
 

@@ -18,7 +18,7 @@ const INLINE_INPUT =
 const CLEAR_BUTTON =
   "shrink-0 rounded-md border border-wire bg-wire-surface px-2 py-1 text-[11px] font-medium text-wire-tertiary transition-colors hover:border-wire-strong hover:text-wire-primary";
 
-type CardStyleMode = "" | Tone | "custom";
+type CardStyleMode = Tone | "custom";
 
 const CARD_STYLE_PRESETS: Record<Tone, Pick<NodeStyle, "fill" | "stroke" | "textColor">> = {
   default: { fill: "#ffffff", stroke: "#d4d4d8", textColor: "#18181b" },
@@ -30,7 +30,6 @@ const CARD_STYLE_PRESETS: Record<Tone, Pick<NodeStyle, "fill" | "stroke" | "text
 };
 
 const TONE_OPTIONS: Array<{ value: CardStyleMode; label: string }> = [
-  { value: "", label: "Kind default" },
   { value: "default", label: "Neutral" },
   { value: "success", label: "Success" },
   { value: "warning", label: "Warning" },
@@ -134,7 +133,7 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
               actions.dispatch({
                 type: "node.patch",
                 id: node.id,
-                patch: mode ? { tone: mode, style: styleForPreset(mode) } : { tone: null, style: null }
+                patch: { tone: mode, style: styleForPreset(mode) }
               });
             }}
           >
@@ -332,7 +331,7 @@ function cardStyleModeForNode(
   node: WireNode,
   preset: Pick<NodeStyle, "fill" | "stroke" | "textColor"> | undefined
 ): CardStyleMode {
-  if (!node.tone) return node.style ? "custom" : "";
+  if (!node.tone) return node.style ? "custom" : "default";
   if (!node.style) return node.tone;
   return styleMatchesPreset(node.style, preset) ? node.tone : "custom";
 }
