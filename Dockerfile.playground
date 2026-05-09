@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1.7
+#
+# Wire playground - local/cloud Next.js editor and render service.
+
+FROM node:20-bookworm-slim AS build
+WORKDIR /workspace
+
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY packages/wire-core/package.json packages/wire-core/tsconfig.json ./packages/wire-core/
+COPY packages/wire-renderers/package.json packages/wire-renderers/tsconfig.json ./packages/wire-renderers/
+COPY packages/wire-react/package.json packages/wire-react/tsconfig.json ./packages/wire-react/
+COPY packages/wire-mcp/package.json packages/wire-mcp/tsconfig.json ./packages/wire-mcp/
+COPY apps/playground/package.json apps/playground/tsconfig.json apps/playground/next.config.js ./apps/playground/
+
+RUN npm install --workspaces --include-workspace-root --no-audit --no-fund
+
+COPY packages ./packages
+COPY apps/playground ./apps/playground
+
+RUN npm run build:core \
+ && npm run build --workspace @aigentive/wire-renderers \
+ && npm run build --workspace @aigentive/wire-react \
+ && npm run build --workspace @aigentive/wire-mcp \
+ && npm run build --workspace @aigentive/wire-playground
+
+FROM node:20-bookworm-slim AS runtime
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    WIRE_SHARE_BACKEND=local \
+    WIRE_SHARE_DIR=/data/shares
+
+COPY --from=build /workspace/package.json /workspace/package-lock.json /workspace/tsconfig.base.json ./
+COPY --from=build /workspace/node_modules ./node_modules
+COPY --from=build /workspace/packages ./packages
+COPY --from=build /workspace/apps/playground ./apps/playground
+
+RUN mkdir -p /data/shares && useradd --uid 1001 --create-home wire && chown -R wire:wire /app /data
+USER wire
+
+EXPOSE 3870
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3870/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["npm", "run", "start", "--workspace", "@aigentive/wire-playground"]

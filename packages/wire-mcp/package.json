@@ -1,0 +1,37 @@
+{
+  "name": "@aigentive/wire-mcp",
+  "version": "1.0.6",
+  "description": "Wire MCP server — agent-driven diagram editing over stdio + streamable-HTTP.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/server.js",
+  "types": "dist/server.d.ts",
+  "bin": {
+    "wire-mcp": "dist/server.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && chmod +x dist/server.js || true",
+    "dev": "tsx src/server.ts",
+    "dev:http": "tsx src/server.ts --http",
+    "start": "node dist/server.js",
+    "start:http": "node dist/server.js --http",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aigentive/wire-core": "^1.0.2",
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@resvg/resvg-js": "^2.6.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

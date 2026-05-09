@@ -1,0 +1,48 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "layout": "LR",
+  "title": "Feature: fan-in slot distribution",
+  "description": "Multiple edges into the same side auto-distribute evenly between 25% and 75% of the side length.",
+  "nodes": [
+    {
+      "id": "a",
+      "kind": "trigger",
+      "title": "Source A"
+    },
+    {
+      "id": "b",
+      "kind": "trigger",
+      "title": "Source B"
+    },
+    {
+      "id": "c",
+      "kind": "trigger",
+      "title": "Source C"
+    },
+    {
+      "id": "d",
+      "kind": "trigger",
+      "title": "Source D"
+    },
+    {
+      "id": "e",
+      "kind": "trigger",
+      "title": "Source E"
+    },
+    {
+      "id": "merge",
+      "kind": "ai",
+      "title": "Aggregator",
+      "from": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e"
+      ],
+      "tone": "ai"
+    }
+  ],
+  "edges": []
+}

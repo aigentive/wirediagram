@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+**/dist
+**/.next
+.git
+.github
+docs
+examples
+apps/playground/.next
+.claude
+*.log
+.DS_Store

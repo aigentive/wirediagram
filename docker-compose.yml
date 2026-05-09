@@ -1,0 +1,35 @@
+services:
+  wire-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: aigentive/wire-mcp:local
+    container_name: wire-mcp
+    ports:
+      - "3860:3860"
+    environment:
+      WIRE_STORAGE_DIR: /data/diagrams
+      WIRE_HTTP_PORT: "3860"
+      WIRE_HTTP_HOST: 0.0.0.0
+    volumes:
+      - wire-data:/data/diagrams
+    restart: unless-stopped
+
+  wire-playground:
+    build:
+      context: .
+      dockerfile: Dockerfile.playground
+    image: aigentive/wire-playground:local
+    container_name: wire-playground
+    ports:
+      - "3870:3870"
+    environment:
+      WIRE_SHARE_BACKEND: local
+      WIRE_SHARE_DIR: /data/shares
+    volumes:
+      - wire-shares:/data/shares
+    restart: unless-stopped
+
+volumes:
+  wire-data:
+  wire-shares:

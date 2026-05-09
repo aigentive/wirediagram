@@ -1,0 +1,33 @@
+{
+  "name": "@aigentive/wire-cli",
+  "version": "1.0.1",
+  "description": "Wire CLI — init, add, export.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/cli.js",
+  "types": "dist/cli.d.ts",
+  "bin": {
+    "wire": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && chmod +x dist/cli.js || true",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aigentive/wire-core": "^1.0.2",
+    "@aigentive/wire-renderers": "^1.0.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

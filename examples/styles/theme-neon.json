@@ -1,0 +1,79 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "layout": "LR",
+  "title": "Theme: Neon",
+  "description": "Neon strokes over black. Thick borders, vivid colors.",
+  "nodes": [
+    {
+      "id": "a",
+      "kind": "trigger",
+      "title": "Signal",
+      "style": {
+        "fill": "#000000",
+        "stroke": "#22d3ee",
+        "textColor": "#22d3ee",
+        "strokeWidth": 3
+      }
+    },
+    {
+      "id": "b",
+      "kind": "ai",
+      "title": "Synth",
+      "style": {
+        "fill": "#000000",
+        "stroke": "#a855f7",
+        "textColor": "#a855f7",
+        "strokeWidth": 3
+      }
+    },
+    {
+      "id": "c",
+      "kind": "tool",
+      "title": "Pulse",
+      "style": {
+        "fill": "#000000",
+        "stroke": "#f472b6",
+        "textColor": "#f472b6",
+        "strokeWidth": 3
+      }
+    },
+    {
+      "id": "d",
+      "kind": "end",
+      "title": "Drop",
+      "style": {
+        "fill": "#000000",
+        "stroke": "#facc15",
+        "textColor": "#facc15",
+        "strokeWidth": 3
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "a",
+      "to": "b",
+      "style": {
+        "stroke": "#22d3ee",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "from": "b",
+      "to": "c",
+      "style": {
+        "stroke": "#a855f7",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "from": "c",
+      "to": "d",
+      "style": {
+        "stroke": "#f472b6",
+        "strokeWidth": 2
+      }
+    }
+  ]
+}

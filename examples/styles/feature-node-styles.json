@@ -1,0 +1,67 @@
+{
+  "$schema": "https://aigentive.dev/schemas/wire-diagram.json",
+  "version": 1,
+  "layout": "LR",
+  "title": "Feature: node styles",
+  "description": "All node-level style props on a single row.",
+  "nodes": [
+    {
+      "id": "tone-only",
+      "kind": "action",
+      "title": "tone defaults",
+      "tone": "ai"
+    },
+    {
+      "id": "fill",
+      "kind": "action",
+      "title": "custom fill",
+      "from": "tone-only",
+      "style": {
+        "fill": "#fef3c7",
+        "stroke": "#d97706",
+        "textColor": "#78350f"
+      }
+    },
+    {
+      "id": "dash",
+      "kind": "action",
+      "title": "dashed border",
+      "from": "fill",
+      "style": {
+        "strokeDasharray": "5 3",
+        "strokeWidth": 2
+      }
+    },
+    {
+      "id": "radius",
+      "kind": "action",
+      "title": "big radius",
+      "from": "dash",
+      "style": {
+        "borderRadius": 28,
+        "fill": "#dbeafe",
+        "stroke": "#1d4ed8"
+      }
+    },
+    {
+      "id": "shadow",
+      "kind": "action",
+      "title": "shadow",
+      "from": "radius",
+      "style": {
+        "shadow": true,
+        "fill": "#ffffff"
+      }
+    },
+    {
+      "id": "fade",
+      "kind": "action",
+      "title": "faded",
+      "from": "shadow",
+      "style": {
+        "opacity": 0.4
+      }
+    }
+  ],
+  "edges": []
+}
