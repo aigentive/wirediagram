@@ -86,6 +86,7 @@ export function tokenize(language: string, code: string): Token[] {
   if (lang === "json") return tokenizeJson(code);
   if (lang === "ts" || lang === "tsx" || lang === "js" || lang === "jsx") return tokenizeTs(code);
   if (lang === "css") return tokenizeCss(code);
+  if (lang === "shell" || lang === "bash" || lang === "sh") return tokenizeShell(code);
   return [{ type: "text", value: code }];
 }
 
@@ -320,33 +321,170 @@ function tokenizeCss(code: string): Token[] {
   return tokens;
 }
 
+function tokenizeShell(code: string): Token[] {
+  const tokens: Token[] = [];
+  let i = 0;
+  let atLineStart = true;
+  let sawCommand = false;
+
+  while (i < code.length) {
+    const ch = code[i]!;
+
+    if (ch === "\n") {
+      tokens.push({ type: "text", value: ch });
+      i += 1;
+      atLineStart = true;
+      sawCommand = false;
+      continue;
+    }
+
+    if (ch === " " || ch === "\t") {
+      let j = i;
+      while (j < code.length && (code[j] === " " || code[j] === "\t")) j++;
+      tokens.push({ type: "text", value: code.slice(i, j) });
+      i = j;
+      continue;
+    }
+
+    if (ch === "#") {
+      let j = i;
+      while (j < code.length && code[j] !== "\n") j++;
+      tokens.push({ type: "comment", value: code.slice(i, j) });
+      i = j;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      const quote = ch;
+      let j = i + 1;
+      while (j < code.length && code[j] !== quote) {
+        if (code[j] === "\\") j++;
+        j++;
+      }
+      tokens.push({ type: "string", value: code.slice(i, Math.min(j + 1, code.length)) });
+      i = j + 1;
+      atLineStart = false;
+      continue;
+    }
+
+    if (ch === "$" && code[i + 1] === "{") {
+      let j = i + 2;
+      let depth = 1;
+      while (j < code.length && depth > 0) {
+        if (code[j] === "{") depth++;
+        else if (code[j] === "}") depth--;
+        if (depth === 0) break;
+        j++;
+      }
+      tokens.push({ type: "type", value: code.slice(i, Math.min(j + 1, code.length)) });
+      i = j + 1;
+      atLineStart = false;
+      continue;
+    }
+
+    if (ch === "$" && /[a-zA-Z_]/.test(code[i + 1] ?? "")) {
+      let j = i + 1;
+      while (j < code.length && /[a-zA-Z0-9_]/.test(code[j]!)) j++;
+      tokens.push({ type: "type", value: code.slice(i, j) });
+      i = j;
+      atLineStart = false;
+      continue;
+    }
+
+    if (ch === "&" && code[i + 1] === "&") {
+      tokens.push({ type: "punct", value: "&&" });
+      i += 2;
+      atLineStart = true;
+      sawCommand = false;
+      continue;
+    }
+    if (ch === "|" && code[i + 1] === "|") {
+      tokens.push({ type: "punct", value: "||" });
+      i += 2;
+      atLineStart = true;
+      sawCommand = false;
+      continue;
+    }
+    if (ch === "|" || ch === ";" || ch === ">" || ch === "<") {
+      tokens.push({ type: "punct", value: ch });
+      i += 1;
+      atLineStart = true;
+      sawCommand = false;
+      continue;
+    }
+    if (ch === "\\") {
+      tokens.push({ type: "punct", value: ch });
+      i += 1;
+      continue;
+    }
+
+    if (ch === "-") {
+      let j = i;
+      while (j < code.length && /[A-Za-z0-9_-]/.test(code[j]!)) j++;
+      const word = code.slice(i, j);
+      if (word.length > 1 && (word.startsWith("-") || word.startsWith("--"))) {
+        tokens.push({ type: "attr", value: word });
+        i = j;
+        atLineStart = false;
+        continue;
+      }
+    }
+
+    if (/[A-Za-z0-9_@./~:=]/.test(ch)) {
+      let j = i;
+      while (j < code.length && /[A-Za-z0-9_@./~:=+-]/.test(code[j]!)) j++;
+      const word = code.slice(i, j);
+      let type: TokenType;
+      if (atLineStart && !sawCommand) {
+        type = "keyword";
+        sawCommand = true;
+      } else if (word.startsWith("@") || word.startsWith("/") || word.startsWith("./") || word.startsWith("~/")) {
+        type = "string";
+      } else if (word.includes("=")) {
+        type = "attr";
+      } else {
+        type = "text";
+      }
+      tokens.push({ type, value: word });
+      i = j;
+      atLineStart = false;
+      continue;
+    }
+
+    tokens.push({ type: "punct", value: ch });
+    i += 1;
+  }
+
+  return tokens;
+}
+
 export function tokenClass(type: TokenType): string {
   switch (type) {
     case "text":
-      return "text-slate-800 dark:text-slate-200";
+      return "text-[var(--wire-code-token-text)]";
     case "punct":
-      return "text-slate-500 dark:text-slate-400";
+      return "text-[var(--wire-code-token-punct)]";
     case "key":
-      return "text-rose-700 dark:text-rose-300";
+      return "text-[var(--wire-code-token-key)]";
     case "string":
-      return "text-emerald-700 dark:text-emerald-300";
+      return "text-[var(--wire-code-token-string)]";
     case "number":
-      return "text-blue-700 dark:text-blue-300";
+      return "text-[var(--wire-code-token-number)]";
     case "boolean":
-      return "text-amber-700 dark:text-amber-300";
+      return "text-[var(--wire-code-token-boolean)]";
     case "keyword":
-      return "text-violet-700 dark:text-violet-300";
+      return "text-[var(--wire-code-token-keyword)]";
     case "comment":
-      return "italic text-slate-500 dark:text-slate-500";
+      return "italic text-[var(--wire-code-token-comment)]";
     case "type":
-      return "text-cyan-700 dark:text-cyan-300";
+      return "text-[var(--wire-code-token-type)]";
     case "tag":
-      return "text-rose-700 dark:text-rose-300";
+      return "text-[var(--wire-code-token-tag)]";
     case "attr":
-      return "text-amber-700 dark:text-amber-300";
+      return "text-[var(--wire-code-token-attr)]";
     case "regex":
-      return "text-emerald-700 dark:text-emerald-300";
+      return "text-[var(--wire-code-token-string)]";
     default:
-      return "text-slate-800 dark:text-slate-200";
+      return "text-[var(--wire-code-token-text)]";
   }
 }

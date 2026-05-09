@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { Children, useMemo, useState, type ReactNode } from "react";
 import { Check, Copy, FileCode2, FileJson, Terminal as TerminalIcon, type LucideIcon } from "lucide-react";
 import { tokenClass, tokenize } from "./syntax";
 
@@ -31,8 +31,8 @@ export function CodeBlock({ language, children }: { language?: string; children:
   };
 
   return (
-    <div className="not-prose relative overflow-hidden rounded-lg border border-wire bg-wire-code shadow-wire-sm">
-      <div className="flex items-center justify-between border-b border-wire bg-wire-sunken px-3 py-1.5 wire-eyebrow wire-eyebrow--muted">
+    <div className="not-prose relative overflow-hidden rounded-lg border border-wire-code-border bg-wire-code shadow-wire-sm">
+      <div className="flex items-center justify-between border-b border-wire-code-border bg-wire-code-header px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-wire-code-muted">
         <span className="flex items-center gap-1.5">
           <Icon size={12} aria-hidden strokeWidth={1.5} />
           {language ?? "code"}
@@ -40,7 +40,7 @@ export function CodeBlock({ language, children }: { language?: string; children:
         <CopyButton copied={copied} onCopy={handleCopy} />
       </div>
       <pre
-        className="m-0 overflow-auto p-4 font-mono text-[13px] leading-[1.55]"
+        className="m-0 overflow-auto p-4 font-mono text-[13px] leading-[1.6]"
         style={{ color: "var(--wire-fg-on-code)" }}
       >
         <code>
@@ -62,7 +62,7 @@ function CopyButton({ copied, onCopy }: { copied: boolean; onCopy: () => void })
       type="button"
       onClick={onCopy}
       aria-label={copied ? "Copied to clipboard" : "Copy code"}
-      className="flex items-center gap-1 rounded border border-wire bg-wire-surface px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-wire-secondary transition-colors hover:border-wire-strong hover:text-wire-primary"
+      className="flex items-center gap-1 rounded border border-wire-code-border bg-white/5 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-wire-on-code transition-colors duration-150 hover:bg-white/10"
     >
       <Icon size={11} aria-hidden strokeWidth={1.5} />
       {copied ? "Copied" : "Copy"}
@@ -71,20 +71,47 @@ function CopyButton({ copied, onCopy }: { copied: boolean; onCopy: () => void })
 }
 
 export function Shell({ children }: { children: ReactNode }) {
+  const source = useMemo(() => childrenToString(children), [children]);
+  const tokens = useMemo(() => tokenize("shell", source), [source]);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(source);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
-    <div className="not-prose overflow-hidden rounded-lg border border-wire bg-wire-code shadow-wire-sm">
-      <div className="flex items-center justify-between border-b border-wire bg-wire-sunken px-3 py-1.5 wire-eyebrow wire-eyebrow--muted">
+    <div className="not-prose relative overflow-hidden rounded-lg border border-wire-code-border bg-wire-code shadow-wire-sm">
+      <div className="flex items-center justify-between border-b border-wire-code-border bg-wire-code-header px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-wire-code-muted">
         <span className="flex items-center gap-1.5">
           <TerminalIcon size={12} aria-hidden strokeWidth={1.5} />
           Terminal
         </span>
+        {source ? <CopyButton copied={copied} onCopy={handleCopy} /> : null}
       </div>
       <pre
-        className="m-0 overflow-auto p-4 font-mono text-[13px] leading-[1.55]"
-        style={{ color: "var(--wire-status-valid)" }}
+        className="m-0 overflow-auto p-4 font-mono text-[13px] leading-[1.6]"
+        style={{ color: "var(--wire-fg-on-code)" }}
       >
-        {children}
+        <code>
+          {tokens.map((token, index) => (
+            <span key={index} className={tokenClass(token.type)}>
+              {token.value}
+            </span>
+          ))}
+        </code>
       </pre>
     </div>
   );
+}
+
+function childrenToString(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(childrenToString).join("");
+  if (typeof node === "object" && "props" in node && node.props && typeof node.props === "object" && "children" in node.props) {
+    return Children.toArray((node.props as { children?: ReactNode }).children).map(childrenToString).join("");
+  }
+  return "";
 }

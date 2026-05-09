@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 import { GithubRepoLink } from "../../_components/GithubRepoLink";
+import { Brandmark } from "../../_components/wire-brand";
 
 type Theme = "light" | "dark";
 
@@ -34,57 +35,48 @@ export function TopHeader({
 
   return (
     <header className="sticky top-0 z-30 border-b border-wire bg-wire-surface">
-      <div className="mx-auto flex h-14 items-center gap-3 px-4 lg:px-6">
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          aria-label={sidebarOpen ? "Close navigation" : "Open navigation"}
-          aria-expanded={sidebarOpen}
-          className="grid h-9 w-9 place-items-center rounded-md border border-wire text-wire-secondary hover:border-wire-strong hover:text-wire-primary lg:hidden"
-        >
-          <Menu size={14} aria-hidden />
-        </button>
-
-        <Link href="/" className="flex items-center gap-2 text-wire-primary no-underline">
-          <BrandMark />
-          <span className="text-[15px] font-bold tracking-tight">Wire</span>
-          <span className="hidden text-[12px] font-medium text-wire-tertiary sm:inline">
-            React components
-          </span>
-          <span className="hidden font-mono text-[11px] text-wire-tertiary sm:inline">v1.0</span>
-        </Link>
-
-        <div className="ml-auto flex items-center gap-2">
-          <Link
-            href="/playground"
-            className="rounded-md border border-wire bg-wire-surface px-3 py-1.5 text-[13px] font-bold text-wire-primary no-underline transition-colors hover:border-wire-strong"
+      <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[248px_minmax(0,1fr)]">
+        <div className="flex min-w-0 items-center gap-2 border-r border-wire px-3 sm:px-4 lg:px-5">
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            aria-label={sidebarOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={sidebarOpen}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-wire text-wire-secondary transition-colors duration-150 hover:border-wire-strong hover:text-wire-primary lg:hidden"
           >
-            Playground
-          </Link>
-          <Link
-            href="/contact"
-            className="rounded-md border border-wire px-3 py-1.5 text-[13px] font-bold text-wire-secondary no-underline transition-colors hover:border-wire-strong hover:text-wire-primary"
-          >
-            Contact
-          </Link>
-          <GithubRepoLink />
-          <ThemeToggle theme={theme} onChange={setTheme} />
+            <Menu size={14} aria-hidden strokeWidth={1.75} />
+          </button>
+
+          <Brandmark href="/" version="alpha" />
+
+        </div>
+
+        <div className="flex min-w-0 items-center gap-3 px-3 sm:px-4 lg:px-6">
+          <div className="hidden min-w-0 items-baseline gap-2 md:flex">
+            <span className="wire-eyebrow wire-eyebrow--muted">React components</span>
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href="/playground"
+              className="rounded-md border border-wire bg-wire-surface px-3 py-1.5 text-[13px] font-bold text-wire-primary no-underline transition-colors duration-150 hover:border-wire-strong"
+            >
+              Playground
+            </Link>
+            <Link
+              href="/contact"
+              className="hidden rounded-md border border-wire px-3 py-1.5 text-[13px] font-bold text-wire-secondary no-underline transition-colors duration-150 hover:border-wire-strong hover:text-wire-primary sm:inline-flex"
+            >
+              Contact
+            </Link>
+            <div className="hidden sm:block">
+              <GithubRepoLink />
+            </div>
+            <ThemeToggle theme={theme} onChange={setTheme} />
+          </div>
         </div>
       </div>
     </header>
-  );
-}
-
-function BrandMark() {
-  return (
-    <span aria-hidden className="grid h-7 w-7 place-items-center rounded-md bg-slate-800">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
-        <circle cx="5" cy="12" r="2.5" />
-        <circle cx="19" cy="6" r="2.5" />
-        <circle cx="19" cy="18" r="2.5" />
-        <path d="M7.2 11l9.6-4M7.2 13l9.6 4" strokeLinecap="round" />
-      </svg>
-    </span>
   );
 }
 
@@ -100,8 +92,8 @@ function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (t: Theme) =
         type="button"
         aria-pressed={!isDark}
         onClick={() => onChange("light")}
-        className={`rounded-full px-3 py-[5px] text-[11px] font-bold uppercase tracking-[0.08em] transition-colors ${
-          !isDark ? "bg-slate-900 text-white" : "text-wire-tertiary hover:text-wire-primary"
+        className={`rounded-full px-3 py-[5px] text-[11px] font-bold uppercase tracking-[0.08em] transition-colors duration-150 ${
+          !isDark ? "bg-wire-primary text-wire-surface" : "text-wire-tertiary hover:text-wire-primary"
         }`}
       >
         Light
@@ -110,8 +102,8 @@ function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (t: Theme) =
         type="button"
         aria-pressed={isDark}
         onClick={() => onChange("dark")}
-        className={`rounded-full px-3 py-[5px] text-[11px] font-bold uppercase tracking-[0.08em] transition-colors ${
-          isDark ? "bg-slate-900 text-white" : "text-wire-tertiary hover:text-wire-primary"
+        className={`rounded-full px-3 py-[5px] text-[11px] font-bold uppercase tracking-[0.08em] transition-colors duration-150 ${
+          isDark ? "bg-wire-primary text-wire-surface" : "text-wire-tertiary hover:text-wire-primary"
         }`}
       >
         Dark
