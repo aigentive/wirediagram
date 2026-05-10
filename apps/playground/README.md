@@ -1,6 +1,6 @@
 # @aigentive/wire-playground
 
-Next.js diagram playground for `@aigentive/wire`. It renders Wire diagrams in the browser, provides an interactive React editor through `@aigentive/wire-react`, stores shared canonical JSON in Vercel Blob or a local filesystem store, and acts as a render/preview service for MCP and hosted agents.
+Next.js diagram playground for `@aigentive/wire`. It renders Wire diagrams in the browser, provides an interactive React editor through `@aigentive/wire-react`, stores shared canonical JSON in Turso/libSQL, local SQLite, or Vercel Blob fallback storage, and acts as a render/preview service for MCP and hosted agents.
 
 ## Local
 
@@ -9,7 +9,7 @@ npm run dev:playground
 # → http://localhost:3870
 ```
 
-For a Dockerized local playground with filesystem-backed share tokens:
+For a Dockerized local playground with SQLite-backed share tokens:
 
 ```bash
 docker compose up -d --build wire-playground
@@ -27,20 +27,18 @@ docker compose up -d --build wire-playground
 | `/edit/inline?d=<base64url-or-token>` | Hydrate the React editor from inline JSON or a Blob/local share token |
 | `POST /api/render` | Body: canonical JSON; returns `image/svg+xml` |
 | `POST /api/validate` | Body: canonical JSON; returns the validation result |
-| `POST /api/share` | Body: canonical JSON; validates, canonicalizes, stores `wires/{token}.json` in Vercel Blob or the local share store, and returns share URLs |
+| `POST /api/share` | Body: canonical JSON; validates, canonicalizes, stores `wires/{token}.json` in the active cloud storage backend, and returns share URLs |
 | `POST /api/playground/chat` | Body: `{ message, diagram, history }`; asks OpenAI to call Wire MCP-style tools and returns `{ diagram, validation, traces, message }` |
-| `GET /api/blob/wires/[token][.json]` | Local Docker/dev share object endpoint when `WIRE_SHARE_BACKEND=local` |
+| `GET /api/blob/wires/[token][.json]` | Legacy raw JSON endpoint backed by the active cloud storage backend |
 | _(MCP)_ | Run `wire-mcp --http` separately — playground does not host MCP. |
 
 ## Hosted Vercel
 
-Designed to deploy to Vercel. Set `BLOB_PUBLIC_BASE_URL` so token URLs can load
-`wires/{token}.json`; Vercel Blob write credentials are used by `/api/share`.
+Designed to deploy to Vercel. Production can use Turso/libSQL by setting
+`TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`; without those, the existing Vercel
+Blob storage remains the fallback. Local dev uses SQLite via libSQL with
+`TURSO_DATABASE_URL=file:local` and `LOCAL_DB_PATH=file:./storage/wire.db`.
 See [DEPLOY.md](../../docs/DEPLOY.md) for instructions.
-
-For local Docker/dev without Vercel Blob, set `WIRE_SHARE_BACKEND=local` and
-`WIRE_SHARE_DIR` to a writable directory. The compose file does this with the
-`wire-shares` named volume.
 
 ## License
 

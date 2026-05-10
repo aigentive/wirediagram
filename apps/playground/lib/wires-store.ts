@@ -1,15 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { list, put } from "@vercel/blob";
 import {
   parseWireDiagram,
   validate,
   type ValidationResult,
   type WireDiagram
 } from "@aigentive/wire-core";
-import { readBlobJson } from "@/lib/blob-json";
+import { listCloudPaths, readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import type { CurrentUser } from "@/lib/current-user";
 import { resolveShareToken } from "@/lib/share-store";
 import { persistSharedDiagram, stableStringify } from "@/lib/wire-canonical";
@@ -55,22 +51,6 @@ export type WireSaveSource = "manual" | "chat" | "json" | "reset" | "rename" | "
 const CLOUD_PREFIX = "wire-cloud/v2";
 const WIRE_ID_RE = /^[A-Za-z0-9_-]+$/;
 
-function useBlobStore(): boolean {
-  return process.env.WIRE_CLOUD_BACKEND !== "local" && Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-}
-
-function localRoot(): string {
-  const configured = process.env.WIRE_CLOUD_DIR;
-  return configured ? resolve(configured) : join(tmpdir(), "wire-playground-cloud");
-}
-
-function localPath(pathname: string): string {
-  const root = localRoot();
-  const path = resolve(root, pathname);
-  if (!path.startsWith(root)) throw new Error("Invalid cloud storage path.");
-  return path;
-}
-
 function wirePath(user: CurrentUser, wireId: string): string {
   if (!WIRE_ID_RE.test(wireId)) throw new Error("Invalid wire id.");
   return `${CLOUD_PREFIX}/users/${user.key}/wires/${wireId}.json`;
@@ -81,55 +61,15 @@ function userWiresPrefix(user: CurrentUser): string {
 }
 
 async function readJson<T>(pathname: string): Promise<T | null> {
-  if (useBlobStore()) {
-    return readBlobJson<T>(pathname, { bustCache: true });
-  }
-
-  try {
-    return JSON.parse(await readFile(localPath(pathname), "utf8")) as T;
-  } catch {
-    return null;
-  }
+  return readCloudJson<T>(pathname, { bustCache: true });
 }
 
 async function writeJson(pathname: string, value: unknown): Promise<void> {
-  const body = stableStringify(value);
-  if (useBlobStore()) {
-    await put(pathname, body, {
-      access: "public",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: "application/json"
-    });
-    return;
-  }
-
-  const path = localPath(pathname);
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, body, "utf8");
+  await writeCloudText(pathname, stableStringify(value));
 }
 
 async function listWirePaths(user: CurrentUser): Promise<string[]> {
-  const prefix = userWiresPrefix(user);
-  if (useBlobStore()) {
-    const paths: string[] = [];
-    let cursor: string | undefined;
-    do {
-      const result = await list({ prefix, cursor, limit: 1000 });
-      paths.push(...result.blobs.map((blob) => blob.pathname));
-      cursor = result.cursor;
-      if (!result.hasMore) break;
-    } while (cursor);
-    return paths;
-  }
-
-  const dir = localPath(prefix);
-  try {
-    const names = await readdir(dir);
-    return names.filter((name) => name.endsWith(".json")).map((name) => `${prefix}${name}`);
-  } catch {
-    return [];
-  }
+  return listCloudPaths(userWiresPrefix(user));
 }
 
 export function blankWireDiagram(wireId: string, title: string): WireDiagram {

@@ -113,12 +113,13 @@ docker compose up -d --build
 # MCP health:         http://localhost:3860/health
 # React playground:   http://localhost:3870
 # Diagrams persist in the `wire-data` named volume.
-# Playground shares persist in the `wire-shares` named volume.
+# Playground cloud data persists in the `wire-playground-db` named volume.
 ```
 
-The compose playground uses `WIRE_SHARE_BACKEND=local`, so `/api/share`,
+The compose playground uses SQLite through libSQL, so `/api/share`,
 `/edit/inline?d=<token>`, and `/preview/inline?d=<token>` work without Vercel
-Blob. Production Vercel deploys should keep using Vercel Blob.
+Blob. Production Vercel deploys should use Turso/libSQL, with Vercel Blob kept
+as a compatibility fallback while older share objects are still present.
 
 ---
 
@@ -147,13 +148,16 @@ vercel link
 vercel --prod
 ```
 
-Set these environment variables for production share links:
+Set these environment variables for production storage:
 
 | Variable | Required | Purpose |
 |---|---:|---|
-| `BLOB_READ_WRITE_TOKEN` | yes | Vercel Blob write token used by `/api/share` |
-| `BLOB_PUBLIC_BASE_URL` | yes | Public base URL used to read `wires/{token}.json` |
-| `WIRE_SHARE_BACKEND` | no | Leave unset on Vercel; set `local` only for local/dev filesystem shares |
+| `TURSO_DATABASE_URL` | recommended | Turso/libSQL database URL for playground wires, share links, quotas, API keys, and encrypted user OpenAI keys. |
+| `TURSO_AUTH_TOKEN` | recommended for Turso | Turso auth token. Leave empty for local `file:` URLs. |
+| `BLOB_READ_WRITE_TOKEN` | fallback | Existing Vercel Blob token; still read as a migration fallback when Turso is enabled. |
+| `BLOB_PUBLIC_BASE_URL` | fallback | Public base URL for legacy `wires/{token}.json` objects. |
+| `WIRE_CLOUD_BACKEND` | no | `sqlite`, `turso`, or `database` forces libSQL; `blob` forces Vercel Blob; `filesystem`/`fs` forces local JSON files. |
+| `LOCAL_DB_PATH` | local only | SQLite file URL used when `TURSO_DATABASE_URL=file:local` or unset locally. Default: `file:./storage/wire.db`. |
 
 The repo-root `vercel.json` directs the Vercel build to `apps/playground/.next`.
 Routes available after deploy:
@@ -205,3 +209,7 @@ The default storage is the local filesystem (`WIRE_STORAGE_DIR`). For multi-inst
 - S3 / R2 with object versioning for diagram history
 
 A reference implementation lives on the roadmap; PRs welcome.
+
+The hosted playground has its own storage path. It uses Turso/libSQL when
+`TURSO_DATABASE_URL` is configured, local SQLite during development, and Vercel
+Blob as a compatibility fallback for existing deployments.

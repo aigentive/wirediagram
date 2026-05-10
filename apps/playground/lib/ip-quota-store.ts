@@ -1,9 +1,5 @@
 import { createHmac } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { put } from "@vercel/blob";
-import { readBlobJson } from "@/lib/blob-json";
+import { readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import { stableStringify } from "@/lib/wire-canonical";
 
 export const IP_QUOTA_LIMIT = 20;
@@ -81,45 +77,10 @@ function userQuotaPath(userKey: string): string {
   return `${CLOUD_PREFIX}/user-quota/${userKey}.json`;
 }
 
-function useBlobStore(): boolean {
-  return process.env.WIRE_CLOUD_BACKEND !== "local" && Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-}
-
-function localRoot(): string {
-  const configured = process.env.WIRE_CLOUD_DIR;
-  return configured ? resolve(configured) : join(tmpdir(), "wire-playground-cloud");
-}
-
-function localPath(pathname: string): string {
-  const root = localRoot();
-  const path = resolve(root, pathname);
-  if (!path.startsWith(root)) throw new Error("Invalid cloud storage path.");
-  return path;
-}
-
 async function readJson<T>(pathname: string): Promise<T | null> {
-  if (useBlobStore()) {
-    return readBlobJson<T>(pathname);
-  }
-  try {
-    return JSON.parse(await readFile(localPath(pathname), "utf8")) as T;
-  } catch {
-    return null;
-  }
+  return readCloudJson<T>(pathname);
 }
 
 async function writeJson(pathname: string, value: unknown): Promise<void> {
-  const body = stableStringify(value);
-  if (useBlobStore()) {
-    await put(pathname, body, {
-      access: "public",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: "application/json"
-    });
-    return;
-  }
-  const path = localPath(pathname);
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, body, "utf8");
+  await writeCloudText(pathname, stableStringify(value));
 }

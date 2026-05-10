@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
-import { put } from "@vercel/blob";
 import { parseWireDiagram, type WireDiagram } from "@aigentive/wire-core";
-import { writeLocalShare } from "@/lib/share-store";
+import { writeCloudText } from "@/lib/cloud-kv-store";
 
 export function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -25,16 +24,6 @@ export async function persistSharedDiagram(input: unknown): Promise<{
   const canonical = stableStringify(diagram);
   const token = tokenFor(canonical);
 
-  if (process.env.WIRE_SHARE_BACKEND !== "local" && process.env.BLOB_READ_WRITE_TOKEN) {
-    const blob = await put(`wires/${token}.json`, canonical, {
-      access: "public",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: "application/json"
-    });
-    return { diagram, canonical, token, blobUrl: blob.url };
-  }
-
-  await writeLocalShare(token, canonical);
+  await writeCloudText(`wires/${token}.json`, canonical);
   return { diagram, canonical, token, blobUrl: null };
 }

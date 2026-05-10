@@ -1,9 +1,5 @@
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { put, del } from "@vercel/blob";
-import { readBlobJson } from "@/lib/blob-json";
+import { deleteCloudValue, readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import type { CurrentUser } from "@/lib/current-user";
 import { stableStringify } from "@/lib/wire-canonical";
 
@@ -73,20 +69,7 @@ export async function getUserOpenAIKeyMeta(user: CurrentUser): Promise<StoredKey
 }
 
 export async function deleteUserOpenAIKey(user: CurrentUser): Promise<void> {
-  const path = keyPath(user);
-  if (useBlobStore()) {
-    try {
-      await del(path);
-    } catch {
-      // Already gone is fine.
-    }
-    return;
-  }
-  try {
-    await unlink(localPath(path));
-  } catch {
-    // Already gone is fine.
-  }
+  await deleteCloudValue(keyPath(user));
 }
 
 async function readEncrypted(user: CurrentUser): Promise<EncryptedRecord | null> {
@@ -105,45 +88,10 @@ function deriveKey(userKey: string): Buffer {
   return Buffer.from(derived);
 }
 
-function useBlobStore(): boolean {
-  return process.env.WIRE_CLOUD_BACKEND !== "local" && Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-}
-
-function localRoot(): string {
-  const configured = process.env.WIRE_CLOUD_DIR;
-  return configured ? resolve(configured) : join(tmpdir(), "wire-playground-cloud");
-}
-
-function localPath(pathname: string): string {
-  const root = localRoot();
-  const path = resolve(root, pathname);
-  if (!path.startsWith(root)) throw new Error("Invalid cloud storage path.");
-  return path;
-}
-
 async function readJson<T>(pathname: string): Promise<T | null> {
-  if (useBlobStore()) {
-    return readBlobJson<T>(pathname);
-  }
-  try {
-    return JSON.parse(await readFile(localPath(pathname), "utf8")) as T;
-  } catch {
-    return null;
-  }
+  return readCloudJson<T>(pathname);
 }
 
 async function writeJson(pathname: string, value: unknown): Promise<void> {
-  const body = stableStringify(value);
-  if (useBlobStore()) {
-    await put(pathname, body, {
-      access: "public",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: "application/json"
-    });
-    return;
-  }
-  const path = localPath(pathname);
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, body, "utf8");
+  await writeCloudText(pathname, stableStringify(value));
 }

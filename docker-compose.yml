@@ -24,12 +24,13 @@ services:
     ports:
       - "3870:3870"
     environment:
-      WIRE_SHARE_BACKEND: local
-      WIRE_SHARE_DIR: /data/shares
+      WIRE_CLOUD_BACKEND: sqlite
+      TURSO_DATABASE_URL: file:local
+      LOCAL_DB_PATH: file:/data/wire.db
     volumes:
-      - wire-shares:/data/shares
+      - wire-playground-db:/data
     restart: unless-stopped
 
 volumes:
   wire-data:
-  wire-shares:
+  wire-playground-db:

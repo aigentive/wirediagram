@@ -1,4 +1,4 @@
-import { readLocalShare } from "@/lib/share-store";
+import { resolveShareToken } from "@/lib/share-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ interface Props {
 export async function GET(_req: Request, { params }: Props): Promise<Response> {
   const { token: rawToken } = await params;
   const token = rawToken.endsWith(".json") ? rawToken.slice(0, -5) : rawToken;
-  const diagram = await readLocalShare(token);
+  const diagram = await resolveShareToken(token);
   if (!diagram) return new Response("Not found", { status: 404 });
   return new Response(JSON.stringify(diagram), {
     status: 200,

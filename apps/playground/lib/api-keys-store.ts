@@ -1,9 +1,5 @@
 import { randomBytes, randomUUID, createHmac, timingSafeEqual } from "node:crypto";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { list, put } from "@vercel/blob";
-import { readBlobJson } from "@/lib/blob-json";
+import { listCloudPaths, readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import type { CurrentUser } from "@/lib/current-user";
 import { stableStringify } from "@/lib/wire-canonical";
 
@@ -36,22 +32,6 @@ const OWNER_KEY_RE = /^[A-Za-z0-9_-]{16,64}$/;
 const API_KEY_PREFIX = "wire_sk_live_";
 const DEFAULT_SCOPES: ApiKeyScope[] = ["wires:read", "wires:write", "wires:delete"];
 
-function useBlobStore(): boolean {
-  return process.env.WIRE_CLOUD_BACKEND !== "local" && Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-}
-
-function localRoot(): string {
-  const configured = process.env.WIRE_CLOUD_DIR;
-  return configured ? resolve(configured) : join(tmpdir(), "wire-playground-cloud");
-}
-
-function localPath(pathname: string): string {
-  const root = localRoot();
-  const path = resolve(root, pathname);
-  if (!path.startsWith(root)) throw new Error("Invalid cloud storage path.");
-  return path;
-}
-
 function userApiKeysPrefix(user: CurrentUser): string {
   return `${CLOUD_PREFIX}/users/${user.key}/api-keys/`;
 }
@@ -64,55 +44,15 @@ function apiKeyPath(ownerKey: string, id: string): string {
 }
 
 async function readJson<T>(pathname: string): Promise<T | null> {
-  if (useBlobStore()) {
-    return readBlobJson<T>(pathname);
-  }
-
-  try {
-    return JSON.parse(await readFile(localPath(pathname), "utf8")) as T;
-  } catch {
-    return null;
-  }
+  return readCloudJson<T>(pathname);
 }
 
 async function writeJson(pathname: string, value: unknown): Promise<void> {
-  const body = stableStringify(value);
-  if (useBlobStore()) {
-    await put(pathname, body, {
-      access: "public",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: "application/json"
-    });
-    return;
-  }
-
-  const path = localPath(pathname);
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, body, "utf8");
+  await writeCloudText(pathname, stableStringify(value));
 }
 
 async function listApiKeyPaths(user: CurrentUser): Promise<string[]> {
-  const prefix = userApiKeysPrefix(user);
-  if (useBlobStore()) {
-    const paths: string[] = [];
-    let cursor: string | undefined;
-    do {
-      const result = await list({ prefix, cursor, limit: 1000 });
-      paths.push(...result.blobs.map((blob) => blob.pathname));
-      cursor = result.cursor;
-      if (!result.hasMore) break;
-    } while (cursor);
-    return paths;
-  }
-
-  const dir = localPath(prefix);
-  try {
-    const names = await readdir(dir);
-    return names.filter((name) => name.endsWith(".json")).map((name) => `${prefix}${name}`);
-  } catch {
-    return [];
-  }
+  return listCloudPaths(userApiKeysPrefix(user));
 }
 
 export async function listUserApiKeys(user: CurrentUser): Promise<ApiKeySummary[]> {
