@@ -24,7 +24,7 @@ LLMs and agents struggle with diagrams: they emit Mermaid blobs that almost rend
 | [`@aigentive/wire-renderers`](packages/wire-renderers) | Static renderers and adapters: SVG, PNG helpers, Mermaid, optional React Flow conversion |
 | [`@aigentive/wire-react`](packages/wire-react) | Reusable React editor/viewer components and JSX authoring facade |
 | [`@aigentive/wire-mcp`](packages/wire-mcp) | MCP server (stdio + streamable-HTTP) |
-| [`@aigentive/wire-cli`](packages/wire-cli) | `wire` CLI (init, add, export) |
+| [`@aigentive/wire-cli`](packages/wire-cli) | `wire` CLI (init, add, validate, export, ls) |
 | [`apps/playground`](apps/playground) | Self-hostable Next.js playground, JSON share API, React editor, preview/render service |
 
 ## Quick start
@@ -62,6 +62,17 @@ npx -y @aigentive/wire-mcp@latest --http
     }
   }
 }
+```
+
+### Use the CLI
+
+```bash
+npm install -g @aigentive/wire-cli
+wire init my-flow --template=approval-flow
+wire add ai --diagram=my-flow --title="Classify" --from=incoming --model=gpt-5.4-mini
+wire validate my-flow
+wire export my-flow --format=svg --out=my-flow.svg
+wire ls
 ```
 
 ### Use from a React app
@@ -231,7 +242,7 @@ Wire MCP exposes direct tools for common actions, plus `apply_actions` for any
 full reducer action:
 
 ```text
-v1_get_agent_guide
+v1_get_agent_guide, v1_get_docs_shape
 create_diagram, load_diagram, save_diagram, patch_diagram, list_diagrams
 add_node, update_node, remove_node, move_node, resize_node
 connect, disconnect, update_edge, remove_edge

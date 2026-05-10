@@ -8,7 +8,7 @@ This repository is prepared for public release from `v1.0.1`.
 - Local `.env` files are ignored and examples are provided in `.env.example` files.
 - Internal publish handoff notes, private deployment notes, local design-system paths, and personal machine paths were removed.
 - Package metadata and release automation target the public npm registry.
-- Package versions reflect the current npm registry baselines: `@aigentive/wire-core@1.0.2`, `@aigentive/wire-mcp@1.0.6`, and unpublished workspace packages at `1.0.1`.
+- Package versions reflect current npm registry baselines where already published: `@aigentive/wire-core@1.0.2`; `@aigentive/wire-mcp@1.0.7` is staged above the published `1.0.6`; unpublished workspace packages remain at `1.0.1`.
 - Repository license metadata and docs use Apache-2.0.
 - Git author metadata should use `8708742+adriandemian@users.noreply.github.com`.
 

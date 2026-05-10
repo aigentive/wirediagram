@@ -29,10 +29,14 @@ const COMMANDS: Array<{
       { flag: "--diagram=<id>", description: "Diagram id to mutate (required)." },
       { flag: "--title=\"…\"", description: "Title for the node (required)." },
       { flag: "--id=<id>", description: "Explicit node id; auto-generated when omitted." },
+      { flag: "--description=\"…\"", description: "Body copy for the rendered node card." },
       { flag: "--from=<id>", description: "Source node for the implicit edge (`id` or `id.branch`)." },
       { flag: "--branch=<name>", description: "Branch name when wiring from a condition node." },
       { flag: "--branches=a,b,c", description: "Comma-separated branches (only valid for `condition`)." },
       { flag: "--model=<model>", description: "Model name for `ai` nodes (gpt-5.4-mini, etc.)." },
+      { flag: "--tools=a,b,c", description: "Comma-separated id-safe tool names for `ai` nodes." },
+      { flag: "--ref=<tool.name>", description: "External tool/function reference for `tool` nodes." },
+      { flag: "--body=\"…\"", description: "Body text for `note` nodes." },
       { flag: "--tone=success|warning|error|info|ai", description: "Visual tone for the node." }
     ]
   },
@@ -95,7 +99,10 @@ wire init my-flow --template=approval-flow --title="Approval flow"
 
 # Add nodes (from is "<id>" or "<id>.<branch>")
 wire add ai        --diagram=my-flow --title="Classify intent" \\
+                    --description="Route by customer intent" \\
                     --from=incoming --model=gpt-5.4-mini
+wire add tool      --diagram=my-flow --title="Search CRM" \\
+                    --from=classify --ref=crm.search --tools=crm_search
 wire add condition --diagram=my-flow --title="Route" \\
                     --from=classify --branches=sales,support,other
 

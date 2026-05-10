@@ -21,7 +21,8 @@ npx @aigentive/wire-cli help
 wire init my-flow --template=approval-flow
 
 # Add nodes
-wire add ai --diagram=my-flow --title="Classify intent" --from=incoming --model=gpt-4.1
+wire add ai --diagram=my-flow --title="Classify intent" --description="Route by customer intent" --from=incoming --model=gpt-4.1
+wire add tool --diagram=my-flow --title="Search CRM" --from=classify --ref=crm.search --tools=crm_search
 wire add condition --diagram=my-flow --title="Route" --from=classify --branches=sales,support,other
 
 # Validate
@@ -32,7 +33,7 @@ wire export my-flow --format=svg --out=my-flow.svg
 wire export my-flow --format=mermaid
 wire export my-flow --format=json
 
-# List diagrams
+# List diagrams, newest first
 wire ls
 ```
 

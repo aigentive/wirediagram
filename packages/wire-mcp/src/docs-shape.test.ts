@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { parseWireDiagram, validate } from "@aigentive/wire-core";
 import {
   LLM_AGENT_GUIDE_MD,
@@ -27,6 +28,18 @@ describe("LLM docs shape", () => {
 
     const repair = getLlmDocsShape({ task: "Fix invalid JSON from a Zod validation error" });
     expect(repair.topics.map((topic) => topic.id)).toContain("wire.validation");
+  });
+
+  it("documents every registered MCP tool in the docs shape", () => {
+    const serverSource = readFileSync(new URL("./server.ts", import.meta.url), "utf8");
+    const registeredTools = [...serverSource.matchAll(/server\.registerTool\(\s*\n\s*"([^"]+)"/g)]
+      .map((match) => match[1])
+      .sort();
+    const documentedTools = (getLlmDocsTopic("mcp")?.tools ?? [])
+      .map((tool) => tool.name)
+      .sort();
+
+    expect(documentedTools).toEqual(registeredTools);
   });
 
   it("keeps examples parseable and valid", () => {

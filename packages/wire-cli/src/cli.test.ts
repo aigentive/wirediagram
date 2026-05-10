@@ -32,6 +32,9 @@ describe("wire CLI", () => {
     const out = execFileSync("node", [CLI], { encoding: "utf8" });
     expect(out).toMatch(/wire init/);
     expect(out).toMatch(/wire export/);
+    expect(out).toContain("--description=");
+    expect(out).toContain("--ref=");
+    expect(out).toContain("--tools=");
   });
 
   it("init → add → validate → export round-trip", () => {
@@ -53,10 +56,22 @@ describe("wire CLI", () => {
       "--diagram=demo",
       "--title=Plan",
       "--id=plan",
+      "--description=Choose next action",
       "--from=tick",
-      "--model=gpt-4.1"
+      "--model=gpt-4.1",
+      "--tools=crm_search,notify"
     );
     expect(addAi).toMatch(/Added ai/);
+
+    const addTool = wire(
+      "add", "tool",
+      "--diagram=demo",
+      "--title=Search CRM",
+      "--id=search-crm",
+      "--from=plan",
+      "--ref=crm.search"
+    );
+    expect(addTool).toMatch(/Added tool/);
 
     const validate = wire("validate", "demo");
     expect(validate).toMatch(/valid/);
@@ -65,7 +80,14 @@ describe("wire CLI", () => {
     const json = wire("export", "demo", "--format=json");
     const parsed = JSON.parse(json);
     expect(parsed.id).toBe("demo");
-    expect(parsed.nodes).toHaveLength(2);
+    expect(parsed.nodes).toHaveLength(3);
+    expect(parsed.nodes.find((node: { id: string }) => node.id === "plan")).toMatchObject({
+      description: "Choose next action",
+      tools: ["crm_search", "notify"]
+    });
+    expect(parsed.nodes.find((node: { id: string }) => node.id === "search-crm")).toMatchObject({
+      ref: "crm.search"
+    });
 
     // export svg to file
     const svgPath = join(tmp, "out.svg");

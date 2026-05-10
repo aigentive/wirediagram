@@ -16,7 +16,7 @@ const HELP = `wire — author Wire diagrams from the command line.
 
 Usage:
   wire init <id> [--title="…"] [--layout=LR|TB|RL|BT] [--template=agent-workflow|approval-flow|rag-pipeline]
-  wire add <kind> --diagram=<id> --title="…" [--id=…] [--from=…] [--branch=…] [--branches=a,b] [--model=…] [--tone=success|warning|error|info|ai]
+  wire add <kind> --diagram=<id> --title="…" [--id=…] [--description=…] [--from=…] [--branch=…] [--branches=a,b] [--model=…] [--tools=a,b] [--ref=…] [--body=…] [--tone=success|warning|error|info|ai]
   wire validate <id>
   wire export <id> --format=svg|json|mermaid [--out=…]
   wire ls
@@ -198,15 +198,21 @@ async function cmdLs(args: Flags): Promise<void> {
     console.log(`(no diagrams in ${args.dir})`);
     return;
   }
-  for (const f of files) {
+  const entries = await Promise.all(
+    files.map(async (file) => {
+      const path = join(args.dir, file);
+      return { file, path, stats: await stat(path) };
+    })
+  );
+  entries.sort((a, b) => b.stats.mtimeMs - a.stats.mtimeMs || a.file.localeCompare(b.file));
+  for (const entry of entries) {
+    const f = entry.file;
     const id = f.replace(/\.json$/, "");
     try {
-      const path = join(args.dir, f);
-      const raw = await readFile(path, "utf8");
+      const raw = await readFile(entry.path, "utf8");
       const d = parseWireDiagram(JSON.parse(raw));
-      const s = await stat(path);
       console.log(
-        `${id.padEnd(30)}  ${String(d.nodes.length).padStart(3)} nodes  ${d.layout}  ${s.mtime.toISOString()}`
+        `${id.padEnd(30)}  ${String(d.nodes.length).padStart(3)} nodes  ${d.layout}  ${entry.stats.mtime.toISOString()}`
       );
     } catch {
       console.log(`${id.padEnd(30)}  (unreadable)`);

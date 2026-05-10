@@ -132,6 +132,7 @@ The tool surface is identical to stdio. Only the transport changes.
 | Tool | Use it when... |
 |---|---|
 | `v1_get_agent_guide` | Fetching the concise live operating guide for agents |
+| `v1_get_docs_shape` | Fetching compact docs chunks by topic or task before uncertain work |
 | `create_diagram` | Starting a new diagram, optionally from a template |
 | `load_diagram` / `list_diagrams` | Resuming or discovering existing diagrams |
 | `save_diagram` / `patch_diagram` | Replacing or patching top-level diagram JSON |
