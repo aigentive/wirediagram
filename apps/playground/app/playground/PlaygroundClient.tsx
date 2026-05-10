@@ -422,7 +422,7 @@ export function PlaygroundClient({
           <DotPillStatic>Contact</DotPillStatic>
         </Link>
         {!isAuthenticated ? (
-          <Link
+          <a
             href={
               googleAuthConfigured
                 ? `/api/google-auth?callbackUrl=${encodeURIComponent("/wires")}`
@@ -432,7 +432,7 @@ export function PlaygroundClient({
           >
             <LogIn size={13} strokeWidth={1.5} />
             Login
-          </Link>
+          </a>
         ) : null}
       </EditorHeader>
 
