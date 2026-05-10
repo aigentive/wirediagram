@@ -1,5 +1,9 @@
 import { Loader2, Send } from "lucide-react";
+import { useLayoutEffect, useRef } from "react";
 import type { FormEvent, ReactNode } from "react";
+
+const TEXTAREA_MIN_HEIGHT = 48;
+const TEXTAREA_MAX_HEIGHT = 250;
 
 export function ChatComposer({
   value,
@@ -20,6 +24,13 @@ export function ChatComposer({
 }) {
   const trimmed = value.trim();
   const submitDisabled = busy || disabled || trimmed.length === 0;
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    syncTextareaHeight(textarea);
+  }, [value]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,18 +45,22 @@ export function ChatComposer({
     >
       <div className="flex items-end gap-1.5 rounded-[9px] border border-wire bg-wire-page py-[6px] pl-[12px] pr-[6px] transition-colors focus-within:border-wire-focus focus-within:bg-wire-surface focus-within:shadow-[0_0_0_2px_rgba(37,99,235,0.12)]">
         <textarea
+          ref={textareaRef}
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => {
+            syncTextareaHeight(event.currentTarget);
+            onChange(event.currentTarget.value);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
               if (!submitDisabled) onSubmit();
             }
           }}
-          rows={1}
+          rows={2}
           disabled={disabled}
           placeholder={placeholder}
-          className="max-h-[120px] min-h-[22px] flex-1 resize-none border-0 bg-transparent py-[5px] text-[13px] leading-[1.45] text-wire-primary outline-none placeholder:text-wire-muted focus:outline-none"
+          className="max-h-[250px] min-h-[48px] flex-1 resize-none overflow-y-hidden border-0 bg-transparent py-[5px] text-[13px] leading-[1.45] text-wire-primary outline-none placeholder:text-wire-muted focus:outline-none"
         />
         <button
           type="submit"
@@ -64,6 +79,13 @@ export function ChatComposer({
       {footerSlot ? <div className="mt-[6px]">{footerSlot}</div> : null}
     </form>
   );
+}
+
+function syncTextareaHeight(textarea: HTMLTextAreaElement) {
+  textarea.style.height = "auto";
+  const nextHeight = Math.min(Math.max(textarea.scrollHeight, TEXTAREA_MIN_HEIGHT), TEXTAREA_MAX_HEIGHT);
+  textarea.style.height = `${nextHeight}px`;
+  textarea.style.overflowY = textarea.scrollHeight > TEXTAREA_MAX_HEIGHT ? "auto" : "hidden";
 }
 
 export function InlineCode({ children }: { children: ReactNode }) {
