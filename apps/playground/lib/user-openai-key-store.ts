@@ -18,6 +18,10 @@ export type StoredKeyMeta = {
   configured: boolean;
   last4: string | null;
   updatedAt: string | null;
+  freeQuotaLimit?: number;
+  freeQuotaUsed?: number;
+  freeQuotaRemaining?: number;
+  freeQuotaExhausted?: boolean;
 };
 
 const CLOUD_PREFIX = "wire-cloud/v2";

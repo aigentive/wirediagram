@@ -1,7 +1,6 @@
 import type { NextRequest } from "next/server";
 import { POST as runPlaygroundChat } from "@/app/api/playground/chat/route";
 import { requireCurrentUser } from "@/lib/current-user";
-import { getUserOpenAIKey } from "@/lib/user-openai-key-store";
 import {
   loadUserWire,
   makeChatMessage,
@@ -28,6 +27,8 @@ type ChatResponseBody = {
   traces?: unknown;
   error?: unknown;
   usage?: unknown;
+  freeQuota?: unknown;
+  usingStoredKey?: unknown;
 };
 
 export async function POST(req: NextRequest, context: RouteContext): Promise<Response> {
@@ -54,17 +55,6 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
     const { id } = await context.params;
     const loaded = await loadUserWire(user, id);
     if (!loaded) return Response.json({ error: "Wire not found." }, { status: 404 });
-
-    const storedOpenAIKey = await getUserOpenAIKey(user);
-    if (!storedOpenAIKey) {
-      return Response.json(
-        {
-          error: "Add your OpenAI API key in the chat sidebar to use the /wires LLM.",
-          code: "openai-key-required"
-        },
-        { status: 428 }
-      );
-    }
 
     const history = Array.isArray(payload.history)
       ? payload.history

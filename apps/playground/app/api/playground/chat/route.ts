@@ -310,18 +310,6 @@ async function handlePost(req: NextRequest): Promise<Response> {
     return jsonResponse({ error: "Message is required." }, 400);
   }
 
-  const requestedModel = resolveRequestedModel(payload.model);
-  if (!requestedModel) {
-    return jsonResponse(
-      {
-        error: `Unsupported model. Choose one of: ${LLM_MODEL_IDS.join(", ")}.`,
-        code: "unsupported-model",
-        models: LLM_MODEL_IDS
-      },
-      400
-    );
-  }
-
   let currentDiagram: WireDiagram;
   try {
     currentDiagram = parseWireDiagram(payload.diagram);
@@ -338,7 +326,11 @@ async function handlePost(req: NextRequest): Promise<Response> {
     storedKey = await getUserOpenAIKey(sessionUser);
   }
 
-  const apiKey = storedKey ?? process.env.OPENAI_API_KEY;
+  const existingUserQuota = sessionUser ? await readUserQuota(sessionUser.key) : null;
+  const userFreeQuotaUsed = Math.max(0, existingUserQuota?.count ?? 0);
+  const userFreeQuotaExhausted = Boolean(sessionUser && userFreeQuotaUsed >= USER_QUOTA_LIMIT);
+  const usingStoredKey = Boolean(storedKey && userFreeQuotaExhausted);
+  const apiKey = usingStoredKey ? storedKey : process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return jsonResponse(
       { error: "OPENAI_API_KEY is not set on the playground server." },
@@ -346,9 +338,21 @@ async function handlePost(req: NextRequest): Promise<Response> {
     );
   }
 
-  const usingStoredKey = storedKey !== null;
+  const requestedModel = usingStoredKey ? resolveRequestedModel(payload.model) : DEFAULT_LLM_MODEL;
+  if (!requestedModel) {
+    return jsonResponse(
+      {
+        error: `Unsupported model. Choose one of: ${LLM_MODEL_IDS.join(", ")}.`,
+        code: "unsupported-model",
+        models: LLM_MODEL_IDS
+      },
+      400
+    );
+  }
+
   const ipHash = !usingStoredKey && !sessionUser ? hashIp(resolveClientIp(req.headers)) : null;
   const userQuotaKey = !usingStoredKey && sessionUser ? sessionUser.key : null;
+  let nextUserFreeQuotaUsed = userFreeQuotaUsed;
 
   if (ipHash) {
     const existing = await readIpQuota(ipHash);
@@ -365,13 +369,13 @@ async function handlePost(req: NextRequest): Promise<Response> {
   }
 
   if (userQuotaKey) {
-    const existing = await readUserQuota(userQuotaKey);
-    if (existing && existing.count >= USER_QUOTA_LIMIT) {
+    if (userFreeQuotaExhausted) {
       return jsonResponse(
         {
           error: `Free chat limit reached (${USER_QUOTA_LIMIT} messages). Add your own OpenAI key to keep going.`,
           code: "user-quota-exceeded",
-          limit: USER_QUOTA_LIMIT
+          limit: USER_QUOTA_LIMIT,
+          freeQuota: freeQuotaPayload(userFreeQuotaUsed)
         },
         429
       );
@@ -417,8 +421,10 @@ async function handlePost(req: NextRequest): Promise<Response> {
   }
   if (userQuotaKey) {
     try {
-      await incrementUserQuota(userQuotaKey);
+      const quota = await incrementUserQuota(userQuotaKey);
+      nextUserFreeQuotaUsed = Math.max(0, quota.count);
     } catch {
+      nextUserFreeQuotaUsed = Math.min(USER_QUOTA_LIMIT, userFreeQuotaUsed + 1);
       // Counter best-effort; do not fail the chat response.
     }
   }
@@ -458,8 +464,26 @@ async function handlePost(req: NextRequest): Promise<Response> {
     usage,
     costUsd,
     costNanoUsd,
+    freeQuota: sessionUser ? freeQuotaPayload(nextUserFreeQuotaUsed) : null,
+    usingStoredKey,
     message: assistantMessage
   });
+}
+
+function freeQuotaPayload(used: number): {
+  limit: number;
+  used: number;
+  remaining: number;
+  exhausted: boolean;
+} {
+  const safeUsed = Math.max(0, Math.trunc(used));
+  const remaining = Math.max(0, USER_QUOTA_LIMIT - safeUsed);
+  return {
+    limit: USER_QUOTA_LIMIT,
+    used: safeUsed,
+    remaining,
+    exhausted: remaining === 0
+  };
 }
 
 async function resolveSessionUser(headers: Headers): Promise<CurrentUser | null> {

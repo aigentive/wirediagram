@@ -87,6 +87,7 @@ type ChatResponse = {
   usage?: Usage | null;
   costUsd?: number | null;
   costNanoUsd?: number | null;
+  freeQuota?: FreeQuotaMeta | null;
 };
 
 type JsonMode = "canvas" | "json";
@@ -104,9 +105,17 @@ type WireCreateResponse = {
 
 type LockReason = "ip" | "user" | null;
 
+type FreeQuotaMeta = {
+  limit: number;
+  used: number;
+  remaining: number;
+  exhausted: boolean;
+};
+
 type StoredKeyMeta = {
   configured: boolean;
   last4: string | null;
+  freeQuota: FreeQuotaMeta;
 };
 
 export function PlaygroundClient({
@@ -144,11 +153,14 @@ export function PlaygroundClient({
   const [lastModel, setLastModel] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<LlmModelId>(DEFAULT_LLM_MODEL);
   const [lockReason, setLockReason] = useState<LockReason>(null);
-  const [storedKey, setStoredKey] = useState<StoredKeyMeta>({ configured: false, last4: null });
+  const [storedKey, setStoredKey] = useState<StoredKeyMeta>(() => defaultStoredKeyMeta());
   const [cloudWires, setCloudWires] = useState<WireSummary[]>(initialWires);
   const [wireQuery, setWireQuery] = useState("");
   const [creatingWire, setCreatingWire] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const hasUserMessages = messages.some((message) => message.role === "user");
+  const usingUserOpenAIKey = storedKey.configured && storedKey.freeQuota.exhausted;
+  const effectiveChatModel = usingUserOpenAIKey ? selectedModel : DEFAULT_LLM_MODEL;
 
   const validation = useMemo(() => validate(diagram), [diagram]);
   const filteredCloudWires = useMemo(() => {
@@ -212,7 +224,7 @@ export function PlaygroundClient({
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setStoredKey({ configured: false, last4: null });
+      setStoredKey(defaultStoredKeyMeta());
       return;
     }
     let cancelled = false;
@@ -222,7 +234,7 @@ export function PlaygroundClient({
         if (!res.ok) return;
         const data = (await res.json()) as StoredKeyMeta;
         if (!cancelled && typeof data.configured === "boolean") {
-          setStoredKey({ configured: data.configured, last4: data.last4 ?? null });
+          setStoredKey(normalizeStoredKeyMeta(data));
         }
       } catch {
         // Best-effort. Lock panel still works without prefetched state.
@@ -245,7 +257,7 @@ export function PlaygroundClient({
         if (!res.ok || data.error) {
           return data.error ?? `Request failed with ${res.status}`;
         }
-        setStoredKey({ configured: data.configured, last4: data.last4 ?? null });
+        setStoredKey(normalizeStoredKeyMeta(data));
         setLockReason(null);
         setApiError(null);
         return null;
@@ -260,7 +272,7 @@ export function PlaygroundClient({
     try {
       await fetch("/api/user/openai-key", { method: "DELETE" });
     } finally {
-      setStoredKey({ configured: false, last4: null });
+      setStoredKey((current) => ({ ...current, configured: false, last4: null }));
     }
   }, []);
 
@@ -286,10 +298,16 @@ export function PlaygroundClient({
             message: trimmed,
             diagram,
             history: messages,
-            model: selectedModel
+            model: effectiveChatModel
           })
         });
         const data = await readChatResponse(res);
+        if (data.freeQuota) {
+          setStoredKey((current) => ({
+            ...current,
+            freeQuota: normalizeFreeQuota(data.freeQuota, current.freeQuota.limit)
+          }));
+        }
         if (res.status === 429) {
           if (data.code === "ip-quota-exceeded") setLockReason("ip");
           else if (data.code === "user-quota-exceeded") setLockReason("user");
@@ -346,7 +364,7 @@ export function PlaygroundClient({
         setBusy(false);
       }
     },
-    [acceptDiagram, busy, diagram, input, lockReason, messages, selectedModel, storedKey.configured]
+    [acceptDiagram, busy, diagram, effectiveChatModel, input, lockReason, messages, storedKey.configured]
   );
 
   const openGooglePopup = useCallback(async () => {
@@ -571,7 +589,7 @@ export function PlaygroundClient({
           {lockReason === "user" && isAuthenticated && !storedKey.configured ? (
             <UserLockPanel busy={busy} onSaveKey={saveStoredKey} />
           ) : null}
-          {storedKey.configured ? (
+          {usingUserOpenAIKey && hasUserMessages ? (
             <StoredKeyFooterPanel last4={storedKey.last4} onClear={() => void clearStoredKey()} />
           ) : null}
           <ChatComposer
@@ -582,9 +600,9 @@ export function PlaygroundClient({
             disabled={Boolean(lockReason) && !storedKey.configured}
             footerSlot={
               <ChatModelFooter
-                model={selectedModel}
+                model={effectiveChatModel}
                 onModelChange={setSelectedModel}
-                disabled={busy}
+                disabled={busy || !usingUserOpenAIKey}
               />
             }
           />
@@ -879,6 +897,49 @@ function isInternalPath(value: string): boolean {
 function upsertWireSummary(wires: WireSummary[], wire: WireSummary): WireSummary[] {
   const next = wires.filter((item) => item.id !== wire.id);
   return [wire, ...next].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+function defaultStoredKeyMeta(): StoredKeyMeta {
+  return {
+    configured: false,
+    last4: null,
+    freeQuota: {
+      limit: 10,
+      used: 0,
+      remaining: 10,
+      exhausted: false
+    }
+  };
+}
+
+function normalizeStoredKeyMeta(input: Partial<StoredKeyMeta> & {
+  freeQuotaLimit?: number;
+  freeQuotaUsed?: number;
+  freeQuotaRemaining?: number;
+  freeQuotaExhausted?: boolean;
+}): StoredKeyMeta {
+  const fallback = defaultStoredKeyMeta().freeQuota;
+  return {
+    configured: Boolean(input.configured),
+    last4: input.last4 ?? null,
+    freeQuota: normalizeFreeQuota(input.freeQuota, input.freeQuotaLimit ?? fallback.limit, input.freeQuotaUsed)
+  };
+}
+
+function normalizeFreeQuota(value: FreeQuotaMeta | null | undefined, fallbackLimit = 10, fallbackUsed?: number): FreeQuotaMeta {
+  const limit = safeNonNegativeInteger(value?.limit, fallbackLimit);
+  const used = safeNonNegativeInteger(value?.used, fallbackUsed ?? 0);
+  const remaining = safeNonNegativeInteger(value?.remaining, Math.max(0, limit - used));
+  return {
+    limit,
+    used,
+    remaining,
+    exhausted: value?.exhausted ?? remaining === 0
+  };
+}
+
+function safeNonNegativeInteger(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : fallback;
 }
 
 async function persistToken(diagram: WireDiagram): Promise<string | null> {

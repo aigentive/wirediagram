@@ -96,6 +96,19 @@ type UserInfo = {
   image: string | null;
 };
 
+type FreeQuotaMeta = {
+  limit: number;
+  used: number;
+  remaining: number;
+  exhausted: boolean;
+};
+
+type StoredOpenAIKeyState = {
+  configured: boolean;
+  last4: string | null;
+  freeQuota: FreeQuotaMeta;
+};
+
 type StoredChatMessage = {
   id: string;
   role: "user" | "assistant";
@@ -109,6 +122,11 @@ type StoredChatMessage = {
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+};
+
+type PendingOpenAIChat = {
+  message: string;
+  history: ChatMessage[];
 };
 
 type ToolTrace = {
@@ -192,6 +210,7 @@ type ChatResponse = {
   message?: string;
   error?: string;
   traces?: ToolTrace[];
+  freeQuota?: FreeQuotaMeta | null;
 };
 
 type ShareUrls = {
@@ -235,6 +254,7 @@ export function WiresClient({
   const [traces, setTraces] = useState<ToolTrace[]>([]);
   const [input, setInput] = useState("Build me a random AI support workflow wireframe.");
   const [selectedModel, setSelectedModel] = useState<LlmModelId>(DEFAULT_LLM_MODEL);
+  const [pendingOpenAIChat, setPendingOpenAIChat] = useState<PendingOpenAIChat | null>(null);
   const [loadingWireId, setLoadingWireId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -255,10 +275,7 @@ export function WiresClient({
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
   const [apiKeyStatus, setApiKeyStatus] = useState<string | null>(null);
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
-  const [storedOpenAIKey, setStoredOpenAIKey] = useState<{ configured: boolean; last4: string | null }>({
-    configured: false,
-    last4: null
-  });
+  const [storedOpenAIKey, setStoredOpenAIKey] = useState<StoredOpenAIKeyState>(() => defaultStoredOpenAIKeyState());
   const [openAIKeyLoading, setOpenAIKeyLoading] = useState(true);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveVersionRef = useRef(0);
@@ -267,6 +284,7 @@ export function WiresClient({
   const loadRequestRef = useRef(0);
   const initialWireLoadedRef = useRef(false);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const hasUserMessages = messages.some((message) => message.role === "user");
 
   const validation = useMemo(
     () => (workspace ? validate(workspace.diagram) : { valid: true, issues: [] }),
@@ -294,9 +312,14 @@ export function WiresClient({
       try {
         const res = await fetch("/api/user/openai-key");
         if (!res.ok) return;
-        const data = (await res.json()) as { configured?: boolean; last4?: string | null };
+        const data = (await res.json()) as Partial<StoredOpenAIKeyState> & {
+          freeQuotaLimit?: number;
+          freeQuotaUsed?: number;
+          freeQuotaRemaining?: number;
+          freeQuotaExhausted?: boolean;
+        };
         if (!cancelled && typeof data.configured === "boolean") {
-          setStoredOpenAIKey({ configured: data.configured, last4: data.last4 ?? null });
+          setStoredOpenAIKey(normalizeStoredOpenAIKeyState(data));
         }
       } catch {
         // Best-effort.
@@ -320,12 +343,16 @@ export function WiresClient({
         const data = (await res.json()) as {
           configured?: boolean;
           last4?: string | null;
+          freeQuotaLimit?: number;
+          freeQuotaUsed?: number;
+          freeQuotaRemaining?: number;
+          freeQuotaExhausted?: boolean;
           error?: string;
         };
         if (!res.ok || data.error) {
           return data.error ?? `Request failed with ${res.status}`;
         }
-        setStoredOpenAIKey({ configured: Boolean(data.configured), last4: data.last4 ?? null });
+        setStoredOpenAIKey(normalizeStoredOpenAIKeyState(data));
         setOpenAIKeyLoading(false);
         setApiError(null);
         return null;
@@ -340,7 +367,11 @@ export function WiresClient({
     try {
       await fetch("/api/user/openai-key", { method: "DELETE" });
     } finally {
-      setStoredOpenAIKey({ configured: false, last4: null });
+      setStoredOpenAIKey((current) => ({
+        ...current,
+        configured: false,
+        last4: null
+      }));
       setOpenAIKeyLoading(false);
     }
   }, []);
@@ -481,6 +512,7 @@ export function WiresClient({
         : [assistantIntro()]
     );
     setApiError(null);
+    setPendingOpenAIChat(null);
     setShareMessage(null);
     setShareResult(null);
     setExportMessage(null);
@@ -802,19 +834,12 @@ export function WiresClient({
         : mode === "mermaid"
           ? mermaidSource
           : "";
+  const usingUserOpenAIKey = storedOpenAIKey.configured && storedOpenAIKey.freeQuota.exhausted;
+  const effectiveChatModel = usingUserOpenAIKey ? selectedModel : DEFAULT_LLM_MODEL;
 
-  const submit = useCallback(
-    async (event?: FormEvent<HTMLFormElement>) => {
-      event?.preventDefault();
-      if (!workspace || busy) return;
-      if (openAIKeyLoading || !storedOpenAIKey.configured) return;
-      const trimmed = input.trim();
-      if (!trimmed) return;
-
-      const nextMessages = [...messages, { role: "user" as const, content: trimmed }];
-      setMessages(nextMessages);
-      setTraces([]);
-      setInput("");
+  const runChat = useCallback(
+    async (trimmed: string, history: ChatMessage[], nextMessages: ChatMessage[]) => {
+      if (!workspace) return;
       setBusy(true);
       setApiError(null);
 
@@ -824,14 +849,22 @@ export function WiresClient({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             message: trimmed,
-            history: messages,
-            model: selectedModel
+            history,
+            model: effectiveChatModel
           })
         });
         const data = (await readJsonResponse<ChatResponse & { code?: string }>(res));
-        if (data.code === "openai-key-required") {
-          setStoredOpenAIKey({ configured: false, last4: null });
+        if (!res.ok && (data.code === "user-quota-exceeded" || data.code === "openai-key-required")) {
+          setStoredOpenAIKey((current) => ({
+            ...current,
+            configured: false,
+            last4: null,
+            freeQuota: normalizeFreeQuota(data.freeQuota, current.freeQuota.limit, current.freeQuota.limit)
+          }));
           setOpenAIKeyLoading(false);
+          setPendingOpenAIChat({ message: trimmed, history });
+          setApiError(null);
+          return;
         }
         if (!res.ok || data.error || !data.diagram || !data.wire) {
           throw new Error(data.error ?? `Request failed with ${res.status}`);
@@ -846,6 +879,12 @@ export function WiresClient({
         setTraces(data.traces ?? []);
         setCanvasRevision((revision) => revision + 1);
         setWires((current) => upsertWire(current, data.wire!));
+        if (data.freeQuota) {
+          setStoredOpenAIKey((current) => ({
+            ...current,
+            freeQuota: normalizeFreeQuota(data.freeQuota, current.freeQuota.limit)
+          }));
+        }
         setMessages([...nextMessages, { role: "assistant", content: assistantMessage }]);
         setSaveStatus("saved");
       } catch (err) {
@@ -856,11 +895,44 @@ export function WiresClient({
         setBusy(false);
       }
     },
-    [busy, input, messages, openAIKeyLoading, selectedModel, storedOpenAIKey.configured, workspace]
+    [effectiveChatModel, workspace]
+  );
+
+  const saveStoredOpenAIKeyAndContinue = useCallback(
+    async (key: string): Promise<string | null> => {
+      const errorMessage = await saveStoredOpenAIKey(key);
+      if (errorMessage) return errorMessage;
+      const pending = pendingOpenAIChat;
+      if (pending) {
+        setPendingOpenAIChat(null);
+        const nextMessages = [...pending.history, { role: "user" as const, content: pending.message }];
+        void runChat(pending.message, pending.history, nextMessages);
+      }
+      return null;
+    },
+    [pendingOpenAIChat, runChat, saveStoredOpenAIKey]
+  );
+
+  const submit = useCallback(
+    async (event?: FormEvent<HTMLFormElement>) => {
+      event?.preventDefault();
+      if (!workspace || busy || openAIKeyLoading || pendingOpenAIChat) return;
+      const trimmed = input.trim();
+      if (!trimmed) return;
+
+      const nextMessages = [...messages, { role: "user" as const, content: trimmed }];
+      setMessages(nextMessages);
+      setTraces([]);
+      setInput("");
+      setApiError(null);
+
+      await runChat(trimmed, messages, nextMessages);
+    },
+    [busy, input, messages, openAIKeyLoading, pendingOpenAIChat, runChat, workspace]
   );
 
   const hasRightPanel = Boolean(workspace && rightPanel !== "closed");
-  const chatNeedsOpenAIKey = !openAIKeyLoading && !storedOpenAIKey.configured;
+  const chatNeedsOpenAIKey = !openAIKeyLoading && !storedOpenAIKey.configured && Boolean(pendingOpenAIChat);
 
   return (
     <div className="flex h-dvh min-h-0 flex-col bg-wire-page text-wire-primary">
@@ -1179,14 +1251,14 @@ export function WiresClient({
                 ) : chatNeedsOpenAIKey ? (
                   <UserLockPanel
                     busy={busy}
-                    onSaveKey={saveStoredOpenAIKey}
+                    onSaveKey={saveStoredOpenAIKeyAndContinue}
                     title="Connect OpenAI"
-                    description="Add your OpenAI API key to use the chat LLM. Stored encrypted on your account."
+                    description="You used your 10 free chat messages. Add your OpenAI API key to continue. Stored encrypted on your account."
                     submitLabel="Save key"
                     autoFocus
                   />
                 ) : null}
-                {storedOpenAIKey.configured ? (
+                {usingUserOpenAIKey && hasUserMessages ? (
                   <StoredKeyFooterPanel
                     last4={storedOpenAIKey.last4}
                     onClear={() => void clearStoredOpenAIKey()}
@@ -1197,13 +1269,13 @@ export function WiresClient({
                   onChange={setInput}
                   onSubmit={() => void submit()}
                   busy={busy}
-                  disabled={openAIKeyLoading || chatNeedsOpenAIKey}
-                  placeholder={chatNeedsOpenAIKey ? "Add an OpenAI API key to start chatting" : undefined}
+                  disabled={openAIKeyLoading || Boolean(pendingOpenAIChat)}
+                  placeholder={openAIKeyLoading ? "Checking OpenAI key" : undefined}
                   footerSlot={
                     <ChatModelFooter
-                      model={selectedModel}
+                      model={effectiveChatModel}
                       onModelChange={setSelectedModel}
-                      disabled={busy || openAIKeyLoading || chatNeedsOpenAIKey}
+                      disabled={busy || openAIKeyLoading || Boolean(pendingOpenAIChat) || !usingUserOpenAIKey}
                     />
                   }
                 />
@@ -2115,6 +2187,52 @@ function formatJson(diagram: WireDiagram): string {
 function nextClientMutationId(current: number): number {
   const now = Date.now();
   return now > current ? now : current + 1;
+}
+
+function defaultStoredOpenAIKeyState(): StoredOpenAIKeyState {
+  return {
+    configured: false,
+    last4: null,
+    freeQuota: {
+      limit: 10,
+      used: 0,
+      remaining: 10,
+      exhausted: false
+    }
+  };
+}
+
+function normalizeStoredOpenAIKeyState(input: {
+  configured?: boolean;
+  last4?: string | null;
+  freeQuota?: FreeQuotaMeta | null;
+  freeQuotaLimit?: number;
+  freeQuotaUsed?: number;
+  freeQuotaRemaining?: number;
+  freeQuotaExhausted?: boolean;
+}): StoredOpenAIKeyState {
+  const fallback = defaultStoredOpenAIKeyState().freeQuota;
+  return {
+    configured: Boolean(input.configured),
+    last4: input.last4 ?? null,
+    freeQuota: normalizeFreeQuota(input.freeQuota, input.freeQuotaLimit ?? fallback.limit, input.freeQuotaUsed)
+  };
+}
+
+function normalizeFreeQuota(value: FreeQuotaMeta | null | undefined, fallbackLimit = 10, fallbackUsed?: number): FreeQuotaMeta {
+  const limit = safeNonNegativeInteger(value?.limit, fallbackLimit);
+  const used = safeNonNegativeInteger(value?.used, fallbackUsed ?? 0);
+  const remaining = safeNonNegativeInteger(value?.remaining, Math.max(0, limit - used));
+  return {
+    limit,
+    used,
+    remaining,
+    exhausted: value?.exhausted ?? remaining === 0
+  };
+}
+
+function safeNonNegativeInteger(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : fallback;
 }
 
 function downloadBlob(filename: string, body: string, type: string): void {

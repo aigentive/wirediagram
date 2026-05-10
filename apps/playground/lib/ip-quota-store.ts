@@ -2,8 +2,8 @@ import { createHmac } from "node:crypto";
 import { readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import { stableStringify } from "@/lib/wire-canonical";
 
-export const IP_QUOTA_LIMIT = 20;
-export const USER_QUOTA_LIMIT = 20;
+export const IP_QUOTA_LIMIT = 10;
+export const USER_QUOTA_LIMIT = 10;
 
 export type IpQuotaRecord = {
   hash: string;

@@ -1,8 +1,10 @@
 import type { NextRequest } from "next/server";
 import { requireCurrentUser } from "@/lib/current-user";
+import { readUserQuota, USER_QUOTA_LIMIT } from "@/lib/ip-quota-store";
 import {
   deleteUserOpenAIKey,
   getUserOpenAIKeyMeta,
+  type StoredKeyMeta,
   setUserOpenAIKey
 } from "@/lib/user-openai-key-store";
 
@@ -13,7 +15,7 @@ export async function GET(): Promise<Response> {
   const user = await requireCurrentUser();
   if (user instanceof Response) return user;
   const meta = await getUserOpenAIKeyMeta(user);
-  return Response.json(meta);
+  return Response.json(await withFreeQuota(user.key, meta));
 }
 
 export async function POST(req: NextRequest): Promise<Response> {
@@ -36,7 +38,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   try {
     const meta = await setUserOpenAIKey(user, payload.key);
-    return Response.json(meta);
+    return Response.json(await withFreeQuota(user.key, meta));
   } catch (err) {
     return Response.json(
       { error: err instanceof Error ? err.message : String(err) },
@@ -49,5 +51,18 @@ export async function DELETE(): Promise<Response> {
   const user = await requireCurrentUser();
   if (user instanceof Response) return user;
   await deleteUserOpenAIKey(user);
-  return Response.json({ configured: false, last4: null, updatedAt: null });
+  return Response.json(await withFreeQuota(user.key, { configured: false, last4: null, updatedAt: null }));
+}
+
+async function withFreeQuota(userKey: string, meta: StoredKeyMeta): Promise<StoredKeyMeta> {
+  const quota = await readUserQuota(userKey);
+  const used = Math.max(0, quota?.count ?? 0);
+  const remaining = Math.max(0, USER_QUOTA_LIMIT - used);
+  return {
+    ...meta,
+    freeQuotaLimit: USER_QUOTA_LIMIT,
+    freeQuotaUsed: used,
+    freeQuotaRemaining: remaining,
+    freeQuotaExhausted: remaining === 0
+  };
 }
