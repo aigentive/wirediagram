@@ -217,6 +217,7 @@ Blob as a compatibility fallback for existing deployments.
 When Turso/libSQL is active, the playground keeps the canonical JSON documents in
 `wire_kv` and also mirrors queryable product records into `wire_users`,
 `wire_user_events`, `wire_documents`, `wire_versions`, and
-`wire_chat_messages`. The KV row remains the compatibility source of truth; the
-relational tables are for account, activity, wire, version, and chat history
-queries.
+`wire_chat_messages`. User OpenAI keys are stored encrypted in
+`wire_user_openai_keys`, with a KV copy kept for compatibility. Chat message rows
+include model, cost, and token-count columns so LLM usage accounting can be
+queried without reading the canonical JSON blob.

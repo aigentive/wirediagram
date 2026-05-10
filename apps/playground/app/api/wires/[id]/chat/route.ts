@@ -7,7 +7,8 @@ import {
   makeChatMessage,
   saveUserWire,
   toSummary,
-  WireNotFoundError
+  WireNotFoundError,
+  type StoredChatUsage
 } from "@/lib/wires-store";
 
 export const runtime = "nodejs";
@@ -102,6 +103,7 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
         : "Wire diagram updated.";
     const model = typeof data.model === "string" ? data.model : null;
     const costUsd = typeof data.costUsd === "number" ? data.costUsd : null;
+    const usage = parseUsage(data.usage);
     const saved = await saveUserWire({
       user,
       wireId: id,
@@ -110,7 +112,7 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
       summary: assistantMessage,
       chatMessages: [
         makeChatMessage("user", payload.message.trim()),
-        makeChatMessage("assistant", assistantMessage, { model, costUsd })
+        makeChatMessage("assistant", assistantMessage, { model, costUsd, usage })
       ]
     });
 
@@ -130,4 +132,20 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
       { status: 500 }
     );
   }
+}
+
+function parseUsage(value: unknown): StoredChatUsage | null {
+  if (!value || typeof value !== "object") return null;
+  const usage = value as Partial<Record<keyof StoredChatUsage, unknown>>;
+  return {
+    inputTokens: nullableInteger(usage.inputTokens),
+    cachedInputTokens: nullableInteger(usage.cachedInputTokens),
+    outputTokens: nullableInteger(usage.outputTokens),
+    reasoningTokens: nullableInteger(usage.reasoningTokens),
+    totalTokens: nullableInteger(usage.totalTokens)
+  };
+}
+
+function nullableInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : null;
 }

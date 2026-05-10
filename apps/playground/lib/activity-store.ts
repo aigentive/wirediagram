@@ -33,6 +33,11 @@ export type ActivityChatMessage = {
   content: string;
   model?: string | null;
   costUsd?: number | null;
+  inputTokens?: number | null;
+  cachedInputTokens?: number | null;
+  outputTokens?: number | null;
+  reasoningTokens?: number | null;
+  totalTokens?: number | null;
   createdAt?: string;
 };
 
@@ -208,9 +213,14 @@ INSERT OR IGNORE INTO wire_chat_messages (
   content,
   model,
   cost_usd,
+  input_tokens,
+  cached_input_tokens,
+  output_tokens,
+  reasoning_tokens,
+  total_tokens,
   created_at
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `,
       args: [
         message.id ?? randomUUID(),
@@ -222,6 +232,11 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         content,
         message.model ?? null,
         typeof message.costUsd === "number" && Number.isFinite(message.costUsd) ? message.costUsd : null,
+        safeNullableInteger(message.inputTokens),
+        safeNullableInteger(message.cachedInputTokens),
+        safeNullableInteger(message.outputTokens),
+        safeNullableInteger(message.reasoningTokens),
+        safeNullableInteger(message.totalTokens),
         message.createdAt ?? new Date().toISOString()
       ]
     });
@@ -230,4 +245,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
 function safeInteger(value: number): number {
   return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
+}
+
+function safeNullableInteger(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : null;
 }

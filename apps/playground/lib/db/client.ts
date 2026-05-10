@@ -130,6 +130,11 @@ CREATE TABLE IF NOT EXISTS wire_chat_messages (
   content TEXT NOT NULL,
   model TEXT,
   cost_usd REAL,
+  input_tokens INTEGER,
+  cached_input_tokens INTEGER,
+  output_tokens INTEGER,
+  reasoning_tokens INTEGER,
+  total_tokens INTEGER,
   created_at TEXT NOT NULL
 );
 
@@ -138,5 +143,32 @@ CREATE INDEX IF NOT EXISTS wire_chat_messages_wire_created_asc
 
 CREATE INDEX IF NOT EXISTS wire_chat_messages_surface_created_desc
   ON wire_chat_messages (surface, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS wire_user_openai_keys (
+  user_key TEXT PRIMARY KEY NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  iv TEXT NOT NULL,
+  auth_tag TEXT NOT NULL,
+  ciphertext TEXT NOT NULL,
+  last4 TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS wire_user_openai_keys_updated_desc
+  ON wire_user_openai_keys (updated_at DESC);
 `);
+  await ensureColumn(db, "wire_chat_messages", "input_tokens", "INTEGER");
+  await ensureColumn(db, "wire_chat_messages", "cached_input_tokens", "INTEGER");
+  await ensureColumn(db, "wire_chat_messages", "output_tokens", "INTEGER");
+  await ensureColumn(db, "wire_chat_messages", "reasoning_tokens", "INTEGER");
+  await ensureColumn(db, "wire_chat_messages", "total_tokens", "INTEGER");
+}
+
+async function ensureColumn(db: Client, table: string, column: string, definition: string): Promise<void> {
+  const info = await db.execute(`PRAGMA table_info(${table})`);
+  const hasColumn = info.rows.some((row) => (row as { name?: unknown }).name === column);
+  if (!hasColumn) {
+    await db.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
 }

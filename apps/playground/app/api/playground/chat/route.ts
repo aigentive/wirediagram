@@ -425,7 +425,17 @@ async function handlePost(req: NextRequest): Promise<Response> {
       actorKey: sessionUser ? null : ipHash ? `ip:${ipHash}` : null,
       messages: [
         { role: "user", content: payload.message.trim() },
-        { role: "assistant", content: assistantMessage, model: responseModel, costUsd }
+        {
+          role: "assistant",
+          content: assistantMessage,
+          model: responseModel,
+          costUsd,
+          inputTokens: usage?.inputTokens ?? null,
+          cachedInputTokens: usage?.cachedInputTokens ?? null,
+          outputTokens: usage?.outputTokens ?? null,
+          reasoningTokens: usage?.reasoningTokens ?? null,
+          totalTokens: usage?.totalTokens ?? null
+        }
       ]
     });
   }
