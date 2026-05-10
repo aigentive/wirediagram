@@ -17,19 +17,14 @@ export async function readCloudJson<T>(
   pathname: string,
   options: { useCache?: boolean; bustCache?: boolean } = {}
 ): Promise<T | null> {
-  if (cloudStoreBackend() === "database") {
+  const backend = cloudStoreBackend();
+  if (backend === "database") {
     const stored = await readDatabaseText(pathname);
-    if (stored !== null) return JSON.parse(stored) as T;
+    return stored !== null ? JSON.parse(stored) as T : null;
   }
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    try {
-      const blob = await readBlobJson<T>(pathname, options);
-      if (blob !== null) return blob;
-    } catch {
-      // Fall through to filesystem. This keeps local SQLite usable without
-      // Vercel Blob credentials and keeps reads tolerant during migration.
-    }
+  if (backend === "blob") {
+    return readBlobJson<T>(pathname, options);
   }
 
   return readFilesystemJson<T>(pathname);
@@ -59,16 +54,19 @@ export async function writeCloudJson(pathname: string, value: unknown): Promise<
 }
 
 export async function deleteCloudValue(pathname: string): Promise<void> {
-  if (cloudStoreBackend() === "database") {
+  const backend = cloudStoreBackend();
+  if (backend === "database") {
     await deleteDatabaseValue(pathname);
+    return;
   }
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
+  if (backend === "blob") {
     try {
       await del(pathname);
     } catch {
       // Already gone is fine.
     }
+    return;
   }
 
   try {
@@ -79,17 +77,16 @@ export async function deleteCloudValue(pathname: string): Promise<void> {
 }
 
 export async function listCloudPaths(prefix: string): Promise<string[]> {
-  const paths = new Set<string>();
-  if (cloudStoreBackend() === "database") {
-    for (const path of await listDatabasePaths(prefix)) paths.add(path);
+  const backend = cloudStoreBackend();
+  if (backend === "database") {
+    return listDatabasePaths(prefix);
   }
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    for (const path of await listBlobPaths(prefix)) paths.add(path);
+  if (backend === "blob") {
+    return listBlobPaths(prefix);
   }
 
-  for (const path of await listFilesystemPaths(prefix)) paths.add(path);
-  return [...paths].sort();
+  return listFilesystemPaths(prefix);
 }
 
 async function readDatabaseText(pathname: string): Promise<string | null> {

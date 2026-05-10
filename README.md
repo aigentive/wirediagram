@@ -304,8 +304,8 @@ The playground is intentionally simple and deployment-safe:
 3. `POST /api/share` validates and canonicalizes the JSON.
 4. The JSON is stored at `wires/{token}.json`, where `token` is a content hash.
    Hosted playground storage uses Turso/libSQL when `TURSO_DATABASE_URL` is
-   configured, local SQLite during development, and Vercel Blob as a fallback
-   for existing deployments.
+   configured and local SQLite during development. Vercel Blob is used only when
+   explicitly selected with `WIRE_CLOUD_BACKEND=blob`.
 5. Authenticated shares mint separate random view/edit tokens.
 6. `/s/{viewToken}` renders public read-only HTML, and `/s/{viewToken}.svg`,
    `.png`, `.json`, and `.mmd` return raw embeddable assets.
@@ -328,7 +328,7 @@ work.
 - **Local (HTTP)** — `wire-mcp --http` for network clients on `:3860`.
 - **Local (Docker Compose)** — MCP at `http://localhost:3860/mcp` plus playground/editor at `http://localhost:3870`, with local volumes for diagrams and share tokens.
 - **Cloud (Docker)** — multi-stage `Dockerfile` deploys MCP to Fly, Render, Cloud Run, or Kubernetes; persistent volume at `/data/diagrams`.
-- **Cloud (Vercel)** — `apps/playground` is a Next.js React editor, JSON share API, and renderer/preview surface deployable as a Vercel app with Turso/libSQL storage or Vercel Blob fallback.
+- **Cloud (Vercel)** — `apps/playground` is a Next.js React editor, JSON share API, and renderer/preview surface deployable as a Vercel app with Turso/libSQL storage.
 
 Run the full local Docker stack:
 

@@ -1,6 +1,6 @@
 # @aigentive/wire-playground
 
-Next.js diagram playground for `@aigentive/wire`. It renders Wire diagrams in the browser, provides an interactive React editor through `@aigentive/wire-react`, stores shared canonical JSON in Turso/libSQL, local SQLite, or Vercel Blob fallback storage, and acts as a render/preview service for MCP and hosted agents.
+Next.js diagram playground for `@aigentive/wire`. It renders Wire diagrams in the browser, provides an interactive React editor through `@aigentive/wire-react`, stores shared canonical JSON in Turso/libSQL or local SQLite, and acts as a render/preview service for MCP and hosted agents.
 
 ## Local
 
@@ -34,9 +34,8 @@ docker compose up -d --build wire-playground
 
 ## Hosted Vercel
 
-Designed to deploy to Vercel. Production can use Turso/libSQL by setting
-`TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`; without those, the existing Vercel
-Blob storage remains the fallback. Local dev uses SQLite via libSQL with
+Designed to deploy to Vercel. Production uses Turso/libSQL by setting
+`TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. Local dev uses SQLite via libSQL with
 `TURSO_DATABASE_URL=file:local` and `LOCAL_DB_PATH=file:./storage/wire.db`.
 See [DEPLOY.md](../../docs/DEPLOY.md) for instructions.
 

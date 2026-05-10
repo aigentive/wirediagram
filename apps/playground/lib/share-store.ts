@@ -37,11 +37,5 @@ export async function resolveShareToken(token: string): Promise<unknown | null> 
   if (local) return local;
 
   const stored = await readCloudJson<unknown>(`wires/${token}.json`, { useCache: true });
-  if (stored) return stored;
-
-  const base = process.env.BLOB_PUBLIC_BASE_URL;
-  if (!base) return null;
-  const res = await fetch(`${base}/wires/${token}.json`, { cache: "force-cache" });
-  if (!res.ok) return null;
-  return res.json();
+  return stored;
 }

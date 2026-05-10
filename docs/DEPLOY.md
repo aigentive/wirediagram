@@ -118,8 +118,7 @@ docker compose up -d --build
 
 The compose playground uses SQLite through libSQL, so `/api/share`,
 `/edit/inline?d=<token>`, and `/preview/inline?d=<token>` work without Vercel
-Blob. Production Vercel deploys should use Turso/libSQL, with Vercel Blob kept
-as a compatibility fallback while older share objects are still present.
+Blob. Production Vercel deploys should use Turso/libSQL.
 
 ---
 
@@ -154,8 +153,8 @@ Set these environment variables for production storage:
 |---|---:|---|
 | `TURSO_DATABASE_URL` | recommended | Turso/libSQL database URL for playground wires, share links, quotas, API keys, and encrypted user OpenAI keys. |
 | `TURSO_AUTH_TOKEN` | recommended for Turso | Turso auth token. Leave empty for local `file:` URLs. |
-| `BLOB_READ_WRITE_TOKEN` | fallback | Existing Vercel Blob token; still read as a migration fallback when Turso is enabled. |
-| `BLOB_PUBLIC_BASE_URL` | fallback | Public base URL for legacy `wires/{token}.json` objects. |
+| `BLOB_READ_WRITE_TOKEN` | Blob only | Vercel Blob token used only when `WIRE_CLOUD_BACKEND=blob`. Turso deployments do not read Blob fallback data. |
+| `BLOB_PUBLIC_BASE_URL` | legacy Blob only | Public base URL for old Blob-hosted `wires/{token}.json` objects. Turso deployments do not read this fallback. |
 | `WIRE_CLOUD_BACKEND` | no | `sqlite`, `turso`, or `database` forces libSQL; `blob` forces Vercel Blob; `filesystem`/`fs` forces local JSON files. |
 | `LOCAL_DB_PATH` | local only | SQLite file URL used when `TURSO_DATABASE_URL=file:local` or unset locally. Default: `file:./storage/wire.db`. |
 
@@ -212,7 +211,7 @@ A reference implementation lives on the roadmap; PRs welcome.
 
 The hosted playground has its own storage path. It uses Turso/libSQL when
 `TURSO_DATABASE_URL` is configured, local SQLite during development, and Vercel
-Blob as a compatibility fallback for existing deployments.
+Blob only when explicitly configured with `WIRE_CLOUD_BACKEND=blob`.
 
 When Turso/libSQL is active, the playground keeps the canonical JSON documents in
 `wire_kv` and also mirrors queryable product records into `wire_users`,
