@@ -1100,12 +1100,12 @@ function WireControls({
         alignItems: "center",
         overflow: "hidden",
         borderRadius: 10,
-        border: "1px solid rgba(15,23,42,0.08)",
-        background: "rgba(255,255,255,0.88)",
+        border: "1px solid var(--wire-canvas-control-border, rgba(15,23,42,0.08))",
+        background: "var(--wire-canvas-control-bg, rgba(255,255,255,0.88))",
         backdropFilter: "blur(14px) saturate(1.2)",
         WebkitBackdropFilter: "blur(14px) saturate(1.2)",
         boxShadow:
-          "0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px -8px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.04)"
+          "var(--wire-canvas-control-shadow, 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px -8px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.04))"
       }}
     >
       <ControlButton label="Zoom in" onClick={onZoomIn}>
@@ -1151,7 +1151,7 @@ function ControlButton({
         alignItems: "center",
         justifyContent: "center",
         border: 0,
-        borderLeft: divider ? "1px solid rgba(15,23,42,0.08)" : "0",
+        borderLeft: divider ? "1px solid var(--wire-canvas-control-divider, rgba(15,23,42,0.08))" : "0",
         background: "transparent",
         color: "var(--wire-fg-secondary)",
         cursor: "pointer"
@@ -1199,12 +1199,12 @@ function WireMiniMap({
         right: 12,
         bottom: 12,
         borderRadius: 10,
-        border: "1px solid rgba(15,23,42,0.08)",
-        background: "rgba(255,255,255,0.88)",
+        border: "1px solid var(--wire-canvas-control-border, rgba(15,23,42,0.08))",
+        background: "var(--wire-canvas-control-bg, rgba(255,255,255,0.88))",
         backdropFilter: "blur(14px) saturate(1.2)",
         WebkitBackdropFilter: "blur(14px) saturate(1.2)",
         boxShadow:
-          "0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px -8px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.04)"
+          "var(--wire-canvas-control-shadow, 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px -8px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.04))"
       }}
     >
       {model.edges.map((edge) => (
@@ -1213,7 +1213,7 @@ function WireMiniMap({
           d={edge.path}
           transform={`translate(${pad - model.bounds.minX * scale} ${pad - model.bounds.minY * scale}) scale(${scale})`}
           fill="none"
-          stroke="#94a3b8"
+          stroke="var(--wire-canvas-minimap-edge, #94a3b8)"
           strokeWidth={1 / scale}
           opacity={0.7}
         />
@@ -1226,7 +1226,7 @@ function WireMiniMap({
           width={Math.max(2, frame.width * scale)}
           height={Math.max(2, frame.height * scale)}
           rx={1}
-          fill={frame.node.kind === "group" ? "#f1f5f9" : "#cbd5e1"}
+          fill={frame.node.kind === "group" ? "var(--wire-canvas-minimap-group, #f1f5f9)" : "var(--wire-canvas-minimap-node, #cbd5e1)"}
           stroke="none"
           opacity={frame.node.kind === "group" ? 0.75 : 1}
         />
@@ -1239,7 +1239,7 @@ function WireMiniMap({
           height={viewportRect.height}
           rx={3}
           fill="none"
-          stroke="#2563eb"
+          stroke="var(--wire-canvas-minimap-viewport, #2563eb)"
           strokeWidth={1.2}
         />
       ) : null}

@@ -9,9 +9,14 @@ declare module "next-auth" {
   }
 }
 
-const googleConfigured = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
+const authSecret =
+  process.env.AUTH_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  (process.env.NODE_ENV === "production" ? undefined : "wire-local-dev-secret");
+const googleConfigured = Boolean(authSecret && process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: authSecret,
   providers: googleConfigured ? [Google] : [],
   pages: {
     signIn: "/login"

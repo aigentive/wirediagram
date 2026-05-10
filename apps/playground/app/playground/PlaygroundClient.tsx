@@ -42,6 +42,7 @@ import {
   StoredKeyFooterPanel,
   UserLockPanel
 } from "../_components/wire-chat";
+import { CanvasFrame } from "../_components/wire-editor";
 
 type Usage = {
   inputTokens: number;
@@ -472,7 +473,7 @@ export function PlaygroundClient({
 
           {mode === "canvas" ? (
             <WireProvider diagram={diagram} onChange={handleCanvasChange}>
-              <div className="relative min-h-0 flex-1">
+              <CanvasFrame>
                 <div className="absolute left-3 top-3 z-10">
                   <WireToolbar />
                 </div>
@@ -483,9 +484,10 @@ export function PlaygroundClient({
                   mode="edit"
                   fitView
                   showMiniMap
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+                  showBackground={false}
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", backgroundColor: "transparent" }}
                 />
-              </div>
+              </CanvasFrame>
             </WireProvider>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col bg-wire-code">

@@ -17,7 +17,7 @@ export function CanvasFrame({
       style={{
         backgroundColor: "var(--wire-canvas-bg)",
         backgroundImage:
-          "radial-gradient(var(--wire-canvas-grid-major) 1.2px, transparent 1.2px), radial-gradient(var(--wire-canvas-grid-minor) 1px, transparent 1px), linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(241,245,249,0) 60%)",
+          "radial-gradient(var(--wire-canvas-grid-major) 1.2px, transparent 1.2px), radial-gradient(var(--wire-canvas-grid-minor) 1px, transparent 1px), linear-gradient(135deg, var(--wire-canvas-sheen-start) 0%, var(--wire-canvas-sheen-end) 60%)",
         backgroundSize: "96px 96px, 24px 24px, 100% 100%",
         backgroundPosition: "0 0, 0 0, 0 0"
       }}
@@ -27,7 +27,7 @@ export function CanvasFrame({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 90% 80% at 30% 30%, rgba(255,255,255,0.6) 0%, transparent 60%), radial-gradient(ellipse at center, transparent 30%, rgba(15,23,42,0.08) 100%)"
+            "radial-gradient(ellipse 90% 80% at 30% 30%, var(--wire-canvas-spotlight) 0%, transparent 60%), radial-gradient(ellipse at center, transparent 30%, var(--wire-canvas-vignette) 100%)"
         }}
       />
       {children}
