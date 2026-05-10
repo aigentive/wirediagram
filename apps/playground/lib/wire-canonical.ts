@@ -3,11 +3,26 @@ import { parseWireDiagram, type WireDiagram } from "@aigentive/wire-core";
 import { writeCloudText } from "@/lib/cloud-kv-store";
 
 export function stableStringify(value: unknown): string {
+  return stableJson(value) ?? "null";
+}
+
+function stableJson(value: unknown): string | undefined {
+  if (value === undefined || typeof value === "function" || typeof value === "symbol") {
+    return undefined;
+  }
   if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return "[" + value.map(stableStringify).join(",") + "]";
+  if (Array.isArray(value)) {
+    return "[" + value.map((item) => stableJson(item) ?? "null").join(",") + "]";
+  }
   const obj = value as Record<string, unknown>;
   const keys = Object.keys(obj).sort();
-  return "{" + keys.map((key) => JSON.stringify(key) + ":" + stableStringify(obj[key])).join(",") + "}";
+  const entries = keys
+    .map((key) => {
+      const serialized = stableJson(obj[key]);
+      return serialized === undefined ? null : `${JSON.stringify(key)}:${serialized}`;
+    })
+    .filter((entry): entry is string => entry !== null);
+  return "{" + entries.join(",") + "}";
 }
 
 export function tokenFor(canonical: string): string {
