@@ -1,9 +1,19 @@
 export type WireChatGuardResult =
   | { ok: true }
-  | { ok: false; code: "wire-intent-required"; message: string };
+  | {
+      ok: false;
+      code: "wire-intent-required" | "free-chat-message-too-long" | "free-chat-restricted-term";
+      message: string;
+    };
 
 export const WIRE_CHAT_REFUSAL =
   "I can only create, update, or manage Wire diagrams. Rephrase this as a diagram-building request.";
+export const FREE_CHAT_WORD_LIMIT = 20;
+export const FREE_CHAT_RESTRICTED_TERMS = ["llm", "prompt", "ignore"] as const;
+
+const FREE_CHAT_TOO_LONG_MESSAGE = `Free chat messages must be ${FREE_CHAT_WORD_LIMIT} words or fewer.`;
+const FREE_CHAT_RESTRICTED_TERM_MESSAGE =
+  "Free chat cannot process messages containing restricted prompt-control terms.";
 
 const DIAGRAM_TERMS = [
   "wire",
@@ -132,6 +142,28 @@ export function guardWireChatRequest(message: string): WireChatGuardResult {
   return { ok: true };
 }
 
+export function guardFreeWireChatRequest(message: string): WireChatGuardResult {
+  if (countWords(message) > FREE_CHAT_WORD_LIMIT) {
+    return {
+      ok: false,
+      code: "free-chat-message-too-long",
+      message: FREE_CHAT_TOO_LONG_MESSAGE
+    };
+  }
+
+  const normalized = normalizeMessage(message);
+  const restricted = FREE_CHAT_RESTRICTED_TERMS.some((term) => hasWord(normalized, term));
+  if (restricted) {
+    return {
+      ok: false,
+      code: "free-chat-restricted-term",
+      message: FREE_CHAT_RESTRICTED_TERM_MESSAGE
+    };
+  }
+
+  return { ok: true };
+}
+
 function hasWireIntent(normalized: string): boolean {
   if (hasExplicitDiagramTerm(normalized)) return true;
   if (EDIT_TERMS.some((term) => hasWord(normalized, term))) return true;
@@ -156,6 +188,10 @@ function hasWord(value: string, word: string): boolean {
 
 function normalizeMessage(message: string): string {
   return message.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function countWords(message: string): number {
+  return message.trim().split(/\s+/).filter(Boolean).length;
 }
 
 function reject(): WireChatGuardResult {

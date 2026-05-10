@@ -29,7 +29,7 @@ import {
   type LlmCost,
   type LlmUsage as Usage
 } from "@/lib/llm-cost";
-import { guardWireChatRequest } from "@/lib/wire-chat-guard";
+import { guardFreeWireChatRequest, guardWireChatRequest } from "@/lib/wire-chat-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -351,6 +351,12 @@ async function handlePost(req: NextRequest): Promise<Response> {
   const userFreeQuotaUsed = Math.max(0, existingUserQuota?.count ?? 0);
   const userFreeQuotaExhausted = Boolean(sessionUser && userFreeQuotaUsed >= USER_QUOTA_LIMIT);
   const usingStoredKey = Boolean(storedKey && userFreeQuotaExhausted);
+  if (!usingStoredKey) {
+    const freeChatGuard = guardFreeWireChatRequest(payload.message);
+    if (!freeChatGuard.ok) {
+      return jsonResponse({ error: freeChatGuard.message, code: freeChatGuard.code }, 400);
+    }
+  }
   const apiKey = usingStoredKey ? storedKey : process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return jsonResponse(
