@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID, createHmac, timingSafeEqual } from "node:crypto";
+import { recordAuthenticatedUser } from "@/lib/activity-store";
 import { listCloudPaths, readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import type { CurrentUser } from "@/lib/current-user";
 import { stableStringify } from "@/lib/wire-canonical";
@@ -130,7 +131,7 @@ export async function requireApiKeyUser(
     });
   }
 
-  return {
+  const user = {
     key: record.ownerKey,
     email: record.ownerEmail,
     name: null,
@@ -139,6 +140,8 @@ export async function requireApiKeyUser(
     apiKeyName: record.name,
     apiKeyScopes: record.scopes
   };
+  await recordAuthenticatedUser(user, { source: "api-key" });
+  return user;
 }
 
 export class ApiKeyNotFoundError extends Error {

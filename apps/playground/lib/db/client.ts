@@ -66,5 +66,77 @@ CREATE TABLE IF NOT EXISTS wire_kv (
 
 CREATE INDEX IF NOT EXISTS wire_kv_updated_desc
   ON wire_kv (updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS wire_users (
+  user_key TEXT PRIMARY KEY NOT NULL,
+  email TEXT NOT NULL,
+  name TEXT,
+  image TEXT,
+  first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+  last_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+  seen_count INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS wire_users_last_seen_desc
+  ON wire_users (last_seen_at DESC);
+
+CREATE TABLE IF NOT EXISTS wire_user_events (
+  id TEXT PRIMARY KEY NOT NULL,
+  user_key TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  metadata_json TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS wire_user_events_user_created_desc
+  ON wire_user_events (user_key, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS wire_documents (
+  user_key TEXT NOT NULL,
+  wire_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  current_token TEXT NOT NULL,
+  node_count INTEGER NOT NULL DEFAULT 0,
+  is_deleted INTEGER NOT NULL DEFAULT 0,
+  last_client_mutation_id INTEGER,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (user_key, wire_id)
+);
+
+CREATE INDEX IF NOT EXISTS wire_documents_user_updated_desc
+  ON wire_documents (user_key, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS wire_versions (
+  id TEXT PRIMARY KEY NOT NULL,
+  user_key TEXT NOT NULL,
+  wire_id TEXT NOT NULL,
+  token TEXT NOT NULL,
+  source TEXT NOT NULL,
+  summary TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS wire_versions_wire_created_desc
+  ON wire_versions (user_key, wire_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS wire_chat_messages (
+  id TEXT PRIMARY KEY NOT NULL,
+  user_key TEXT,
+  actor_key TEXT,
+  wire_id TEXT,
+  surface TEXT NOT NULL,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  model TEXT,
+  cost_usd REAL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS wire_chat_messages_wire_created_asc
+  ON wire_chat_messages (user_key, wire_id, created_at ASC);
+
+CREATE INDEX IF NOT EXISTS wire_chat_messages_surface_created_desc
+  ON wire_chat_messages (surface, created_at DESC);
 `);
 }

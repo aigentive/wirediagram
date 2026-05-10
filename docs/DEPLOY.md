@@ -213,3 +213,10 @@ A reference implementation lives on the roadmap; PRs welcome.
 The hosted playground has its own storage path. It uses Turso/libSQL when
 `TURSO_DATABASE_URL` is configured, local SQLite during development, and Vercel
 Blob as a compatibility fallback for existing deployments.
+
+When Turso/libSQL is active, the playground keeps the canonical JSON documents in
+`wire_kv` and also mirrors queryable product records into `wire_users`,
+`wire_user_events`, `wire_documents`, `wire_versions`, and
+`wire_chat_messages`. The KV row remains the compatibility source of truth; the
+relational tables are for account, activity, wire, version, and chat history
+queries.

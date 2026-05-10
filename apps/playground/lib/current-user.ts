@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { createHmac } from "node:crypto";
+import { recordAuthenticatedUser } from "@/lib/activity-store";
 
 export type CurrentUser = {
   key: string;
@@ -12,12 +13,14 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const session = await auth();
   const email = session?.user?.email;
   if (!email) return null;
-  return {
+  const user = {
     key: userStorageKey(email),
     email,
     name: session.user.name ?? null,
     image: session.user.image ?? null
   };
+  await recordAuthenticatedUser(user, { source: "session" });
+  return user;
 }
 
 export async function requireCurrentUser(): Promise<CurrentUser | Response> {

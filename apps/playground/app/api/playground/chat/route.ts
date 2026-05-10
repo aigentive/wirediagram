@@ -7,6 +7,7 @@ import {
 } from "@aigentive/wire-core";
 import { WIRE_AGENT_GUIDE } from "@aigentive/wire-mcp/dist/agent-guide.js";
 import type { NextRequest } from "next/server";
+import { recordPlaygroundChatMessages } from "@/lib/activity-store";
 import { getCurrentUser, type CurrentUser } from "@/lib/current-user";
 import {
   IP_QUOTA_LIMIT,
@@ -413,6 +414,22 @@ async function handlePost(req: NextRequest): Promise<Response> {
     }
   }
 
+  const assistantMessage =
+    typeof run.saved.summary === "string" && run.saved.summary.trim().length > 0
+      ? run.saved.summary.trim()
+      : "Wire diagram updated.";
+
+  if (req.headers.get("x-wire-chat-surface") !== "wires") {
+    await recordPlaygroundChatMessages({
+      user: sessionUser,
+      actorKey: sessionUser ? null : ipHash ? `ip:${ipHash}` : null,
+      messages: [
+        { role: "user", content: payload.message.trim() },
+        { role: "assistant", content: assistantMessage, model: responseModel, costUsd }
+      ]
+    });
+  }
+
   return jsonResponse({
     diagram: run.saved.diagram,
     validation: run.saved.validation,
@@ -420,10 +437,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
     model: responseModel,
     usage,
     costUsd,
-    message:
-      typeof run.saved.summary === "string" && run.saved.summary.trim().length > 0
-        ? run.saved.summary.trim()
-        : "Wire diagram updated."
+    message: assistantMessage
   });
 }
 

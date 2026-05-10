@@ -5,6 +5,7 @@ import {
   type ValidationResult,
   type WireDiagram
 } from "@aigentive/wire-core";
+import { recordWireState } from "@/lib/activity-store";
 import { listCloudPaths, readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import type { CurrentUser } from "@/lib/current-user";
 import { resolveShareToken } from "@/lib/share-store";
@@ -130,6 +131,13 @@ async function createStoredWire(user: CurrentUser, diagram: WireDiagram, summary
   const storedDiagram = { ...diagram, id: wireId };
   const shared = await persistSharedDiagram(storedDiagram);
   const now = new Date().toISOString();
+  const version: WireVersion = {
+    id: randomUUID(),
+    token: shared.token,
+    source: "create",
+    summary,
+    createdAt: now
+  };
   const wire: StoredWire = {
     id: wireId,
     ownerKey: user.key,
@@ -140,18 +148,11 @@ async function createStoredWire(user: CurrentUser, diagram: WireDiagram, summary
     isDeleted: false,
     createdAt: now,
     updatedAt: now,
-    versions: [
-      {
-        id: randomUUID(),
-        token: shared.token,
-        source: "create",
-        summary,
-        createdAt: now
-      }
-    ],
+    versions: [version],
     chatMessages: []
   };
   await writeJson(wirePath(user, wireId), wire);
+  await recordWireState({ user, wire, version });
   return { wire, diagram: storedDiagram, validation: validate(storedDiagram) };
 }
 
@@ -208,6 +209,13 @@ export async function saveUserWire({
   const nextDiagram = shared.diagram;
   const now = new Date().toISOString();
   const validation = validate(nextDiagram);
+  const version: WireVersion = {
+    id: randomUUID(),
+    token: shared.token,
+    source,
+    summary: summary ?? null,
+    createdAt: now
+  };
   const next: StoredWire = {
     ...latest,
     title: titleForSave(latest.title, nextDiagram.title, source),
@@ -216,19 +224,11 @@ export async function saveUserWire({
     diagram: nextDiagram,
     lastClientMutationId: clientMutationId ?? latest.lastClientMutationId,
     updatedAt: now,
-    versions: [
-      ...storedWireVersions(latest),
-      {
-        id: randomUUID(),
-        token: shared.token,
-        source,
-        summary: summary ?? null,
-        createdAt: now
-      }
-    ].slice(-100),
+    versions: [...storedWireVersions(latest), version].slice(-100),
     chatMessages: [...storedWireChatMessages(latest), ...chatMessages].slice(-100)
   };
   await writeJson(wirePath(user, wireId), next);
+  await recordWireState({ user, wire: next, version, chatMessages });
   return { wire: next, diagram: nextDiagram, validation };
 }
 
@@ -273,11 +273,13 @@ export async function deleteUserWire(user: CurrentUser, wireId: string): Promise
   if (!existing || existing.ownerKey !== user.key || existing.isDeleted) {
     throw new WireNotFoundError();
   }
-  await writeJson(wirePath(user, wireId), {
+  const next = {
     ...existing,
     isDeleted: true,
     updatedAt: new Date().toISOString()
-  });
+  };
+  await writeJson(wirePath(user, wireId), next);
+  await recordWireState({ user, wire: next });
 }
 
 export function toSummary(wire: StoredWire): WireSummary {

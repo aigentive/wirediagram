@@ -77,7 +77,8 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
         headers: {
           "content-type": "application/json",
           "x-wire-user-key": user.key,
-          "x-wire-user-email": user.email
+          "x-wire-user-email": user.email,
+          "x-wire-chat-surface": "wires"
         },
         body: JSON.stringify({
           message: payload.message,
