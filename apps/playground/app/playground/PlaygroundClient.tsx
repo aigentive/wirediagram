@@ -56,6 +56,7 @@ type CostInfo = {
   model: string;
   usage: Usage;
   costUsd: number | null;
+  costNanoUsd: number | null;
 };
 
 type ChatMessage = {
@@ -84,6 +85,7 @@ type ChatResponse = {
   model?: string;
   usage?: Usage | null;
   costUsd?: number | null;
+  costNanoUsd?: number | null;
 };
 
 type JsonMode = "canvas" | "json";
@@ -301,13 +303,22 @@ export function PlaygroundClient({
         setTraces(data.traces ?? []);
         const cost: CostInfo | undefined =
           data.usage && data.model
-            ? { model: data.model, usage: data.usage, costUsd: data.costUsd ?? null }
+            ? {
+                model: data.model,
+                usage: data.usage,
+                costUsd: data.costUsd ?? null,
+                costNanoUsd: data.costNanoUsd ?? null
+              }
             : undefined;
         if (cost) {
           setLastModel(cost.model);
           setTotalTokens((prev) => prev + cost.usage.totalTokens);
-          if (typeof cost.costUsd === "number") {
-            setTotalCostUsd((prev) => prev + (cost.costUsd ?? 0));
+          const costNanoUsd = cost.costNanoUsd;
+          const costUsd = cost.costUsd;
+          if (typeof costNanoUsd === "number") {
+            setTotalCostUsd((prev) => prev + costNanoUsd / 1_000_000_000);
+          } else if (typeof costUsd === "number") {
+            setTotalCostUsd((prev) => prev + costUsd);
           }
         }
         setMessages([
@@ -766,11 +777,12 @@ function ChatBubble({ message }: { message: ChatMessage }) {
 
 function CostLine({ cost }: { cost: CostInfo }) {
   const { usage, costUsd, model } = cost;
+  const exactCostUsd = typeof cost.costNanoUsd === "number" ? cost.costNanoUsd / 1_000_000_000 : costUsd;
   const cached = usage.cachedInputTokens > 0 ? ` (${formatTokens(usage.cachedInputTokens)} cached)` : "";
   const reasoning = usage.reasoningTokens > 0 ? ` · ${formatTokens(usage.reasoningTokens)} reasoning` : "";
   return (
     <div className="wire-tabular mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t border-wire pt-1.5 text-[11px] font-semibold text-wire-tertiary">
-      <span className="font-bold text-wire-secondary">{costUsd === null ? "—" : formatUsd(costUsd)}</span>
+      <span className="font-bold text-wire-secondary">{exactCostUsd === null ? "—" : formatUsd(exactCostUsd)}</span>
       <span className="text-wire-muted">·</span>
       <span>
         {formatTokens(usage.inputTokens)} in{cached} / {formatTokens(usage.outputTokens)} out{reasoning}

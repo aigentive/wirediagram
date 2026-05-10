@@ -218,5 +218,6 @@ When Turso/libSQL is active, the playground keeps the canonical JSON documents i
 `wire_user_events`, `wire_documents`, `wire_versions`, and
 `wire_chat_messages`. User OpenAI keys are stored encrypted in
 `wire_user_openai_keys`, with a KV copy kept for compatibility. Chat message rows
-include model, cost, and token-count columns so LLM usage accounting can be
-queried without reading the canonical JSON blob.
+include model, exact `cost_nano_usd`, display `cost_usd`, and token-count
+columns so LLM usage accounting can be queried without reading the canonical JSON
+blob.

@@ -34,6 +34,7 @@ export type StoredChatMessage = {
   content: string;
   model: string | null;
   costUsd: number | null;
+  costNanoUsd: number | null;
   inputTokens: number | null;
   cachedInputTokens: number | null;
   outputTokens: number | null;
@@ -337,7 +338,7 @@ function storedWireChatMessages(wire: StoredWire): StoredChatMessage[] {
 export function makeChatMessage(
   role: "user" | "assistant",
   content: string,
-  options: { model?: string | null; costUsd?: number | null; usage?: StoredChatUsage | null } = {}
+  options: { model?: string | null; costUsd?: number | null; costNanoUsd?: number | null; usage?: StoredChatUsage | null } = {}
 ): StoredChatMessage {
   return {
     id: randomUUID(),
@@ -345,6 +346,7 @@ export function makeChatMessage(
     content,
     model: options.model ?? null,
     costUsd: options.costUsd ?? null,
+    costNanoUsd: options.costNanoUsd ?? null,
     inputTokens: options.usage?.inputTokens ?? null,
     cachedInputTokens: options.usage?.cachedInputTokens ?? null,
     outputTokens: options.usage?.outputTokens ?? null,

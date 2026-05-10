@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS wire_chat_messages (
   content TEXT NOT NULL,
   model TEXT,
   cost_usd REAL,
+  cost_nano_usd INTEGER,
   input_tokens INTEGER,
   cached_input_tokens INTEGER,
   output_tokens INTEGER,
@@ -159,6 +160,7 @@ CREATE INDEX IF NOT EXISTS wire_user_openai_keys_updated_desc
   ON wire_user_openai_keys (updated_at DESC);
 `);
   await ensureColumn(db, "wire_chat_messages", "input_tokens", "INTEGER");
+  await ensureColumn(db, "wire_chat_messages", "cost_nano_usd", "INTEGER");
   await ensureColumn(db, "wire_chat_messages", "cached_input_tokens", "INTEGER");
   await ensureColumn(db, "wire_chat_messages", "output_tokens", "INTEGER");
   await ensureColumn(db, "wire_chat_messages", "reasoning_tokens", "INTEGER");

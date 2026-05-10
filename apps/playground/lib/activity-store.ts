@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getDbClient, shouldUseDatabaseStore } from "@/lib/db/client";
+import { NANO_USD_PER_USD } from "@/lib/llm-cost";
 
 type ActivityUser = {
   key: string;
@@ -33,6 +34,7 @@ export type ActivityChatMessage = {
   content: string;
   model?: string | null;
   costUsd?: number | null;
+  costNanoUsd?: number | null;
   inputTokens?: number | null;
   cachedInputTokens?: number | null;
   outputTokens?: number | null;
@@ -213,6 +215,7 @@ INSERT OR IGNORE INTO wire_chat_messages (
   content,
   model,
   cost_usd,
+  cost_nano_usd,
   input_tokens,
   cached_input_tokens,
   output_tokens,
@@ -220,7 +223,7 @@ INSERT OR IGNORE INTO wire_chat_messages (
   total_tokens,
   created_at
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `,
       args: [
         message.id ?? randomUUID(),
@@ -231,7 +234,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         message.role,
         content,
         message.model ?? null,
-        typeof message.costUsd === "number" && Number.isFinite(message.costUsd) ? message.costUsd : null,
+        safeNullableCostUsd(message.costUsd, message.costNanoUsd),
+        safeNullableInteger(message.costNanoUsd),
         safeNullableInteger(message.inputTokens),
         safeNullableInteger(message.cachedInputTokens),
         safeNullableInteger(message.outputTokens),
@@ -249,4 +253,10 @@ function safeInteger(value: number): number {
 
 function safeNullableInteger(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : null;
+}
+
+function safeNullableCostUsd(costUsd: number | null | undefined, costNanoUsd: number | null | undefined): number | null {
+  if (typeof costUsd === "number" && Number.isFinite(costUsd)) return costUsd;
+  const nanoUsd = safeNullableInteger(costNanoUsd);
+  return nanoUsd === null ? null : nanoUsd / NANO_USD_PER_USD;
 }

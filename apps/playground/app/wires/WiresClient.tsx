@@ -101,6 +101,7 @@ type StoredChatMessage = {
   content: string;
   model: string | null;
   costUsd: number | null;
+  costNanoUsd: number | null;
   createdAt: string;
 };
 

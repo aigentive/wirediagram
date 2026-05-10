@@ -20,6 +20,12 @@ import {
   resolveClientIp
 } from "@/lib/ip-quota-store";
 import { getUserOpenAIKey } from "@/lib/user-openai-key-store";
+import {
+  addLlmCosts,
+  computeLlmCost,
+  type LlmCost,
+  type LlmUsage as Usage
+} from "@/lib/llm-cost";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,20 +72,6 @@ type RawUsage = {
   total_tokens?: number;
   input_tokens_details?: { cached_tokens?: number };
   output_tokens_details?: { reasoning_tokens?: number };
-};
-
-type Usage = {
-  inputTokens: number;
-  cachedInputTokens: number;
-  outputTokens: number;
-  reasoningTokens: number;
-  totalTokens: number;
-};
-
-const MODEL_PRICING: Record<string, { input: number; cached?: number; output: number }> = {
-  "gpt-5.5":      { input: 5    / 1_000_000,                                output: 30  / 1_000_000 },
-  "gpt-5.4":      { input: 2.5  / 1_000_000,                                output: 15  / 1_000_000 },
-  "gpt-5.4-mini": { input: 0.75 / 1_000_000, cached: 0.075 / 1_000_000,     output: 4.5 / 1_000_000 }
 };
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
@@ -378,6 +370,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
     saved: { diagram: WireDiagram; validation: ValidationResult; summary?: unknown };
     response: OpenAIResponse;
     usage: Usage | null;
+    cost: LlmCost | null;
   };
   try {
     run = await runValidatedDiagramAgent({
@@ -397,7 +390,8 @@ async function handlePost(req: NextRequest): Promise<Response> {
 
   const responseModel = typeof run.response.model === "string" ? run.response.model : requestedModel;
   const usage = run.usage;
-  const costUsd = usage ? computeCost(usage, responseModel) : null;
+  const costUsd = run.cost?.costUsd ?? null;
+  const costNanoUsd = run.cost?.costNanoUsd ?? null;
 
   if (ipHash) {
     try {
@@ -430,6 +424,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
           content: assistantMessage,
           model: responseModel,
           costUsd,
+          costNanoUsd,
           inputTokens: usage?.inputTokens ?? null,
           cachedInputTokens: usage?.cachedInputTokens ?? null,
           outputTokens: usage?.outputTokens ?? null,
@@ -447,6 +442,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
     model: responseModel,
     usage,
     costUsd,
+    costNanoUsd,
     message: assistantMessage
   });
 }
@@ -483,11 +479,14 @@ async function runValidatedDiagramAgent({
   saved: { diagram: WireDiagram; validation: ValidationResult; summary?: unknown };
   response: OpenAIResponse;
   usage: Usage | null;
+  cost: LlmCost | null;
 }> {
   let nextInput = input;
   let previousResponseId: string | undefined;
   let requiredTool: "mcp_wire_validate_diagram" | "mcp_wire_save_diagram" = "mcp_wire_validate_diagram";
   let usageTotal: Usage | null = null;
+  let costTotal: LlmCost | null = null;
+  let costComplete = true;
   let lastResponse: OpenAIResponse | null = null;
   let lastValidChanged: { diagram: WireDiagram; validation: ValidationResult } | null = null;
 
@@ -501,7 +500,16 @@ async function runValidatedDiagramAgent({
       toolChoice: requiredTool
     });
     lastResponse = response;
-    usageTotal = addUsage(usageTotal, parseUsage(response.usage));
+    const responseUsage = parseUsage(response.usage);
+    usageTotal = addUsage(usageTotal, responseUsage);
+    if (responseUsage) {
+      const responseCost = computeLlmCost(responseUsage, response.model ?? model);
+      if (responseCost) {
+        costTotal = addLlmCosts(costTotal, responseCost);
+      } else {
+        costComplete = false;
+      }
+    }
 
     const toolCall = findToolCall(response.output ?? [], requiredTool);
     if (!toolCall) {
@@ -549,7 +557,7 @@ async function runValidatedDiagramAgent({
     if (sameGraph(saved.diagram, currentDiagram)) {
       if (lastValidChanged) {
         const hostSaved = saveValidatedDiagramFromHost(lastValidChanged, "Saved validated Wire diagram.", traces);
-        return { saved: hostSaved, response, usage: usageTotal };
+        return { saved: hostSaved, response, usage: usageTotal, cost: costComplete ? costTotal : null };
       }
       nextInput = [
         makeFunctionCallOutput(toolCall, {
@@ -576,18 +584,18 @@ async function runValidatedDiagramAgent({
       continue;
     }
 
-    return { saved, response, usage: usageTotal };
+    return { saved, response, usage: usageTotal, cost: costComplete ? costTotal : null };
   }
 
   if (lastValidChanged && lastResponse) {
     const hostSaved = saveValidatedDiagramFromHost(lastValidChanged, "Saved validated Wire diagram.", traces);
-    return { saved: hostSaved, response: lastResponse, usage: usageTotal };
+    return { saved: hostSaved, response: lastResponse, usage: usageTotal, cost: costComplete ? costTotal : null };
   }
 
   if (lastResponse) {
     const fallback = fallbackChangedDiagram(currentDiagram);
     const hostSaved = saveValidatedDiagramFromHost(fallback, "Saved a validated fallback Wire diagram.", traces);
-    return { saved: hostSaved, response: lastResponse, usage: usageTotal };
+    return { saved: hostSaved, response: lastResponse, usage: usageTotal, cost: costComplete ? costTotal : null };
   }
 
   throw new Error("The model did not produce a valid saved diagram after validation.");
@@ -618,25 +626,6 @@ function addUsage(left: Usage | null, right: Usage | null): Usage | null {
 
 function numberOr(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function computeCost(usage: Usage, model: string): number | null {
-  const rate = findPricing(model);
-  if (!rate) return null;
-  const cached = Math.min(usage.cachedInputTokens, usage.inputTokens);
-  const fresh = usage.inputTokens - cached;
-  const cachedRate = rate.cached ?? rate.input;
-  return fresh * rate.input + cached * cachedRate + usage.outputTokens * rate.output;
-}
-
-function findPricing(model: string): { input: number; cached?: number; output: number } | null {
-  let bestKey: string | null = null;
-  for (const key of Object.keys(MODEL_PRICING)) {
-    if (model === key || model.startsWith(`${key}-`)) {
-      if (bestKey === null || key.length > bestKey.length) bestKey = key;
-    }
-  }
-  return bestKey ? MODEL_PRICING[bestKey] : null;
 }
 
 function resolveMaxOutputTokens(): number {

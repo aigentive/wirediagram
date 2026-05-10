@@ -23,6 +23,7 @@ type ChatResponseBody = {
   message?: unknown;
   model?: unknown;
   costUsd?: unknown;
+  costNanoUsd?: unknown;
   validation?: unknown;
   traces?: unknown;
   error?: unknown;
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
         : "Wire diagram updated.";
     const model = typeof data.model === "string" ? data.model : null;
     const costUsd = typeof data.costUsd === "number" ? data.costUsd : null;
+    const costNanoUsd = typeof data.costNanoUsd === "number" ? data.costNanoUsd : null;
     const usage = parseUsage(data.usage);
     const saved = await saveUserWire({
       user,
@@ -112,7 +114,7 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
       summary: assistantMessage,
       chatMessages: [
         makeChatMessage("user", payload.message.trim()),
-        makeChatMessage("assistant", assistantMessage, { model, costUsd, usage })
+        makeChatMessage("assistant", assistantMessage, { model, costUsd, costNanoUsd, usage })
       ]
     });
 
