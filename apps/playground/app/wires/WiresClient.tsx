@@ -2242,7 +2242,37 @@ function ChatBubble({ message }: { message: ChatMessage }) {
 
 function AssistantCostInfo({ cost }: { cost: ChatCostInfo }) {
   const [open, setOpen] = useState(false);
+  const [popoverPosition, setPopoverPosition] = useState({ left: 8, top: 0, width: 256 });
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
   const costUsd = costUsdFromInfo(cost);
+
+  const updatePopoverPosition = useCallback(() => {
+    const button = buttonRef.current;
+    if (!button) return;
+    const margin = 8;
+    const rect = button.getBoundingClientRect();
+    const width = Math.min(256, Math.max(180, window.innerWidth - margin * 2));
+    const left = Math.min(
+      Math.max(rect.right - width, margin),
+      window.innerWidth - width - margin
+    );
+    setPopoverPosition({
+      left,
+      top: rect.bottom + 6,
+      width
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePopoverPosition();
+    window.addEventListener("resize", updatePopoverPosition);
+    window.addEventListener("scroll", updatePopoverPosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePopoverPosition);
+      window.removeEventListener("scroll", updatePopoverPosition, true);
+    };
+  }, [open, updatePopoverPosition]);
 
   return (
     <span
@@ -2258,8 +2288,12 @@ function AssistantCostInfo({ cost }: { cost: ChatCostInfo }) {
       }}
     >
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => {
+          updatePopoverPosition();
+          setOpen((current) => !current);
+        }}
         className="grid h-4 w-4 place-items-center rounded-full border border-wire bg-wire-surface text-wire-tertiary transition-colors hover:text-wire-primary focus:outline-none focus:ring-2 focus:ring-wire-accent/30"
         aria-label="AI response cost"
         aria-expanded={open}
@@ -2268,7 +2302,14 @@ function AssistantCostInfo({ cost }: { cost: ChatCostInfo }) {
         <Info size={10} strokeWidth={2} />
       </button>
       {open ? (
-        <span className="absolute left-0 top-5 z-40 w-64 rounded-md border border-wire bg-wire-surface p-3 text-[11px] font-semibold normal-case tracking-normal text-wire-secondary shadow-xl">
+        <span
+          className="fixed z-50 rounded-md border border-wire bg-wire-surface p-3 text-[11px] font-semibold normal-case tracking-normal text-wire-secondary shadow-xl"
+          style={{
+            left: popoverPosition.left,
+            top: popoverPosition.top,
+            width: popoverPosition.width
+          }}
+        >
           <span className="mb-2 flex items-center justify-between gap-3">
             <span className="text-wire-tertiary">Cost</span>
             <span className="wire-tabular text-[12px] font-bold text-wire-primary">{formatUsd(costUsd)}</span>
