@@ -33,12 +33,13 @@ import {
 } from "@aigentive/wire-react";
 import { INITIAL_PLAYGROUND_DIAGRAM } from "./initial-diagram";
 import type { WireSummary } from "@/lib/wires-store";
+import { DEFAULT_LLM_MODEL, type LlmModelId } from "@/lib/llm-cost";
 import { EditorHeader } from "../_components/wire-brand";
 import { DotPillStatic, StatusPill as StatusPillBase } from "../_components/wire-pill";
 import {
   ChatBubble as SharedChatBubble,
   ChatComposer,
-  InlineCode,
+  ChatModelFooter,
   StoredKeyFooterPanel,
   UserLockPanel
 } from "../_components/wire-chat";
@@ -141,6 +142,7 @@ export function PlaygroundClient({
   const [totalCostUsd, setTotalCostUsd] = useState(0);
   const [totalTokens, setTotalTokens] = useState(0);
   const [lastModel, setLastModel] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<LlmModelId>(DEFAULT_LLM_MODEL);
   const [lockReason, setLockReason] = useState<LockReason>(null);
   const [storedKey, setStoredKey] = useState<StoredKeyMeta>({ configured: false, last4: null });
   const [cloudWires, setCloudWires] = useState<WireSummary[]>(initialWires);
@@ -283,7 +285,8 @@ export function PlaygroundClient({
           body: JSON.stringify({
             message: trimmed,
             diagram,
-            history: messages
+            history: messages,
+            model: selectedModel
           })
         });
         const data = await readChatResponse(res);
@@ -343,7 +346,7 @@ export function PlaygroundClient({
         setBusy(false);
       }
     },
-    [acceptDiagram, busy, diagram, input, lockReason, messages, storedKey.configured]
+    [acceptDiagram, busy, diagram, input, lockReason, messages, selectedModel, storedKey.configured]
   );
 
   const openGooglePopup = useCallback(async () => {
@@ -577,7 +580,13 @@ export function PlaygroundClient({
             onSubmit={() => void submit()}
             busy={busy}
             disabled={Boolean(lockReason) && !storedKey.configured}
-            footerSlot={<ComposerFooter model={lastModel} />}
+            footerSlot={
+              <ChatModelFooter
+                model={selectedModel}
+                onModelChange={setSelectedModel}
+                disabled={busy}
+              />
+            }
           />
         </aside>
       </main>
@@ -813,24 +822,6 @@ function CostPill({
         <span className="hidden text-wire-tertiary sm:inline">· {model}</span>
       ) : null}
     </DotPillStatic>
-  );
-}
-
-function ComposerFooter({ model }: { model: string | null }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-wire-tertiary">
-      <span className="wire-eyebrow wire-eyebrow--muted">Wire MCP</span>
-      <InlineCode>local</InlineCode>
-      <span className="text-wire-muted">·</span>
-      <InlineCode>{model ?? "gpt-5.4-mini"}</InlineCode>
-      <span className="ml-auto flex items-center gap-1.5">
-        <InlineCode>↵</InlineCode>
-        send
-        <span className="text-wire-muted">·</span>
-        <InlineCode>⇧↵</InlineCode>
-        newline
-      </span>
-    </div>
   );
 }
 

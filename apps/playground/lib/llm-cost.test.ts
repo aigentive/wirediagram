@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeLlmCost, findModelPricing } from "./llm-cost";
+import { computeLlmCost, findModelPricing, isSupportedLlmModel } from "./llm-cost";
 
 describe("computeLlmCost", () => {
   it("uses exact gpt-5.4-mini standard rates with cached input discounts", () => {
@@ -42,5 +42,11 @@ describe("computeLlmCost", () => {
     expect(findModelPricing("gpt-5.4-pro-2026-03-05")).toEqual(
       findModelPricing("gpt-5.4-pro")
     );
+  });
+
+  it("restricts user-selectable models to configured pricing ids", () => {
+    expect(isSupportedLlmModel("gpt-5.4-mini")).toBe(true);
+    expect(isSupportedLlmModel("gpt-5.4-mini-2026-03-17")).toBe(false);
+    expect(isSupportedLlmModel("unknown")).toBe(false);
   });
 });

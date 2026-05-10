@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { parseWireDiagram, renderToSvg, toMermaid, validate, type ValidationResult, type WireDiagram } from "@aigentive/wire-core";
 import type { WireAction, WireNode } from "@aigentive/wire-core";
+import { DEFAULT_LLM_MODEL, type LlmModelId } from "@/lib/llm-cost";
 import {
   CodeBlock as WireCodeBlock,
   WireCanvas,
@@ -65,7 +66,7 @@ import {
 import {
   ChatBubble as SharedChatBubble,
   ChatComposer,
-  InlineCode,
+  ChatModelFooter,
   StoredKeyFooterPanel,
   UserLockPanel
 } from "../_components/wire-chat";
@@ -233,6 +234,7 @@ export function WiresClient({
   const [messages, setMessages] = useState<ChatMessage[]>([assistantIntro()]);
   const [traces, setTraces] = useState<ToolTrace[]>([]);
   const [input, setInput] = useState("Build me a random AI support workflow wireframe.");
+  const [selectedModel, setSelectedModel] = useState<LlmModelId>(DEFAULT_LLM_MODEL);
   const [loadingWireId, setLoadingWireId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -822,7 +824,8 @@ export function WiresClient({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             message: trimmed,
-            history: messages
+            history: messages,
+            model: selectedModel
           })
         });
         const data = (await readJsonResponse<ChatResponse & { code?: string }>(res));
@@ -853,7 +856,7 @@ export function WiresClient({
         setBusy(false);
       }
     },
-    [busy, input, messages, openAIKeyLoading, storedOpenAIKey.configured, workspace]
+    [busy, input, messages, openAIKeyLoading, selectedModel, storedOpenAIKey.configured, workspace]
   );
 
   const hasRightPanel = Boolean(workspace && rightPanel !== "closed");
@@ -1196,7 +1199,13 @@ export function WiresClient({
                   busy={busy}
                   disabled={openAIKeyLoading || chatNeedsOpenAIKey}
                   placeholder={chatNeedsOpenAIKey ? "Add an OpenAI API key to start chatting" : undefined}
-                  footerSlot={<ComposerFooter />}
+                  footerSlot={
+                    <ChatModelFooter
+                      model={selectedModel}
+                      onModelChange={setSelectedModel}
+                      disabled={busy || openAIKeyLoading || chatNeedsOpenAIKey}
+                    />
+                  }
                 />
               </aside>
             ) : null}
@@ -2031,24 +2040,6 @@ function SegmentedButton({
 function ChatBubble({ message }: { message: ChatMessage }) {
   return (
     <SharedChatBubble role={message.role}>{message.content}</SharedChatBubble>
-  );
-}
-
-function ComposerFooter() {
-  return (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-wire-tertiary">
-      <span className="wire-eyebrow wire-eyebrow--muted">Wire MCP</span>
-      <InlineCode>local</InlineCode>
-      <span className="text-wire-muted">·</span>
-      <InlineCode>gpt-5.4-mini</InlineCode>
-      <span className="ml-auto flex items-center gap-1.5">
-        <InlineCode>↵</InlineCode>
-        send
-        <span className="text-wire-muted">·</span>
-        <InlineCode>⇧↵</InlineCode>
-        newline
-      </span>
-    </div>
   );
 }
 

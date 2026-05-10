@@ -23,6 +23,9 @@ import { getUserOpenAIKey } from "@/lib/user-openai-key-store";
 import {
   addLlmCosts,
   computeLlmCost,
+  DEFAULT_LLM_MODEL,
+  isSupportedLlmModel,
+  LLM_MODEL_IDS,
   type LlmCost,
   type LlmUsage as Usage
 } from "@/lib/llm-cost";
@@ -301,9 +304,22 @@ async function handlePost(req: NextRequest): Promise<Response> {
     message?: unknown;
     diagram?: unknown;
     history?: unknown;
+    model?: unknown;
   };
   if (typeof payload.message !== "string" || payload.message.trim().length === 0) {
     return jsonResponse({ error: "Message is required." }, 400);
+  }
+
+  const requestedModel = resolveRequestedModel(payload.model);
+  if (!requestedModel) {
+    return jsonResponse(
+      {
+        error: `Unsupported model. Choose one of: ${LLM_MODEL_IDS.join(", ")}.`,
+        code: "unsupported-model",
+        models: LLM_MODEL_IDS
+      },
+      400
+    );
   }
 
   let currentDiagram: WireDiagram;
@@ -365,7 +381,6 @@ async function handlePost(req: NextRequest): Promise<Response> {
   const traces: ToolTrace[] = [];
   traces.push(runGetDiagramJsonTrace(currentDiagram));
 
-  const requestedModel = process.env.OPENAI_MODEL ?? "gpt-5.4-mini";
   let run: {
     saved: { diagram: WireDiagram; validation: ValidationResult; summary?: unknown };
     response: OpenAIResponse;
@@ -626,6 +641,14 @@ function addUsage(left: Usage | null, right: Usage | null): Usage | null {
 
 function numberOr(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function resolveRequestedModel(model: unknown): string | null {
+  const candidate =
+    typeof model === "string" && model.trim().length > 0
+      ? model.trim()
+      : process.env.OPENAI_MODEL ?? DEFAULT_LLM_MODEL;
+  return isSupportedLlmModel(candidate) ? candidate : null;
 }
 
 function resolveMaxOutputTokens(): number {

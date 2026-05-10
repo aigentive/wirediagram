@@ -19,14 +19,24 @@ export type ModelPricing = {
 
 export const NANO_USD_PER_USD = 1_000_000_000;
 
-export const MODEL_PRICING: Record<string, ModelPricing> = {
-  "gpt-5.5-pro": { inputNanoUsdPerToken: 30_000, outputNanoUsdPerToken: 180_000 },
-  "gpt-5.5": {
-    inputNanoUsdPerToken: 5_000,
-    cachedInputNanoUsdPerToken: 500,
-    outputNanoUsdPerToken: 30_000
-  },
-  "gpt-5.4-pro": { inputNanoUsdPerToken: 30_000, outputNanoUsdPerToken: 180_000 },
+export const LLM_MODEL_IDS = [
+  "gpt-5.4-mini",
+  "gpt-5.4-nano",
+  "gpt-5.4",
+  "gpt-5.4-pro",
+  "gpt-5.5",
+  "gpt-5.5-pro",
+  "gpt-5-mini",
+  "gpt-5-nano",
+  "gpt-5",
+  "gpt-5-pro"
+] as const;
+
+export type LlmModelId = typeof LLM_MODEL_IDS[number];
+
+export const DEFAULT_LLM_MODEL: LlmModelId = "gpt-5.4-mini";
+
+export const MODEL_PRICING: Record<LlmModelId, ModelPricing> = {
   "gpt-5.4-mini": {
     inputNanoUsdPerToken: 750,
     cachedInputNanoUsdPerToken: 75,
@@ -42,7 +52,13 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
     cachedInputNanoUsdPerToken: 250,
     outputNanoUsdPerToken: 15_000
   },
-  "gpt-5-pro": { inputNanoUsdPerToken: 15_000, outputNanoUsdPerToken: 120_000 },
+  "gpt-5.4-pro": { inputNanoUsdPerToken: 30_000, outputNanoUsdPerToken: 180_000 },
+  "gpt-5.5-pro": { inputNanoUsdPerToken: 30_000, outputNanoUsdPerToken: 180_000 },
+  "gpt-5.5": {
+    inputNanoUsdPerToken: 5_000,
+    cachedInputNanoUsdPerToken: 500,
+    outputNanoUsdPerToken: 30_000
+  },
   "gpt-5-mini": {
     inputNanoUsdPerToken: 250,
     cachedInputNanoUsdPerToken: 25,
@@ -57,7 +73,8 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
     inputNanoUsdPerToken: 1_250,
     cachedInputNanoUsdPerToken: 125,
     outputNanoUsdPerToken: 10_000
-  }
+  },
+  "gpt-5-pro": { inputNanoUsdPerToken: 15_000, outputNanoUsdPerToken: 120_000 }
 };
 
 export function computeLlmCost(usage: LlmUsage, model: string): LlmCost | null {
@@ -92,12 +109,16 @@ export function addLlmCosts(left: LlmCost | null, right: LlmCost | null): LlmCos
 
 export function findModelPricing(model: string): ModelPricing | null {
   let bestKey: string | null = null;
-  for (const key of Object.keys(MODEL_PRICING)) {
+  for (const key of LLM_MODEL_IDS) {
     if (model === key || model.startsWith(`${key}-`)) {
       if (bestKey === null || key.length > bestKey.length) bestKey = key;
     }
   }
-  return bestKey ? MODEL_PRICING[bestKey] : null;
+  return bestKey ? MODEL_PRICING[bestKey as LlmModelId] : null;
+}
+
+export function isSupportedLlmModel(model: unknown): model is LlmModelId {
+  return typeof model === "string" && LLM_MODEL_IDS.includes(model as LlmModelId);
 }
 
 function safeTokenCount(value: number): number {

@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
     return Response.json({ error: "Body must be an object." }, { status: 400 });
   }
 
-  const payload = body as { message?: unknown; history?: unknown };
+  const payload = body as { message?: unknown; history?: unknown; model?: unknown };
   if (typeof payload.message !== "string" || payload.message.trim().length === 0) {
     return Response.json({ error: "Message is required." }, { status: 400 });
   }
@@ -85,7 +85,8 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
         body: JSON.stringify({
           message: payload.message,
           diagram: loaded.diagram,
-          history
+          history,
+          model: payload.model
         })
       }) as NextRequest
     );

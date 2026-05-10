@@ -1,6 +1,7 @@
 import { Loader2, Send } from "lucide-react";
 import { useLayoutEffect, useRef } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { LLM_MODEL_IDS, type LlmModelId } from "@/lib/llm-cost";
 
 const TEXTAREA_MIN_HEIGHT = 48;
 const TEXTAREA_MAX_HEIGHT = 250;
@@ -93,5 +94,46 @@ export function InlineCode({ children }: { children: ReactNode }) {
     <code className="rounded-sm bg-wire-sunken px-1 py-0.5 font-mono text-[11px] text-wire-primary">
       {children}
     </code>
+  );
+}
+
+export function ChatModelFooter({
+  model,
+  onModelChange,
+  disabled = false
+}: {
+  model: LlmModelId;
+  onModelChange: (model: LlmModelId) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-wire-tertiary">
+      <label className="flex min-w-0 items-center gap-1.5">
+        <span className="wire-eyebrow wire-eyebrow--muted">Model:</span>
+        <select
+          value={model}
+          onChange={(event) => onModelChange(event.currentTarget.value as LlmModelId)}
+          disabled={disabled}
+          className="h-6 max-w-[180px] rounded-md border border-wire bg-wire-page px-2 font-mono text-[11px] font-bold text-wire-primary outline-none transition-colors hover:border-wire-strong focus:border-wire-focus disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label="Model"
+        >
+          {LLM_MODEL_IDS.map((modelId) => (
+            <option key={modelId} value={modelId}>
+              {modelId}
+            </option>
+          ))}
+        </select>
+      </label>
+      <span className="text-wire-muted">·</span>
+      <span className="wire-eyebrow wire-eyebrow--muted">Wire MCP</span>
+      <InlineCode>local</InlineCode>
+      <span className="ml-auto flex items-center gap-1.5">
+        <InlineCode>↵</InlineCode>
+        send
+        <span className="text-wire-muted">·</span>
+        <InlineCode>⇧↵</InlineCode>
+        newline
+      </span>
+    </div>
   );
 }
