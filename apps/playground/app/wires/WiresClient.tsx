@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import { parseWireDiagram, renderToSvg, toMermaid, validate, type ValidationResult, type WireDiagram } from "@aigentive/wire-core";
 import type { WireAction, WireNode } from "@aigentive/wire-core";
-import { DEFAULT_LLM_MODEL, type LlmModelId } from "@/lib/llm-cost";
+import { DEFAULT_LLM_MODEL, NANO_USD_PER_USD, type LlmModelId } from "@/lib/llm-cost";
 import {
   CodeBlock as WireCodeBlock,
   WireCanvas,
@@ -116,12 +116,29 @@ type StoredChatMessage = {
   model: string | null;
   costUsd: number | null;
   costNanoUsd: number | null;
+  inputTokens: number | null;
+  cachedInputTokens: number | null;
+  outputTokens: number | null;
+  reasoningTokens: number | null;
+  totalTokens: number | null;
   createdAt: string;
+};
+
+type ChatCostInfo = {
+  model: string | null;
+  costUsd: number | null;
+  costNanoUsd: number | null;
+  inputTokens: number | null;
+  cachedInputTokens: number | null;
+  outputTokens: number | null;
+  reasoningTokens: number | null;
+  totalTokens: number | null;
 };
 
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  cost?: ChatCostInfo | null;
 };
 
 type PendingOpenAIChat = {
@@ -211,6 +228,16 @@ type ChatResponse = {
   error?: string;
   traces?: ToolTrace[];
   freeQuota?: FreeQuotaMeta | null;
+  model?: string | null;
+  costUsd?: number | null;
+  costNanoUsd?: number | null;
+  usage?: {
+    inputTokens?: number | null;
+    cachedInputTokens?: number | null;
+    outputTokens?: number | null;
+    reasoningTokens?: number | null;
+    totalTokens?: number | null;
+  } | null;
 };
 
 type ShareUrls = {
@@ -508,7 +535,7 @@ export function WiresClient({
     setMode("canvas");
     setMessages(
       next.chatMessages.length > 0
-        ? next.chatMessages.map((message) => ({ role: message.role, content: message.content }))
+        ? next.chatMessages.map(chatMessageFromStored)
         : [assistantIntro()]
     );
     setApiError(null);
@@ -849,7 +876,7 @@ export function WiresClient({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             message: trimmed,
-            history,
+            history: history.map(chatMessageForRequest),
             model: effectiveChatModel
           })
         });
@@ -885,7 +912,19 @@ export function WiresClient({
             freeQuota: normalizeFreeQuota(data.freeQuota, current.freeQuota.limit)
           }));
         }
-        setMessages([...nextMessages, { role: "assistant", content: assistantMessage }]);
+        const savedMessages = normalizeChatMessages(data.chatMessages ?? []);
+        setMessages(
+          savedMessages.length > 0
+            ? savedMessages
+            : [
+              ...nextMessages,
+              {
+                role: "assistant",
+                content: assistantMessage,
+                cost: chatCostFromResponse(data)
+              }
+            ]
+        );
         setSaveStatus("saved");
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -2109,9 +2148,160 @@ function SegmentedButton({
   );
 }
 
+function chatMessageForRequest(message: ChatMessage): Pick<ChatMessage, "role" | "content"> {
+  return {
+    role: message.role,
+    content: message.content
+  };
+}
+
+function chatMessageFromStored(message: StoredChatMessage): ChatMessage {
+  return {
+    role: message.role,
+    content: message.content,
+    cost: chatCostFromStored(message)
+  };
+}
+
+function normalizeChatMessages(messages: StoredChatMessage[]): ChatMessage[] {
+  return messages.map(chatMessageFromStored);
+}
+
+function chatCostFromStored(message: StoredChatMessage): ChatCostInfo | null {
+  if (message.role !== "assistant") return null;
+  const cost: ChatCostInfo = {
+    model: message.model,
+    costUsd: message.costUsd,
+    costNanoUsd: message.costNanoUsd,
+    inputTokens: message.inputTokens,
+    cachedInputTokens: message.cachedInputTokens,
+    outputTokens: message.outputTokens,
+    reasoningTokens: message.reasoningTokens,
+    totalTokens: message.totalTokens
+  };
+  return hasChatCostInfo(cost) ? cost : null;
+}
+
+function chatCostFromResponse(data: ChatResponse): ChatCostInfo | null {
+  const cost: ChatCostInfo = {
+    model: data.model ?? null,
+    costUsd: data.costUsd ?? null,
+    costNanoUsd: data.costNanoUsd ?? null,
+    inputTokens: data.usage?.inputTokens ?? null,
+    cachedInputTokens: data.usage?.cachedInputTokens ?? null,
+    outputTokens: data.usage?.outputTokens ?? null,
+    reasoningTokens: data.usage?.reasoningTokens ?? null,
+    totalTokens: data.usage?.totalTokens ?? null
+  };
+  return hasChatCostInfo(cost) ? cost : null;
+}
+
+function hasChatCostInfo(cost: ChatCostInfo): boolean {
+  return Boolean(
+    cost.model ||
+    cost.costUsd !== null ||
+    cost.costNanoUsd !== null ||
+    cost.inputTokens !== null ||
+    cost.cachedInputTokens !== null ||
+    cost.outputTokens !== null ||
+    cost.reasoningTokens !== null ||
+    cost.totalTokens !== null
+  );
+}
+
+function costUsdFromInfo(cost: ChatCostInfo): number | null {
+  if (typeof cost.costUsd === "number" && Number.isFinite(cost.costUsd)) return cost.costUsd;
+  if (typeof cost.costNanoUsd === "number" && Number.isFinite(cost.costNanoUsd)) {
+    return cost.costNanoUsd / NANO_USD_PER_USD;
+  }
+  return null;
+}
+
+function formatUsd(value: number | null): string {
+  if (value === null) return "--";
+  if (value === 0) return "$0.00";
+  if (value < 0.0001) return `<$0.0001`;
+  if (value < 0.01) return `$${value.toFixed(5)}`;
+  return `$${value.toFixed(4)}`;
+}
+
+function formatTokenCount(value: number | null): string {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)).toLocaleString() : "--";
+}
+
 function ChatBubble({ message }: { message: ChatMessage }) {
+  const headingAddon =
+    message.role === "assistant" && message.cost ? (
+      <AssistantCostInfo cost={message.cost} />
+    ) : null;
+
   return (
-    <SharedChatBubble role={message.role}>{message.content}</SharedChatBubble>
+    <SharedChatBubble role={message.role} headingAddon={headingAddon}>{message.content}</SharedChatBubble>
+  );
+}
+
+function AssistantCostInfo({ cost }: { cost: ChatCostInfo }) {
+  const [open, setOpen] = useState(false);
+  const costUsd = costUsdFromInfo(cost);
+
+  return (
+    <span
+      className="relative inline-flex"
+      onBlur={(event) => {
+        const nextFocus = event.relatedTarget;
+        if (!(nextFocus instanceof Node) || !event.currentTarget.contains(nextFocus)) {
+          setOpen(false);
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="grid h-4 w-4 place-items-center rounded-full border border-wire bg-wire-surface text-wire-tertiary transition-colors hover:text-wire-primary focus:outline-none focus:ring-2 focus:ring-wire-accent/30"
+        aria-label="AI response cost"
+        aria-expanded={open}
+        title="AI response cost"
+      >
+        <Info size={10} strokeWidth={2} />
+      </button>
+      {open ? (
+        <span className="absolute left-0 top-5 z-40 w-64 rounded-md border border-wire bg-wire-surface p-3 text-[11px] font-semibold normal-case tracking-normal text-wire-secondary shadow-xl">
+          <span className="mb-2 flex items-center justify-between gap-3">
+            <span className="text-wire-tertiary">Cost</span>
+            <span className="wire-tabular text-[12px] font-bold text-wire-primary">{formatUsd(costUsd)}</span>
+          </span>
+          <span className="grid gap-1.5">
+            <span className="flex items-center justify-between gap-3">
+              <span className="text-wire-tertiary">Model</span>
+              <span className="max-w-[150px] truncate text-right text-wire-primary">{cost.model ?? "--"}</span>
+            </span>
+            <span className="flex items-center justify-between gap-3">
+              <span className="text-wire-tertiary">Input tokens</span>
+              <span className="wire-tabular text-wire-primary">{formatTokenCount(cost.inputTokens)}</span>
+            </span>
+            <span className="flex items-center justify-between gap-3">
+              <span className="text-wire-tertiary">Cached input</span>
+              <span className="wire-tabular text-wire-primary">{formatTokenCount(cost.cachedInputTokens)}</span>
+            </span>
+            <span className="flex items-center justify-between gap-3">
+              <span className="text-wire-tertiary">Output tokens</span>
+              <span className="wire-tabular text-wire-primary">{formatTokenCount(cost.outputTokens)}</span>
+            </span>
+            <span className="flex items-center justify-between gap-3">
+              <span className="text-wire-tertiary">Reasoning tokens</span>
+              <span className="wire-tabular text-wire-primary">{formatTokenCount(cost.reasoningTokens)}</span>
+            </span>
+            <span className="flex items-center justify-between gap-3 border-t border-wire pt-1.5">
+              <span className="text-wire-tertiary">Total tokens</span>
+              <span className="wire-tabular text-wire-primary">{formatTokenCount(cost.totalTokens)}</span>
+            </span>
+          </span>
+        </span>
+      ) : null}
+    </span>
   );
 }
 

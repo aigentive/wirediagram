@@ -4,11 +4,13 @@ import { ChatRoleLabel, type ChatRole } from "./ChatRoleLabel";
 export function ChatBubble({
   role,
   children,
-  cost
+  cost,
+  headingAddon
 }: {
   role: ChatRole;
   children: ReactNode;
   cost?: ReactNode;
+  headingAddon?: ReactNode;
 }) {
   const assistant = role === "assistant";
   const wrapperClass = assistant
@@ -26,7 +28,7 @@ export function ChatBubble({
       };
   return (
     <div className={wrapperClass}>
-      <ChatRoleLabel role={role} />
+      <ChatRoleLabel role={role}>{headingAddon}</ChatRoleLabel>
       <div className={bubbleClass} style={userStyle}>
         {children}
         {cost ?? null}
