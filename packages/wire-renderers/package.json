@@ -1,6 +1,6 @@
 {
   "name": "@aigentive/wire-renderers",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Wire — server/static renderers and framework-neutral adapter output.",
   "license": "Apache-2.0",
   "type": "module",

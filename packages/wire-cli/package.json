@@ -1,6 +1,6 @@
 {
   "name": "@aigentive/wire-cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Wire CLI — init, add, export.",
   "license": "Apache-2.0",
   "type": "module",
@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@aigentive/wire-core": "^1.0.2",
-    "@aigentive/wire-renderers": "^1.0.1"
+    "@aigentive/wire-renderers": "^1.0.2"
   },
   "devDependencies": {
     "tsx": "^4.19.2"
