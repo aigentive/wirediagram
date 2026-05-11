@@ -31,8 +31,8 @@ LLMs and agents struggle with diagrams: they emit Mermaid blobs that almost rend
 
 ```bash
 # clone + install
-git clone https://github.com/aigentive/wire.git
-cd wire
+git clone https://github.com/aigentive/wirediagram.git
+cd wirediagram
 npm install
 npm run build
 npm test

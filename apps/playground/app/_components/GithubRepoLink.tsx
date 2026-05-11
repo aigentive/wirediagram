@@ -1,4 +1,4 @@
-export const GITHUB_REPO_URL = "https://github.com/aigentive/wire";
+export const GITHUB_REPO_URL = "https://github.com/aigentive/wirediagram";
 
 export function GithubRepoLink({ className = "" }: { className?: string }) {
   return (
