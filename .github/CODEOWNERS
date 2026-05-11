@@ -1,0 +1,3 @@
+# Default reviewers for every PR.
+# Both owners are auto-requested on any change.
+* @adriandemian @lazabogdan
