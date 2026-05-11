@@ -183,7 +183,7 @@ type WireEventSource =
         <p>
           Built-in React components currently emit from <InlineCode>canvas</InlineCode> and{" "}
           <InlineCode>node-list</InlineCode>. The other source labels are reserved for custom cards, panels,
-          workspace wrappers, and programmatic integrations. See <a href="/listen">Listen</a> for the full surface.
+          workspace wrappers, and programmatic integrations. See <a href="/docs/listen">Listen</a> for the full surface.
         </p>
 
         <h2 id="validation">Validation</h2>

@@ -7,20 +7,27 @@ import {
   Check,
   Code2,
   DollarSign,
+  Eye,
   FileJson,
+  Image as ImageIcon,
   Loader2,
   LogIn,
   LogOut,
   MessageSquare,
   Play,
   Plus,
+  Redo2,
   RefreshCcw,
   Search,
   ShieldCheck,
-  UserCheck
+  Undo2,
+  UserCheck,
+  Workflow
 } from "lucide-react";
 import {
   parseWireDiagram,
+  renderToSvg,
+  toMermaid,
   validate,
   type ValidationResult,
   type WireDiagram
@@ -28,8 +35,8 @@ import {
 import {
   WireCanvas,
   WireProvider,
-  WireToolbar,
-  WireValidationPanel
+  WireValidationPanel,
+  useWireHistory
 } from "@aigentive/wire-react";
 import { INITIAL_PLAYGROUND_DIAGRAM } from "./initial-diagram";
 import type { WireSummary } from "@/lib/wires-store";
@@ -90,7 +97,7 @@ type ChatResponse = {
   freeQuota?: FreeQuotaMeta | null;
 };
 
-type JsonMode = "canvas" | "json";
+type JsonMode = "canvas" | "json" | "svg" | "mermaid";
 
 type AuthenticatedUser = {
   email: string;
@@ -157,12 +164,15 @@ export function PlaygroundClient({
   const [cloudWires, setCloudWires] = useState<WireSummary[]>(initialWires);
   const [wireQuery, setWireQuery] = useState("");
   const [creatingWire, setCreatingWire] = useState(false);
+  const [chatOpen, setChatOpen] = useState(true);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const hasUserMessages = messages.some((message) => message.role === "user");
   const usingUserOpenAIKey = storedKey.configured && storedKey.freeQuota.exhausted;
   const effectiveChatModel = usingUserOpenAIKey ? selectedModel : DEFAULT_LLM_MODEL;
 
   const validation = useMemo(() => validate(diagram), [diagram]);
+  const svgSource = useMemo(() => renderToSvg(diagram), [diagram]);
+  const mermaidSource = useMemo(() => toMermaid(diagram), [diagram]);
   const filteredCloudWires = useMemo(() => {
     const q = wireQuery.trim().toLowerCase();
     if (!q) return cloudWires;
@@ -471,8 +481,12 @@ export function PlaygroundClient({
       <main
         className={
           isAuthenticated
-            ? "grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_390px]"
-            : "grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_390px]"
+            ? chatOpen
+              ? "grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_390px]"
+              : "grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)]"
+            : chatOpen
+              ? "grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_390px]"
+              : "grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)]"
         }
       >
         {isAuthenticated && user ? (
@@ -485,30 +499,32 @@ export function PlaygroundClient({
             creatingWire={creatingWire}
           />
         ) : null}
-        <section className="flex min-h-[58vh] min-w-0 flex-col border-b border-slate-200 bg-slate-100 lg:min-h-0 lg:border-b-0 lg:border-r">
-          <div className="flex h-12 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3">
-            <SegmentedButton active={mode === "canvas"} onClick={() => setMode("canvas")} icon={<Play size={14} />}>
-              Canvas
-            </SegmentedButton>
-            <SegmentedButton active={mode === "json"} onClick={() => setMode("json")} icon={<FileJson size={14} />}>
-              JSON
-            </SegmentedButton>
-            <button
-              type="button"
-              onClick={reset}
-              className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-[12px] font-bold text-slate-700 hover:border-slate-300 hover:text-slate-950"
-            >
-              <RefreshCcw size={13} />
-              Reset
-            </button>
-          </div>
+        <WireProvider diagram={diagram} onChange={handleCanvasChange}>
+          <section className="flex min-h-[58vh] min-w-0 flex-col border-b border-wire bg-wire-canvas lg:min-h-0 lg:border-b-0 lg:border-r">
+            <div className="flex h-[50px] shrink-0 items-center gap-2 border-b border-wire px-[18px]">
+              <div className="inline-flex gap-[2px] rounded-lg border border-wire bg-wire-sunken p-[2px]">
+                <SegmentedButton active={mode === "canvas"} onClick={() => setMode("canvas")} icon={<Play size={12} strokeWidth={2} />}>
+                  Canvas
+                </SegmentedButton>
+                <SegmentedButton active={mode === "json"} onClick={() => setMode("json")} icon={<FileJson size={12} strokeWidth={2} />}>
+                  JSON
+                </SegmentedButton>
+                <SegmentedButton active={mode === "svg"} onClick={() => setMode("svg")} icon={<ImageIcon size={12} strokeWidth={2} />}>
+                  SVG
+                </SegmentedButton>
+                <SegmentedButton active={mode === "mermaid"} onClick={() => setMode("mermaid")} icon={<Workflow size={12} strokeWidth={2} />}>
+                  Mermaid
+                </SegmentedButton>
+              </div>
+              <CanvasModeBarRight
+                onReset={reset}
+                onToggleChat={() => setChatOpen((open) => !open)}
+                chatActive={chatOpen}
+              />
+            </div>
 
-          {mode === "canvas" ? (
-            <WireProvider diagram={diagram} onChange={handleCanvasChange}>
+            {mode === "canvas" ? (
               <CanvasFrame>
-                <div className="absolute left-3 top-3 z-10">
-                  <WireToolbar />
-                </div>
                 <div className="absolute right-3 top-3 z-10 w-[min(320px,calc(100%-24px))]">
                   <WireValidationPanel />
                 </div>
@@ -520,35 +536,40 @@ export function PlaygroundClient({
                   style={{ position: "absolute", inset: 0, width: "100%", height: "100%", backgroundColor: "transparent" }}
                 />
               </CanvasFrame>
-            </WireProvider>
-          ) : (
-            <div className="flex min-h-0 flex-1 flex-col bg-wire-code">
-              <div className="flex h-11 shrink-0 items-center gap-2 border-b border-wire px-3">
-                <button
-                  type="button"
-                  onClick={applyJson}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-wire-status-valid px-3 text-[12px] font-bold text-white hover:opacity-90"
-                >
-                  <Check size={14} strokeWidth={1.5} />
-                  Apply
-                </button>
-                {jsonError ? (
-                  <span className="flex min-w-0 items-center gap-1.5 truncate text-[12px] font-semibold text-wire-status-invalid">
-                    <AlertCircle size={13} strokeWidth={1.5} />
-                    {jsonError}
-                  </span>
-                ) : null}
+            ) : mode === "json" ? (
+              <div className="flex min-h-0 flex-1 flex-col bg-wire-code">
+                <div className="flex h-11 shrink-0 items-center gap-2 border-b border-wire px-3">
+                  <button
+                    type="button"
+                    onClick={applyJson}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-md bg-wire-status-valid px-3 text-[12px] font-bold text-white hover:opacity-90"
+                  >
+                    <Check size={14} strokeWidth={1.5} />
+                    Apply
+                  </button>
+                  {jsonError ? (
+                    <span className="flex min-w-0 items-center gap-1.5 truncate text-[12px] font-semibold text-wire-status-invalid">
+                      <AlertCircle size={13} strokeWidth={1.5} />
+                      {jsonError}
+                    </span>
+                  ) : null}
+                </div>
+                <textarea
+                  value={jsonDraft}
+                  onChange={(event) => setJsonDraft(event.target.value)}
+                  spellCheck={false}
+                  className="min-h-0 flex-1 resize-none border-0 bg-wire-code p-4 font-mono text-[12px] leading-[1.55] text-[var(--wire-fg-on-code)] outline-none"
+                />
               </div>
-              <textarea
-                value={jsonDraft}
-                onChange={(event) => setJsonDraft(event.target.value)}
-                spellCheck={false}
-                className="min-h-0 flex-1 resize-none border-0 bg-wire-code p-4 font-mono text-[12px] leading-[1.55] text-[var(--wire-fg-on-code)] outline-none"
-              />
-            </div>
-          )}
-        </section>
+            ) : mode === "svg" ? (
+              <SvgExportPanel source={svgSource} />
+            ) : (
+              <MermaidExportPanel source={mermaidSource} />
+            )}
+          </section>
+        </WireProvider>
 
+        {chatOpen ? (
         <aside className="flex min-h-[42vh] min-w-0 flex-col bg-wire-surface lg:min-h-0">
           <div className="flex h-12 shrink-0 items-center gap-2 border-b border-wire px-4">
             <MessageSquare size={15} strokeWidth={1.5} className="text-wire-tertiary" />
@@ -607,7 +628,99 @@ export function PlaygroundClient({
             }
           />
         </aside>
+        ) : null}
       </main>
+    </div>
+  );
+}
+
+function CanvasModeBarRight({
+  onReset,
+  onToggleChat,
+  chatActive
+}: {
+  onReset: () => void;
+  onToggleChat: () => void;
+  chatActive: boolean;
+}) {
+  const history = useWireHistory();
+  const ghostText =
+    "inline-flex items-center gap-[5px] rounded-md bg-transparent px-2 py-[5px] text-[12px] font-medium text-wire-tertiary transition-colors hover:bg-wire-sunken hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50";
+  const ghostIcon =
+    "grid h-7 w-7 place-items-center rounded-md bg-transparent text-wire-tertiary transition-colors hover:bg-wire-sunken hover:text-wire-primary disabled:cursor-not-allowed disabled:opacity-50";
+  return (
+    <div className="ml-auto flex items-center gap-1">
+      <button
+        type="button"
+        onClick={history.undo}
+        disabled={!history.canUndo}
+        className={ghostIcon}
+        aria-label="Undo"
+        title="Undo"
+      >
+        <Undo2 size={13} strokeWidth={1.75} />
+      </button>
+      <button
+        type="button"
+        onClick={history.redo}
+        disabled={!history.canRedo}
+        className={ghostIcon}
+        aria-label="Redo"
+        title="Redo"
+      >
+        <Redo2 size={13} strokeWidth={1.75} />
+      </button>
+      <span aria-hidden className="mx-1 h-4 w-px bg-wire" />
+      <button type="button" className={ghostText} aria-label="View" title="View">
+        <Eye size={12} strokeWidth={1.75} />
+        View
+      </button>
+      <button
+        type="button"
+        onClick={onToggleChat}
+        className={chatActive ? `${ghostText} bg-wire-sunken text-wire-primary` : ghostText}
+        aria-label={chatActive ? "Hide chat" : "Show chat"}
+        title={chatActive ? "Hide chat" : "Show chat"}
+      >
+        <MessageSquare size={12} strokeWidth={1.75} />
+        Chat
+      </button>
+      <button type="button" onClick={onReset} className={ghostText}>
+        <RefreshCcw size={12} strokeWidth={1.75} />
+        Reset
+      </button>
+    </div>
+  );
+}
+
+function SvgExportPanel({ source }: { source: string }) {
+  const svgDataUrl = source ? `data:image/svg+xml;utf8,${encodeURIComponent(source)}` : null;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col bg-wire-code">
+      <div className="flex min-h-0 flex-[1.2] items-center justify-center overflow-auto border-b border-wire bg-wire-surface p-4">
+        {svgDataUrl ? (
+          <img src={svgDataUrl} alt="Diagram preview" className="block max-h-full max-w-full" />
+        ) : null}
+      </div>
+      <div className="flex h-9 shrink-0 items-center border-b border-wire px-3 text-[11px] font-bold uppercase tracking-[0.08em] text-wire-tertiary">
+        SVG Source
+      </div>
+      <pre className="m-0 min-h-0 flex-1 overflow-auto p-4 font-mono text-[12px] leading-[1.55] text-[var(--wire-fg-on-code)]">
+        <code>{source}</code>
+      </pre>
+    </div>
+  );
+}
+
+function MermaidExportPanel({ source }: { source: string }) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col bg-wire-code">
+      <div className="flex h-9 shrink-0 items-center border-b border-wire px-3 text-[11px] font-bold uppercase tracking-[0.08em] text-wire-tertiary">
+        Mermaid Source
+      </div>
+      <pre className="m-0 min-h-0 flex-1 overflow-auto p-4 font-mono text-[12px] leading-[1.55] text-[var(--wire-fg-on-code)]">
+        <code>{source}</code>
+      </pre>
     </div>
   );
 }
@@ -781,8 +894,8 @@ function SegmentedButton({
       onClick={onClick}
       className={
         active
-          ? "inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-3 text-[12px] font-bold text-white"
-          : "inline-flex h-8 items-center gap-1.5 rounded-md border border-wire bg-wire-surface px-3 text-[12px] font-bold text-wire-secondary hover:border-wire-strong hover:text-wire-primary"
+          ? "inline-flex items-center gap-[6px] rounded-md bg-slate-900 px-[11px] py-[4px] text-[12px] font-semibold text-white shadow-[0_1px_2px_rgba(15,23,42,0.15)]"
+          : "inline-flex items-center gap-[6px] rounded-md bg-transparent px-[11px] py-[4px] text-[12px] font-semibold text-wire-tertiary transition-colors hover:text-wire-primary"
       }
     >
       {icon}

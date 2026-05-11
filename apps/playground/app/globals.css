@@ -226,6 +226,13 @@
   --wire-duration-fast: 120ms;
   --wire-duration-base: 200ms;
   --wire-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Marketing gradient stops — soft atmospheric tints, theme-aware. */
+  --mkt-glow-blue: rgba(37, 99, 235, 0.10);
+  --mkt-glow-blue-strong: rgba(37, 99, 235, 0.16);
+  --mkt-glow-violet: rgba(124, 58, 237, 0.06);
+  --mkt-glow-mint: rgba(45, 212, 191, 0.05);
+  --mkt-fade-edge: rgba(15, 23, 42, 0.06);
 }
 
 .dark {
@@ -284,6 +291,13 @@
   --wire-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --wire-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4),
     0 4px 12px rgba(0, 0, 0, 0.3);
+
+  /* Dark-mode gradient stops — more pronounced for atmosphere. */
+  --mkt-glow-blue: rgba(96, 165, 250, 0.18);
+  --mkt-glow-blue-strong: rgba(96, 165, 250, 0.28);
+  --mkt-glow-violet: rgba(167, 139, 250, 0.14);
+  --mkt-glow-mint: rgba(94, 234, 212, 0.08);
+  --mkt-fade-edge: rgba(255, 255, 255, 0.08);
 
   --wire-rail-bg: #0b1426;
   --wire-rail-divider: rgba(255, 255, 255, 0.06);

@@ -185,14 +185,14 @@ export default function QuickstartPage() {
           <li>
             <strong>Embed / read-only.</strong> <InlineCode>WireProvider</InlineCode> +{" "}
             <InlineCode>WireCanvas</InlineCode> in <InlineCode>mode=&quot;view&quot;</InlineCode>. This is what every
-            card on the <Link href="/examples/layouts">Layouts</Link> page does.
+            card on the <Link href="/docs/examples/layouts">Layouts</Link> page does.
           </li>
           <li>
             <strong>Custom editor.</strong> <InlineCode>WireProvider</InlineCode> +{" "}
             <InlineCode>WireCanvas</InlineCode> in <InlineCode>mode=&quot;edit&quot;</InlineCode>, plus{" "}
             <InlineCode>WireOptionPanel</InlineCode> in a modal or sidebar — see{" "}
-            <Link href="/examples/click-modal">Click → modal</Link> and{" "}
-            <Link href="/examples/click-sidebar">Click → sidebar</Link>.
+            <Link href="/docs/examples/click-modal">Click → modal</Link> and{" "}
+            <Link href="/docs/examples/click-sidebar">Click → sidebar</Link>.
           </li>
           <li>
             <strong>Full editor shell.</strong> <InlineCode>WireWorkspace</InlineCode> bundles provider + sidebar +
@@ -308,16 +308,16 @@ export function CompileOnly({ onSave }: { onSave: (d: WireDiagram) => void }) {
         <h2 id="next">Where next</h2>
         <ul>
           <li>
-            <Link href="/concepts">Concepts</Link> — the diagram shape, action reducer, and event surface.
+            <Link href="/docs/concepts">Concepts</Link> — the diagram shape, action reducer, and event surface.
           </li>
           <li>
-            <Link href="/customize/cards">Customize cards</Link> — replace the default node renderer.
+            <Link href="/docs/customize/cards">Customize cards</Link> — replace the default node renderer.
           </li>
           <li>
-            <Link href="/listen">Listen</Link> — the full <InlineCode>onEvent</InlineCode> surface.
+            <Link href="/docs/listen">Listen</Link> — the full <InlineCode>onEvent</InlineCode> surface.
           </li>
           <li>
-            <Link href="/examples/layouts">Examples</Link> — three layouts plus modal/sidebar interactions, all live
+            <Link href="/docs/examples/layouts">Examples</Link> — three layouts plus modal/sidebar interactions, all live
             on this site.
           </li>
         </ul>

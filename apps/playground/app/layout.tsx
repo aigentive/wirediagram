@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata = {
-  title: "Wire — diagram playground",
+  title: "Wire Diagram — playground",
   description: "Render and explore @aigentive/wire diagrams in the browser."
 };
 

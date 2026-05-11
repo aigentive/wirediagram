@@ -64,7 +64,7 @@ export function TopHeader({
               Playground
             </Link>
             <Link
-              href="/contact"
+              href="/docs/contact"
               className="hidden rounded-md border border-wire px-3 py-1.5 text-[13px] font-bold text-wire-secondary no-underline transition-colors duration-150 hover:border-wire-strong hover:text-wire-primary sm:inline-flex"
             >
               Contact

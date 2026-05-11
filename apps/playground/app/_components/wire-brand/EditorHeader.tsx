@@ -3,7 +3,7 @@ import { Brandmark } from "./Brandmark";
 
 export function EditorHeader({
   brandHref = "/",
-  brandLabel = "Wire",
+  brandLabel = "Wire Diagram",
   version = "alpha",
   breadcrumb,
   children

@@ -12,21 +12,21 @@ import { Prose, InlineCode } from "./_components/Prose";
 
 const PATHS: Array<{ href: string; eyebrow: string; title: string; detail: string; icon: LucideIcon }> = [
   {
-    href: "/install",
+    href: "/docs/install",
     eyebrow: "Get started",
     title: "Install & setup",
     detail: "Add the package, point Tailwind at the source, render your first canvas.",
     icon: Rocket
   },
   {
-    href: "/concepts",
+    href: "/docs/concepts",
     eyebrow: "Concepts",
     title: "How Wire thinks",
     detail: "Diagram JSON, the action reducer, decoupled events, typed options, render contracts.",
     icon: Lightbulb
   },
   {
-    href: "/customize/cards",
+    href: "/docs/customize/cards",
     eyebrow: "Customize",
     title: "Make it yours",
     detail: "Replace node cards, list rows, and group frames without touching canvas internals.",
@@ -35,10 +35,10 @@ const PATHS: Array<{ href: string; eyebrow: string; title: string; detail: strin
 ];
 
 const HIGHLIGHT_TASKS: Array<{ href: string; title: string; detail: string; icon: LucideIcon }> = [
-  { href: "/customize/cards", title: "Custom node renderers", detail: "Three example surfaces from the same context object.", icon: Sliders },
-  { href: "/listen", title: "Listen to clicks", detail: "Five event types, two built-in emitters, one onEvent.", icon: MousePointerClick },
-  { href: "/examples/layouts", title: "Layouts", detail: "Router, vertical, and horizontal flows from the same nodes.", icon: Boxes },
-  { href: "/examples/click-modal", title: "Click → modal", detail: "Surface params in a dialog using onEvent + WireOptionPanel.", icon: MousePointerClick }
+  { href: "/docs/customize/cards", title: "Custom node renderers", detail: "Three example surfaces from the same context object.", icon: Sliders },
+  { href: "/docs/listen", title: "Listen to clicks", detail: "Five event types, two built-in emitters, one onEvent.", icon: MousePointerClick },
+  { href: "/docs/examples/layouts", title: "Layouts", detail: "Router, vertical, and horizontal flows from the same nodes.", icon: Boxes },
+  { href: "/docs/examples/click-modal", title: "Click → modal", detail: "Surface params in a dialog using onEvent + WireOptionPanel.", icon: MousePointerClick }
 ];
 
 export default function DocsLanding() {
@@ -135,7 +135,7 @@ export default function DocsLanding() {
             <strong>JSON.</strong> Hand-write a <InlineCode>WireDiagram</InlineCode> object — or have an LLM, the CLI,
             or the MCP server emit one — and render it through <InlineCode>WireProvider</InlineCode> +{" "}
             <InlineCode>WireCanvas</InlineCode>. This is what every page under{" "}
-            <Link href="/examples/layouts">Examples</Link> does.
+            <Link href="/docs/examples/layouts">Examples</Link> does.
           </li>
           <li>
             <strong>JSX facade.</strong> Compose the diagram as React children of <InlineCode>{`<Flow>`}</InlineCode>{" "}
@@ -148,7 +148,7 @@ export default function DocsLanding() {
         <h2 id="where-to-render">Where to render</h2>
         <p>
           The same diagram has three rendering surfaces. The toolbar on every card in{" "}
-          <Link href="/examples/layouts">Layouts</Link> flips between them live.
+          <Link href="/docs/examples/layouts">Layouts</Link> flips between them live.
         </p>
         <ul>
           <li>

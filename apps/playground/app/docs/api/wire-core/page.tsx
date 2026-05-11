@@ -121,7 +121,7 @@ if (!valid) {
       <Callout tone="info" title="Codes are stable">
         Issue codes (<InlineCode>edge.from-missing</InlineCode>, <InlineCode>condition.no-branches</InlineCode>, …)
         are part of the public contract. Programs and agents can switch on them. The full list lives in{" "}
-        <a href="/concepts#validation">Concepts → Validation</a>.
+        <a href="/docs/concepts#validation">Concepts → Validation</a>.
       </Callout>
 
       <Prose>

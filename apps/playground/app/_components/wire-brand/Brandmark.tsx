@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 export function Brandmark({
   href = "/",
-  label = "Wire",
+  label = "Wire Diagram",
   version,
   children
 }: {

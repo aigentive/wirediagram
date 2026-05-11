@@ -23,6 +23,31 @@ const nextConfig = {
   ],
   experimental: {
     optimizePackageImports: ["lucide-react"]
+  },
+  async redirects() {
+    const moved = [
+      "install",
+      "quickstart",
+      "mcp",
+      "cli",
+      "concepts",
+      "listen",
+      "contact",
+      "customize/cards",
+      "customize/list-rows",
+      "customize/theme",
+      "examples/layouts",
+      "examples/click-modal",
+      "examples/click-sidebar",
+      "api/wire-core",
+      "api/jsx-facade",
+      "api/hooks"
+    ];
+    return moved.map((path) => ({
+      source: `/${path}`,
+      destination: `/docs/${path}`,
+      permanent: true
+    }));
   }
 };
 

@@ -126,7 +126,7 @@ function Header({
     <div className="grid shrink-0 gap-2 border-b border-wire bg-wire-surface px-4 py-3">
       <header className="flex items-center justify-between text-[13px] text-wire-primary">
         <div className="flex min-w-0 items-center gap-2">
-          <a href="/" className="font-bold text-wire-primary no-underline">Wire</a>
+          <a href="/" className="font-bold text-wire-primary no-underline">Wire Diagram</a>
           <span aria-hidden className="text-wire-muted">/</span>
           <span className="font-bold text-wire-primary">{label}</span>
           <span aria-hidden className="text-wire-muted">/</span>

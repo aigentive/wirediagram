@@ -122,8 +122,8 @@ export function SmokeTest() {
 
         <h2 id="next">What&rsquo;s next</h2>
         <p>
-          You&rsquo;ve got the package and styles in place. The <a href="/quickstart">Quickstart</a> picks an API path
-          and renders a working canvas. From there, the <a href="/concepts">mental model</a> covers how Wire&rsquo;s
+          You&rsquo;ve got the package and styles in place. The <a href="/docs/quickstart">Quickstart</a> picks an API path
+          and renders a working canvas. From there, the <a href="/docs/concepts">mental model</a> covers how Wire&rsquo;s
           schema, actions, and events fit together.
         </p>
       </Prose>

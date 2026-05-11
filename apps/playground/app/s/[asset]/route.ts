@@ -168,7 +168,7 @@ function publicShareHtml({
 </head>
 <body>
   <header>
-    <a class="brand" href="/">Wire</a>
+    <a class="brand" href="/">Wire Diagram</a>
     <span>/</span>
     <span class="title">${safeTitle}</span>
     <div class="actions">
