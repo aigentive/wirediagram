@@ -17,7 +17,7 @@
     "build": "npm run build --workspace @aigentive/wire-core && npm run build --workspace @aigentive/wire-renderers && npm run build --workspace @aigentive/wire-react && npm run build --workspace @aigentive/wire-mcp && npm run build --workspace @aigentive/wire-cli",
     "build:core": "npm run build --workspace @aigentive/wire-core",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run build:core && vitest run",
+    "test": "npm run build && vitest run",
     "test:react": "npm run build:core && npm run test --workspace @aigentive/wire-react",
     "test:react:coverage": "npm run build:core && npm run test:coverage --workspace @aigentive/wire-react",
     "test:e2e": "playwright test",

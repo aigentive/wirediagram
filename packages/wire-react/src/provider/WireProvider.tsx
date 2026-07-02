@@ -67,15 +67,19 @@ export function WireProvider({
 
   const commitMany = useCallback(
     (wireActions: WireAction[]): ApplyWireActionResult => {
-      const result = applyWireActions(currentDiagram, wireActions, { validate: validateOnChange, inverse: false });
+      const result = applyWireActions(currentDiagram, wireActions, { validate: validateOnChange, inverse: history });
       if (diagram === undefined) {
         setInternalDiagram(result.diagram);
       }
       setDirty(true);
+      if (history && result.inverse) {
+        setUndoStack((stack) => [...stack, result.inverse!]);
+        setRedoStack([]);
+      }
       onChange?.(result.diagram, { actions: wireActions, result });
       return result;
     },
-    [currentDiagram, diagram, onChange, validateOnChange]
+    [currentDiagram, diagram, history, onChange, validateOnChange]
   );
 
   const actions: WireActions = useMemo(

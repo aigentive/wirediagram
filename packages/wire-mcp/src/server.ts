@@ -22,6 +22,7 @@
  */
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { readFileSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
 
@@ -84,12 +85,25 @@ type ToolResult = {
   isError?: true;
 };
 
+export const WIRE_MCP_SERVER_VERSION = readPackageVersion();
+
 function ok(data: unknown): ToolResult {
   return { content: [{ type: "text", text: typeof data === "string" ? data : JSON.stringify(data, null, 2) }] };
 }
 
 function fail(message: string): ToolResult {
   return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };
+}
+
+function readPackageVersion(): string {
+  try {
+    const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+      version?: unknown;
+    };
+    return typeof packageJson.version === "string" ? packageJson.version : "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
 }
 
 const ToneEnum = z.enum(["default", "success", "warning", "error", "info", "ai"]);
@@ -325,7 +339,7 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
 
   const server = new McpServer({
     name: "@aigentive/wire-mcp",
-    version: "1.0.4"
+    version: WIRE_MCP_SERVER_VERSION
   });
 
   // ── helpers ────────────────────────────────────────────────────────────
@@ -985,7 +999,7 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
           changedEdgeIds: string[];
         } | undefined;
         const saved = await storage.mutate(args.diagramId, async (diagram) => {
-          const result = applyWireActions(diagram, args.actions as WireAction[]);
+          const result = applyWireActions(diagram, args.actions as WireAction[], { inverse: false });
           payload = {
             diagramId: args.diagramId,
             diagram: result.diagram,

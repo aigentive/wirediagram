@@ -30,7 +30,9 @@ export type WireMetadataPatch = Record<string, unknown>;
 
 export type WireAction =
   | { type: "diagram.create"; id?: string; title?: string; layout?: LayoutDirection }
+  | { type: "diagram.replace"; diagram: WireDiagram }
   | { type: "diagram.patch"; patch: Record<string, unknown> }
+  | { type: "batch"; actions: WireAction[] }
   | { type: "node.add"; node: WireNodeInput; select?: boolean }
   | { type: "node.patch"; id: string; patch: WireNodePatch }
   | { type: "node.remove"; id: string }
@@ -86,16 +88,15 @@ export function applyWireActions(
   actions: WireAction[],
   options: ApplyWireActionOptions = {}
 ): ApplyWireActionResult {
-  let current = diagram;
-  for (const action of actions) {
-    current = applyWireActionInternal(current, action, false).diagram;
-  }
   const shouldValidate = options.validate ?? true;
+  const shouldBuildInverse = options.inverse ?? true;
+  const applied = applyWireActionInternal(diagram, { type: "batch", actions }, shouldBuildInverse);
   return {
-    diagram: current,
-    validation: shouldValidate ? validate(current) : { valid: true, issues: [] },
-    changedNodeIds: changedNodeIds(diagram, current),
-    changedEdgeIds: changedEdgeIds(diagram, current)
+    diagram: applied.diagram,
+    validation: shouldValidate ? validate(applied.diagram) : { valid: true, issues: [] },
+    inverse: applied.inverse,
+    changedNodeIds: changedNodeIds(diagram, applied.diagram),
+    changedEdgeIds: changedEdgeIds(diagram, applied.diagram)
   };
 }
 
@@ -107,7 +108,18 @@ function applyWireActionInternal(
   switch (action.type) {
     case "diagram.create": {
       const next = emptyDiagram({ id: action.id, title: action.title, layout: action.layout });
-      return { diagram: next };
+      return {
+        diagram: next,
+        inverse: buildInverse ? { type: "diagram.replace", diagram } : undefined
+      };
+    }
+
+    case "diagram.replace": {
+      const next = WireDiagramSchema.parse(action.diagram);
+      return {
+        diagram: next,
+        inverse: buildInverse ? { type: "diagram.replace", diagram } : undefined
+      };
     }
 
     case "diagram.patch": {
@@ -116,6 +128,22 @@ function applyWireActionInternal(
         : undefined;
       const next = WireDiagramSchema.parse(applyNullablePatch(diagram as unknown as Record<string, unknown>, action.patch));
       return { diagram: next, inverse };
+    }
+
+    case "batch": {
+      let current = diagram;
+      const inverses: WireAction[] = [];
+      for (const child of action.actions) {
+        const applied = applyWireActionInternal(current, child, buildInverse);
+        current = applied.diagram;
+        if (buildInverse && applied.inverse) {
+          inverses.unshift(applied.inverse);
+        }
+      }
+      return {
+        diagram: current,
+        inverse: buildInverse && inverses.length > 0 ? { type: "batch", actions: inverses } : undefined
+      };
     }
 
     case "node.add": {
@@ -136,11 +164,10 @@ function applyWireActionInternal(
     }
 
     case "node.remove": {
-      const current = findNode(diagram, action.id);
       const { diagram: next } = removeNode(diagram, action.id);
       return {
         diagram: next,
-        inverse: buildInverse ? { type: "node.add", node: wireNodeToInput(current) } : undefined
+        inverse: buildInverse ? { type: "diagram.replace", diagram } : undefined
       };
     }
 
@@ -186,7 +213,10 @@ function applyWireActionInternal(
 
     case "edge.disconnect": {
       const next = disconnect(diagram, action);
-      return { diagram: next };
+      return {
+        diagram: next,
+        inverse: buildInverse ? { type: "diagram.replace", diagram } : undefined
+      };
     }
 
     case "edge.remove": {
@@ -232,7 +262,10 @@ function applyWireActionInternal(
       for (const child of diagram.nodes.filter((node) => node.parent === action.id)) {
         next = updateNode(next, child.id, { parent: null }).diagram;
       }
-      return { diagram: next };
+      return {
+        diagram: next,
+        inverse: buildInverse ? { type: "diagram.replace", diagram } : undefined
+      };
     }
 
     case "note.add": {
@@ -329,10 +362,6 @@ function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
     if (value !== undefined) out[key] = value;
   }
   return out as T;
-}
-
-function wireNodeToInput(node: WireNode): WireNodeInput {
-  return stripUndefined({ ...node }) as WireNodeInput;
 }
 
 function wireEdgeToInput(edge: WireEdge): WireEdgeInput {

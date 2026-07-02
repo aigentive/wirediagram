@@ -1,6 +1,6 @@
 import { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { del, list, put } from "@vercel/blob";
 import { readBlobJson } from "@/lib/blob-json";
 import { getDbClient, shouldUseDatabaseStore } from "@/lib/db/client";
@@ -177,6 +177,7 @@ function filesystemRoot(): string {
 function filesystemPath(pathname: string): string {
   const root = filesystemRoot();
   const path = resolve(root, pathname);
-  if (!path.startsWith(root)) throw new Error("Invalid cloud storage path.");
+  const rel = relative(root, path);
+  if (rel.startsWith("..") || isAbsolute(rel)) throw new Error("Invalid cloud storage path.");
   return path;
 }

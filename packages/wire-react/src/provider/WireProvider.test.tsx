@@ -66,8 +66,10 @@ describe("WireProvider", () => {
 
     click(button(container, "undo"));
     expect(container.textContent).toContain("redo:true");
+    expect(container.textContent).toContain("nodes:2");
     click(button(container, "redo"));
     expect(container.textContent).toContain("undo:true");
+    expect(container.textContent).toContain("nodes:3");
   });
 
   it("supports controlled diagrams and validation disabled on change", () => {

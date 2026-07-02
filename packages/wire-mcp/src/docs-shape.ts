@@ -29,7 +29,7 @@ export interface WireDocsShape {
 }
 
 export const WIRE_DOCS_VERSION = 1;
-export const WIRE_DOCS_UPDATED_AT = "2026-05-10T00:00:00.000Z";
+export const WIRE_DOCS_UPDATED_AT = "2026-07-02T00:00:00.000Z";
 
 export const LLM_DOCS_ROUTES = [
   { path: "/llm/wire-docs.shape.json", mediaType: "application/json", purpose: "Root machine-readable docs manifest." },
