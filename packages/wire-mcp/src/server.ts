@@ -34,6 +34,7 @@ import {
   toMermaid,
   validate as coreValidate,
   wireDiagramJsonSchema,
+  WIRE_SCHEMA_VERSION,
   WireDiagramSchema,
   type WireAction,
   type WireDiagram
@@ -48,6 +49,7 @@ import { PROMPTS } from "./prompts.js";
 import { WIRE_AGENT_GUIDE } from "./agent-guide.js";
 import {
   WIRE_DOCS_MANIFEST,
+  WIRE_DOCS_VERSION,
   getLlmDocsExample,
   getLlmDocsRecipe,
   getLlmDocsShape,
@@ -86,6 +88,38 @@ type ToolResult = {
 };
 
 export const WIRE_MCP_SERVER_VERSION = readPackageVersion();
+
+export function getWireMcpCapabilities() {
+  return {
+    serverVersion: WIRE_MCP_SERVER_VERSION,
+    docsVersion: WIRE_DOCS_VERSION,
+    schemaVersion: WIRE_SCHEMA_VERSION,
+    layoutEngines: {
+      dagre: "implemented",
+      elk: "reserved"
+    },
+    actions: [
+      "diagram.create",
+      "diagram.replace",
+      "diagram.patch",
+      "batch",
+      "node.add",
+      "node.patch",
+      "node.remove",
+      "node.move",
+      "node.resize",
+      "edge.connect",
+      "edge.patch",
+      "edge.disconnect",
+      "edge.remove",
+      "layout.apply",
+      "group.add",
+      "group.ungroup",
+      "note.add",
+      "metadata.patch"
+    ]
+  } as const;
+}
 
 function ok(data: unknown): ToolResult {
   return { content: [{ type: "text", text: typeof data === "string" ? data : JSON.stringify(data, null, 2) }] };
@@ -560,6 +594,16 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
       const args = DocsShapeInput.parse(params);
       return ok(getLlmDocsShape(args));
     }
+  );
+
+  server.registerTool(
+    "v1_get_capabilities",
+    {
+      title: "Get Wire MCP capabilities",
+      description: "Return server, docs, schema, action, and layout-engine capabilities. Use this to discover implemented vs reserved features.",
+      inputSchema: {}
+    },
+    async () => ok(getWireMcpCapabilities())
   );
 
   server.registerTool(
@@ -1149,6 +1193,19 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
   );
 
   // ── resources ──────────────────────────────────────────────────────────
+
+  server.registerResource(
+    "mcp-capabilities",
+    "wire://mcp/capabilities",
+    { title: "Wire MCP capabilities", description: "Machine-readable Wire MCP capabilities and reserved feature status." },
+    async (uri) => ({
+      contents: [{
+        uri: uri.href,
+        mimeType: "application/json",
+        text: JSON.stringify(getWireMcpCapabilities(), null, 2)
+      }]
+    })
+  );
 
   // ── resources: LLM-first docs ──────────────────────────────────────────
   server.registerResource(

@@ -247,6 +247,7 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
     tools: [
       { name: "v1_get_docs_shape", purpose: "Return structured docs chunks by topic or task.", requiredSequence: ["call before uncertain tasks"] },
       { name: "v1_get_agent_guide", purpose: "Return the compact Markdown operating guide." },
+      { name: "v1_get_capabilities", purpose: "Return server/docs/schema versions and implemented vs reserved capabilities." },
       { name: "create_diagram", purpose: "Create a new diagram, optionally from a template." },
       { name: "load_diagram", purpose: "Load a stored diagram by id." },
       { name: "save_diagram", purpose: "Overwrite a diagram after schema parsing." },
