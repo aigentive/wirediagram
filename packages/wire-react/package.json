@@ -1,6 +1,6 @@
 {
   "name": "@aigentive/wire-react",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Wire — JSX facade. Author diagrams as React components; compile to canonical Wire JSON.",
   "license": "Apache-2.0",
   "type": "module",
@@ -27,7 +27,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@aigentive/wire-core": "^1.0.2"
+    "@aigentive/wire-core": "^1.0.3"
   },
   "peerDependencies": {
     "react": ">=18",
