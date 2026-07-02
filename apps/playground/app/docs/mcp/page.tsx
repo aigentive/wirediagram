@@ -55,7 +55,7 @@ const TOOL_GROUPS: Array<{ title: string; tools: Array<{ name: string; purpose: 
       { name: "add_note", purpose: "Add an annotation; `attachedTo` for visual association." },
       { name: "add_group", purpose: "Add a group node and optionally parent existing children." },
       { name: "ungroup", purpose: "Clear children/parent links for a group." },
-      { name: "set_layout", purpose: "Change layout direction/engine." },
+      { name: "set_layout", purpose: "Change layout direction; `elk` is reserved and currently falls back to dagre with a warning." },
       { name: "patch_metadata", purpose: "Patch diagram.metadata keys." }
     ]
   },

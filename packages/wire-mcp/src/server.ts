@@ -903,7 +903,7 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
     "set_layout",
     {
       title: "Set layout",
-      description: "Change the layout direction (and optionally engine) of the diagram.",
+      description: "Change the layout direction. The optional engine accepts 'dagre' today; 'elk' is reserved for forward compatibility and currently validates with a warning/falls back to dagre.",
       inputSchema: SetLayoutInput.shape
     },
     async (params) => {

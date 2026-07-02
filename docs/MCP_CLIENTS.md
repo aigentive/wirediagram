@@ -141,7 +141,7 @@ The tool surface is identical to stdio. Only the transport changes.
 | `connect` / `disconnect` | Wiring node `from` references or explicit edges |
 | `update_edge` / `remove_edge` | Patching or deleting explicit edges by id |
 | `add_note` | Adding an annotation node |
-| `set_layout` | Switching layout direction or engine |
+| `set_layout` | Switching layout direction; `elk` is reserved and currently falls back to dagre with a validation warning |
 | `add_group` / `ungroup` | Grouping existing nodes or clearing group membership |
 | `patch_metadata` | Updating `diagram.metadata` without replacing unrelated keys |
 | `apply_actions` | Applying a coherent batch of `WireAction` mutations atomically |

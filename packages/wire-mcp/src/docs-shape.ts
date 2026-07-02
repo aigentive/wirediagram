@@ -263,7 +263,7 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
       { name: "update_edge", purpose: "Patch explicit edge labels, handles, style, routing, or data." },
       { name: "remove_edge", purpose: "Remove an explicit edge by id." },
       { name: "add_note", purpose: "Add an annotation note, optionally attached to a node." },
-      { name: "set_layout", purpose: "Change layout direction or engine." },
+      { name: "set_layout", purpose: "Change layout direction. Engine 'elk' is reserved/not implemented and falls back to dagre with a validation warning." },
       { name: "add_group", purpose: "Add a group node and optionally parent existing children." },
       { name: "ungroup", purpose: "Clear group membership while leaving the group node." },
       { name: "patch_metadata", purpose: "Patch diagram.metadata keys without replacing unrelated metadata." },
