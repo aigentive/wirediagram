@@ -5,7 +5,7 @@
 ```
 packages/
   wire-core         — schema, validation, normalization, layout
-  wire-renderers    — React Flow / xyflow adapter
+  wire-renderers    — static renderers and graph-canvas compatibility adapter
   wire-react        — JSX facade
   wire-mcp          — MCP server (stdio + HTTP)
   wire-cli          — CLI binary

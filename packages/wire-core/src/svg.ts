@@ -306,7 +306,7 @@ function handleNormal(side: Side): { x: number; y: number } {
 }
 
 /**
- * xyflow-style control offset: half the along-axis distance when the target
+ * Graph-canvas-style control offset: half the along-axis distance when the target
  * is "ahead" of the source on the handle's direction; small fallback curve
  * when the target is "behind" (the handle would have to U-turn).
  */
@@ -419,7 +419,7 @@ function edgePath(
   const isBackward = (distSrc < 0 || distTgt < 0) && sourceVertical === targetVertical;
 
   // Backward edge (target sits "behind" the handle direction): a vanilla
-  // xyflow-style bezier produces control points that extend OUTWARD past
+  // A graph-canvas-style bezier produces control points that extend OUTWARD past
   // the source/target, wrapping the curve off-canvas. Instead we sweep
   // perpendicularly — out from the handle, over (or under) the diagram, and
   // back into the target's handle direction.
