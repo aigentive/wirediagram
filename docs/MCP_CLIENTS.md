@@ -133,6 +133,7 @@ The tool surface is identical to stdio. Only the transport changes.
 |---|---|
 | `v1_get_agent_guide` | Fetching the concise live operating guide for agents |
 | `v1_get_docs_shape` | Fetching compact docs chunks by topic or task before uncertain work |
+| `v1_get_capabilities` | Discovering server/docs/schema versions, reducer actions, and implemented vs reserved capabilities |
 | `create_diagram` | Starting a new diagram, optionally from a template |
 | `load_diagram` / `list_diagrams` | Resuming or discovering existing diagrams |
 | `save_diagram` / `patch_diagram` | Replacing or patching top-level diagram JSON |
@@ -196,6 +197,7 @@ wire://diagrams/{id}/preview
 wire://templates/
 wire://templates/{name}
 wire://schemas/wire-diagram
+wire://mcp/capabilities
 ```
 
 Prompts:
