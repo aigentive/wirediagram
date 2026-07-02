@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { parseWireDiagram, type WireDiagram } from "@aigentive/wire-core";
-import { readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
+import { listCloudPaths, readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import type { CurrentUser } from "@/lib/current-user";
 import { resolveShareToken } from "@/lib/share-store";
 import { stableStringify } from "@/lib/wire-canonical";
@@ -45,10 +45,27 @@ export type ShareUrls = {
 
 const CLOUD_PREFIX = "wire-cloud/v2";
 const TOKEN_RE = /^[A-Za-z0-9_-]{8,96}$/;
+const EDIT_SHARE_WRITE_WINDOW_MS = 60_000;
+const DEFAULT_EDIT_SHARE_WRITE_LIMIT = 30;
+
+type ShareWriteRateRecord = {
+  token: string;
+  count: number;
+  resetAt: string;
+};
 
 function sharePath(token: string): string {
   if (!TOKEN_RE.test(token)) throw new Error("Invalid share token.");
   return `${CLOUD_PREFIX}/share-links/${token}.json`;
+}
+
+function shareLinksPrefix(): string {
+  return `${CLOUD_PREFIX}/share-links/`;
+}
+
+function shareWriteRatePath(token: string): string {
+  if (!TOKEN_RE.test(token)) throw new Error("Invalid share token.");
+  return `${CLOUD_PREFIX}/share-edit-rate/${token}.json`;
 }
 
 async function readJson<T>(pathname: string): Promise<T | null> {
@@ -82,17 +99,20 @@ export async function createWireShareLinks({
   user,
   wire,
   scope = "view",
-  pinRevision = false
+  pinRevision = false,
+  expiresAt = null
 }: {
   user: CurrentUser;
   wire: StoredWire;
   scope?: ShareScope;
   pinRevision?: boolean;
+  expiresAt?: string | null;
 }): Promise<{
   view: ShareLinkRecord;
   edit: ShareLinkRecord | null;
 }> {
   const now = new Date().toISOString();
+  const normalizedExpiresAt = normalizeExpiresAt(expiresAt);
   const viewToken = makeToken();
   const view: ShareLinkRecord = {
     token: viewToken,
@@ -103,7 +123,7 @@ export async function createWireShareLinks({
     viewToken,
     pinned: pinRevision,
     createdAt: now,
-    expiresAt: null,
+    expiresAt: normalizedExpiresAt,
     revokedAt: null
   };
 
@@ -120,13 +140,41 @@ export async function createWireShareLinks({
       viewToken,
       pinned: false,
       createdAt: now,
-      expiresAt: null,
+      expiresAt: normalizedExpiresAt,
       revokedAt: null
     };
     await writeJson(sharePath(edit.token), edit);
   }
 
   return { view, edit };
+}
+
+export async function listWireShareLinks(user: CurrentUser, wireId: string): Promise<ShareLinkRecord[]> {
+  const paths = await listCloudPaths(shareLinksPrefix());
+  const records = await Promise.all(paths.map((path) => readJson<ShareLinkRecord>(path)));
+  return records
+    .filter((record): record is ShareLinkRecord =>
+      Boolean(record && record.ownerKey === user.key && record.wireId === wireId)
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function revokeWireShareLink(
+  user: CurrentUser,
+  token: string,
+  options: { wireId?: string } = {}
+): Promise<ShareLinkRecord> {
+  if (!TOKEN_RE.test(token)) throw new Error("Invalid share token.");
+  const record = await readJson<ShareLinkRecord>(sharePath(token));
+  if (!record || record.ownerKey !== user.key || (options.wireId && record.wireId !== options.wireId)) {
+    throw new Error("Share link not found.");
+  }
+  const revoked: ShareLinkRecord = {
+    ...record,
+    revokedAt: record.revokedAt ?? new Date().toISOString()
+  };
+  await writeJson(sharePath(token), revoked);
+  return revoked;
 }
 
 export async function readShareLink(token: string): Promise<ShareLinkRecord | null> {
@@ -180,6 +228,7 @@ export async function saveEditableShare(token: string, diagram: unknown): Promis
   if (!record || record.scope !== "edit") {
     throw new Error("Edit share not found.");
   }
+  await assertEditShareWriteAllowed(token);
 
   const saved = await saveUserWire({
     user: ownerUser(record),
@@ -195,6 +244,49 @@ export async function saveEditableShare(token: string, diagram: unknown): Promis
     wire: saved.wire,
     legacyToken: null
   };
+}
+
+export class ShareRateLimitError extends Error {
+  constructor(readonly retryAfterSeconds: number) {
+    super("Edit share write limit reached.");
+  }
+}
+
+async function assertEditShareWriteAllowed(token: string): Promise<void> {
+  const limit = editShareWriteLimit();
+  if (limit <= 0) return;
+
+  const now = Date.now();
+  const path = shareWriteRatePath(token);
+  const existing = await readJson<ShareWriteRateRecord>(path);
+  const resetAtMs = existing?.resetAt ? Date.parse(existing.resetAt) : Number.NaN;
+  if (existing && Number.isFinite(resetAtMs) && resetAtMs > now) {
+    if (existing.count >= limit) {
+      throw new ShareRateLimitError(Math.max(1, Math.ceil((resetAtMs - now) / 1000)));
+    }
+    await writeJson(path, { ...existing, count: existing.count + 1 });
+    return;
+  }
+
+  await writeJson(path, {
+    token,
+    count: 1,
+    resetAt: new Date(now + EDIT_SHARE_WRITE_WINDOW_MS).toISOString()
+  } satisfies ShareWriteRateRecord);
+}
+
+function editShareWriteLimit(): number {
+  const raw = process.env.WIRE_EDIT_SHARE_WRITE_LIMIT;
+  if (!raw) return DEFAULT_EDIT_SHARE_WRITE_LIMIT;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : DEFAULT_EDIT_SHARE_WRITE_LIMIT;
+}
+
+function normalizeExpiresAt(value: string | null): string | null {
+  if (!value) return null;
+  const ms = Date.parse(value);
+  if (!Number.isFinite(ms)) throw new Error("Invalid share expiration.");
+  return new Date(ms).toISOString();
 }
 
 export function shareUrls(origin: string, share: {

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import {
   resolvePublicShare,
   saveEditableShare,
+  ShareRateLimitError,
   shareUrls
 } from "@/lib/share-links-store";
 
@@ -62,6 +63,12 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Re
       })
     });
   } catch (err) {
+    if (err instanceof ShareRateLimitError) {
+      return Response.json(
+        { error: err.message, code: "share-edit-rate-limited", retryAfterSeconds: err.retryAfterSeconds },
+        { status: 429, headers: { "retry-after": String(err.retryAfterSeconds) } }
+      );
+    }
     return Response.json(
       { error: err instanceof Error ? err.message : String(err) },
       { status: 422 }
