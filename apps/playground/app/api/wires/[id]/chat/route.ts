@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { POST as runPlaygroundChat } from "@/app/api/playground/chat/route";
+import { runPlaygroundChat } from "@/app/api/playground/chat/route";
 import { requireCurrentUser } from "@/lib/current-user";
 import {
   loadUserWire,
@@ -67,10 +67,7 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
       new Request("http://wire.local/api/playground/chat", {
         method: "POST",
         headers: {
-          "content-type": "application/json",
-          "x-wire-user-key": user.key,
-          "x-wire-user-email": user.email,
-          "x-wire-chat-surface": "wires"
+          "content-type": "application/json"
         },
         body: JSON.stringify({
           message: payload.message,
@@ -78,7 +75,8 @@ export async function POST(req: NextRequest, context: RouteContext): Promise<Res
           history,
           model: payload.model
         })
-      }) as NextRequest
+      }),
+      { user, surface: "wires" }
     );
 
     const data = (await upstream.json()) as ChatResponseBody;

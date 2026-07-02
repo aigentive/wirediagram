@@ -76,7 +76,10 @@ npx -y @aigentive/wire-mcp@latest --http
 # http://127.0.0.1:3860/health
 ```
 
-Set `WIRE_HTTP_PORT` to change port; set `WIRE_HTTP_HOST=0.0.0.0` to expose on the LAN.
+Set `WIRE_HTTP_PORT` to change port. The default host is loopback-only. To bind
+`WIRE_HTTP_HOST=0.0.0.0`, also set `WIRE_MCP_TOKEN` and send
+`Authorization: Bearer <token>` to `/mcp`, `/ready`, and `/health`; unauthenticated
+remote bind requires the explicit `WIRE_HTTP_UNSAFE_ALLOW_REMOTE=true` opt-in.
 
 Cloud-backed local HTTP:
 

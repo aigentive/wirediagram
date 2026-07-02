@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { requireAppSecret } from "@/lib/app-secret";
 import { readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import { stableStringify } from "@/lib/wire-canonical";
 
@@ -24,7 +25,7 @@ const HASH_RE = /^[A-Za-z0-9_-]{16,64}$/;
 const USER_KEY_RE = /^[A-Za-z0-9_-]{16,64}$/;
 
 export function hashIp(rawIp: string): string {
-  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "wire-local-dev-secret";
+  const secret = requireAppSecret("IP quota hashing");
   return createHmac("sha256", secret).update(rawIp).digest("base64url").slice(0, 32);
 }
 

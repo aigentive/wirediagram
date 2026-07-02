@@ -34,6 +34,9 @@ wire-mcp --http    # http on port 3860
 | `WIRE_STORAGE_DIR` | `~/.wire/diagrams` | Directory for `*.json` diagram files |
 | `WIRE_HTTP_PORT` | `3860` | HTTP transport port |
 | `WIRE_HTTP_HOST` | `127.0.0.1` | HTTP transport host |
+| `WIRE_MCP_TOKEN` | _(unset)_ | Optional bearer token required for HTTP `/mcp`, `/ready`, and `/health`; required for non-loopback binds unless unsafe opt-in is set |
+| `WIRE_MCP_ALLOWED_ORIGINS` | _(loopback origins)_ | Comma-separated browser Origin allowlist for HTTP transport |
+| `WIRE_HTTP_UNSAFE_ALLOW_REMOTE` | `false` | Explicit opt-in for unauthenticated non-loopback HTTP binds |
 | `WIRE_AUDIT_LOG` | _(stderr only)_ | JSONL audit log file path |
 | `WIRE_DEFAULT_LAYOUT` | `LR` | Default layout direction |
 | `WIRE_PREVIEW_BASE` | `WIRE_CLOUD_URL` when set, otherwise `http://localhost:3870` | Optional override for preview URLs |
@@ -128,7 +131,7 @@ sessions do not automatically gain newly added MCP tools.
 | `update_edge` | Patch an explicit edge by id (`fromHandle`, `toHandle`, `style`, `labelStyle`, `routing`, etc.) |
 | `remove_edge` | Remove an explicit edge by id |
 | `add_note` | Add an annotation; `attachedTo` for visual association |
-| `set_layout` | Change layout direction/engine |
+| `set_layout` | Change layout direction; `elk` is reserved and currently falls back to dagre with a validation warning |
 | `add_group` | Add a group node and optionally parent existing children |
 | `ungroup` | Clear children/parent links for a group |
 | `patch_metadata` | Patch `diagram.metadata` keys |

@@ -10,6 +10,9 @@
  *   WIRE_STORAGE_DIR     Directory for diagram .json files (default ~/.wire/diagrams)
  *   WIRE_HTTP_PORT       HTTP transport port (default 3860)
  *   WIRE_HTTP_HOST       HTTP transport host (default 127.0.0.1)
+ *   WIRE_HTTP_UNSAFE_ALLOW_REMOTE Explicit opt-in for unauthenticated non-loopback HTTP
+ *   WIRE_MCP_TOKEN       Optional bearer token required for HTTP /mcp and /ready
+ *   WIRE_MCP_ALLOWED_ORIGINS Optional comma-separated browser Origin allowlist
  *   WIRE_AUDIT_LOG       File path for JSONL audit log (default: stderr only)
  *   WIRE_DEFAULT_LAYOUT  LR | TB | RL | BT (default LR)
  *   WIRE_AGENT_ID        Audit actor id (default wire-mcp)
@@ -19,6 +22,8 @@
  */
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { readFileSync } from "node:fs";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
 
 import {
@@ -29,12 +34,13 @@ import {
   toMermaid,
   validate as coreValidate,
   wireDiagramJsonSchema,
+  WIRE_SCHEMA_VERSION,
   WireDiagramSchema,
   type WireAction,
   type WireDiagram
 } from "@aigentive/wire-core";
 
-import { loadConfig, type WireMcpConfig } from "./config.js";
+import { assertHttpSecurityConfig, loadConfig, type WireMcpConfig } from "./config.js";
 import { CloudStorage, FileStorage, MemoryStorage, type StorageBackend, createDefaultDiagram } from "./storage.js";
 import { AuditLogger } from "./audit.js";
 import { renderSvg, renderPng, summarizeDiagram } from "./render.js";
@@ -43,6 +49,7 @@ import { PROMPTS } from "./prompts.js";
 import { WIRE_AGENT_GUIDE } from "./agent-guide.js";
 import {
   WIRE_DOCS_MANIFEST,
+  WIRE_DOCS_VERSION,
   getLlmDocsExample,
   getLlmDocsRecipe,
   getLlmDocsShape,
@@ -80,12 +87,57 @@ type ToolResult = {
   isError?: true;
 };
 
+export const WIRE_MCP_SERVER_VERSION = readPackageVersion();
+
+export function getWireMcpCapabilities() {
+  return {
+    serverVersion: WIRE_MCP_SERVER_VERSION,
+    docsVersion: WIRE_DOCS_VERSION,
+    schemaVersion: WIRE_SCHEMA_VERSION,
+    layoutEngines: {
+      dagre: "implemented",
+      elk: "reserved"
+    },
+    actions: [
+      "diagram.create",
+      "diagram.replace",
+      "diagram.patch",
+      "batch",
+      "node.add",
+      "node.patch",
+      "node.remove",
+      "node.move",
+      "node.resize",
+      "edge.connect",
+      "edge.patch",
+      "edge.disconnect",
+      "edge.remove",
+      "layout.apply",
+      "group.add",
+      "group.ungroup",
+      "note.add",
+      "metadata.patch"
+    ]
+  } as const;
+}
+
 function ok(data: unknown): ToolResult {
   return { content: [{ type: "text", text: typeof data === "string" ? data : JSON.stringify(data, null, 2) }] };
 }
 
 function fail(message: string): ToolResult {
   return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };
+}
+
+function readPackageVersion(): string {
+  try {
+    const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+      version?: unknown;
+    };
+    return typeof packageJson.version === "string" ? packageJson.version : "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
 }
 
 const ToneEnum = z.enum(["default", "success", "warning", "error", "info", "ai"]);
@@ -321,7 +373,7 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
 
   const server = new McpServer({
     name: "@aigentive/wire-mcp",
-    version: "1.0.4"
+    version: WIRE_MCP_SERVER_VERSION
   });
 
   // ── helpers ────────────────────────────────────────────────────────────
@@ -542,6 +594,16 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
       const args = DocsShapeInput.parse(params);
       return ok(getLlmDocsShape(args));
     }
+  );
+
+  server.registerTool(
+    "v1_get_capabilities",
+    {
+      title: "Get Wire MCP capabilities",
+      description: "Return server, docs, schema, action, and layout-engine capabilities. Use this to discover implemented vs reserved features.",
+      inputSchema: {}
+    },
+    async () => ok(getWireMcpCapabilities())
   );
 
   server.registerTool(
@@ -885,7 +947,7 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
     "set_layout",
     {
       title: "Set layout",
-      description: "Change the layout direction (and optionally engine) of the diagram.",
+      description: "Change the layout direction. The optional engine accepts 'dagre' today; 'elk' is reserved for forward compatibility and currently validates with a warning/falls back to dagre.",
       inputSchema: SetLayoutInput.shape
     },
     async (params) => {
@@ -981,7 +1043,7 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
           changedEdgeIds: string[];
         } | undefined;
         const saved = await storage.mutate(args.diagramId, async (diagram) => {
-          const result = applyWireActions(diagram, args.actions as WireAction[]);
+          const result = applyWireActions(diagram, args.actions as WireAction[], { inverse: false });
           payload = {
             diagramId: args.diagramId,
             diagram: result.diagram,
@@ -1131,6 +1193,19 @@ export function createServer(opts: ServerOptions = {}): ServerHandle {
   );
 
   // ── resources ──────────────────────────────────────────────────────────
+
+  server.registerResource(
+    "mcp-capabilities",
+    "wire://mcp/capabilities",
+    { title: "Wire MCP capabilities", description: "Machine-readable Wire MCP capabilities and reserved feature status." },
+    async (uri) => ({
+      contents: [{
+        uri: uri.href,
+        mimeType: "application/json",
+        text: JSON.stringify(getWireMcpCapabilities(), null, 2)
+      }]
+    })
+  );
 
   // ── resources: LLM-first docs ──────────────────────────────────────────
   server.registerResource(
@@ -1372,21 +1447,44 @@ async function startStdio(handle: ServerHandle): Promise<void> {
 async function startHttp(handle: ServerHandle): Promise<void> {
   const { StreamableHTTPServerTransport } = await import("@modelcontextprotocol/sdk/server/streamableHttp.js");
   const { createServer: createHttpServer } = await import("node:http");
-  const { randomUUID } = await import("node:crypto");
+  const { randomUUID, timingSafeEqual } = await import("node:crypto");
+  assertHttpSecurityConfig(handle.config);
+
+  const MAX_HTTP_SESSIONS = 100;
+  const HTTP_SESSION_IDLE_MS = 30 * 60 * 1000;
+  const SESSION_ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 
   type HttpSession = {
     transport: InstanceType<typeof StreamableHTTPServerTransport>;
     server: McpServer;
+    lastSeenAt: number;
   };
 
   const transports = new Map<string, HttpSession>();
   const inflightConnects = new Map<string, Promise<InstanceType<typeof StreamableHTTPServerTransport>>>();
 
+  function pruneIdleSessions(): void {
+    const cutoff = Date.now() - HTTP_SESSION_IDLE_MS;
+    for (const [sessionId, session] of transports) {
+      if (session.lastSeenAt < cutoff) {
+        session.transport.close?.();
+        transports.delete(sessionId);
+      }
+    }
+  }
+
   async function acquireTransport(sessionId: string): Promise<InstanceType<typeof StreamableHTTPServerTransport>> {
     const existing = transports.get(sessionId);
-    if (existing) return existing.transport;
+    if (existing) {
+      existing.lastSeenAt = Date.now();
+      return existing.transport;
+    }
     const inflight = inflightConnects.get(sessionId);
     if (inflight) return inflight;
+    pruneIdleSessions();
+    if (transports.size >= MAX_HTTP_SESSIONS) {
+      throw new Error("HTTP MCP session limit reached.");
+    }
     const pending = (async () => {
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => sessionId,
@@ -1394,7 +1492,7 @@ async function startHttp(handle: ServerHandle): Promise<void> {
       });
       const session = createServer({ storage: handle.storage, config: handle.config });
       await session.server.connect(transport);
-      transports.set(sessionId, { transport, server: session.server });
+      transports.set(sessionId, { transport, server: session.server, lastSeenAt: Date.now() });
       // Best-effort cleanup so long-running cloud servers don't leak
       // transports per session.
       transport.onclose = () => {
@@ -1410,6 +1508,41 @@ async function startHttp(handle: ServerHandle): Promise<void> {
     }
   }
 
+  function readHeader(req: IncomingMessage, name: string): string | null {
+    const value = req.headers[name.toLowerCase()];
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+  }
+
+  function reject(res: ServerResponse, statusCode: number, body: unknown): void {
+    res.statusCode = statusCode;
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(body));
+  }
+
+  function authenticateRequest(req: IncomingMessage, res: ServerResponse): boolean {
+    const token = handle.config.mcpToken;
+    if (!token) return true;
+    const authorization = readHeader(req, "authorization");
+    const supplied = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+    if (supplied && constantTimeTokenEqual(supplied, token)) return true;
+    reject(res, 401, { error: "MCP bearer token required." });
+    return false;
+  }
+
+  function constantTimeTokenEqual(left: string, right: string): boolean {
+    const leftBuffer = Buffer.from(left);
+    const rightBuffer = Buffer.from(right);
+    return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+  }
+
+  function allowOrigin(req: IncomingMessage, res: ServerResponse): boolean {
+    const origin = readHeader(req, "origin");
+    if (!origin) return true;
+    if (isAllowedOrigin(origin, handle.config.mcpAllowedOrigins)) return true;
+    reject(res, 403, { error: "Origin is not allowed for MCP HTTP." });
+    return false;
+  }
+
   const httpServer = createHttpServer(async (req, res) => {
     if (!req.url) {
       res.statusCode = 400;
@@ -1417,6 +1550,7 @@ async function startHttp(handle: ServerHandle): Promise<void> {
       return;
     }
     if (req.url.startsWith("/health")) {
+      if (handle.config.mcpToken && !authenticateRequest(req, res)) return;
       res.statusCode = 200;
       res.setHeader("content-type", "application/json");
       res.end(JSON.stringify({
@@ -1432,6 +1566,7 @@ async function startHttp(handle: ServerHandle): Promise<void> {
       return;
     }
     if (req.url.startsWith("/ready")) {
+      if (!allowOrigin(req, res) || !authenticateRequest(req, res)) return;
       try {
         await handle.storage.list();
         res.statusCode = 200;
@@ -1445,7 +1580,13 @@ async function startHttp(handle: ServerHandle): Promise<void> {
       return;
     }
     if (req.url.startsWith("/mcp")) {
-      const sessionId = (req.headers["mcp-session-id"] as string | undefined) ?? randomUUID();
+      if (!allowOrigin(req, res) || !authenticateRequest(req, res)) return;
+      const headerSessionId = typeof req.headers["mcp-session-id"] === "string" ? req.headers["mcp-session-id"] : undefined;
+      const sessionId = headerSessionId ?? randomUUID();
+      if (!SESSION_ID_RE.test(sessionId)) {
+        reject(res, 400, { error: "Invalid MCP session id." });
+        return;
+      }
       try {
         const transport = await acquireTransport(sessionId);
         await transport.handleRequest(req, res);
@@ -1468,6 +1609,34 @@ async function startHttp(handle: ServerHandle): Promise<void> {
   process.stderr.write(
     `[wire-mcp] http transport ready on http://${handle.config.httpHost}:${handle.config.httpPort}/mcp (storage=${handle.config.storageDir})\n`
   );
+}
+
+function isAllowedOrigin(origin: string, allowedOrigins: string[]): boolean {
+  const normalizedOrigin = normalizeOrigin(origin);
+  if (!normalizedOrigin) return false;
+  if (allowedOrigins.map(normalizeOrigin).includes(normalizedOrigin)) return true;
+  try {
+    const url = new URL(normalizedOrigin);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? isLoopbackHostname(url.hostname)
+      : false;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeOrigin(origin: string): string | null {
+  try {
+    const url = new URL(origin);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return null;
+  }
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  const normalized = hostname.trim().toLowerCase();
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1" || normalized === "[::1]";
 }
 
 async function main(): Promise<void> {

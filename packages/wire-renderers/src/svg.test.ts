@@ -112,6 +112,43 @@ describe("renderToSvg", () => {
     expect(svg).toContain('filter="url(#wire-shadow)"');
   });
 
+  it("sanitizes user-controlled SVG style attributes", () => {
+    const injection = 'red" onload="alert(1)';
+    const d = parseWireDiagram({
+      nodes: [
+        {
+          id: "a",
+          kind: "trigger",
+          title: "A",
+          style: { fill: injection, stroke: injection, textColor: injection }
+        },
+        {
+          id: "b",
+          kind: "action",
+          title: "B",
+          from: "a"
+        }
+      ],
+      edges: [
+        {
+          from: "a",
+          to: "b",
+          label: "safe label",
+          style: { stroke: injection, markerStart: "circle", markerEnd: "arrow" },
+          labelStyle: { fill: injection, background: injection, border: injection }
+        }
+      ]
+    });
+    const svg = renderToSvg(d, { background: injection });
+
+    expect(svg).not.toContain("onload");
+    expect(svg).not.toContain("alert(1)");
+    expect(svg).toContain('fill="#ffffff"');
+    expect(svg).toContain('stroke="#475569"');
+    expect(svg).toContain('fill="#334155"');
+    expect(svg).toContain('stroke="#cbd5e1"');
+  });
+
   it("supports per-edge handle overrides + edge routing modes", () => {
     const d = parseWireDiagram({
       nodes: [

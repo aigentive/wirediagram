@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createServer } from "./server.js";
+import { readFileSync } from "node:fs";
+import { createServer, getWireMcpCapabilities, WIRE_MCP_SERVER_VERSION } from "./server.js";
 import { MemoryStorage } from "./storage.js";
 import { addNode } from "@aigentive/wire-core";
 
@@ -9,6 +10,26 @@ import { addNode } from "@aigentive/wire-core";
  * underlying core modules we know are wired in.
  */
 describe("wire-mcp server bootstrap", () => {
+  it("advertises the package version", () => {
+    const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+      version: string;
+    };
+    expect(WIRE_MCP_SERVER_VERSION).toBe(packageJson.version);
+  });
+
+  it("exposes capability metadata including reserved layout engines", () => {
+    expect(getWireMcpCapabilities()).toMatchObject({
+      serverVersion: WIRE_MCP_SERVER_VERSION,
+      docsVersion: 1,
+      schemaVersion: 1,
+      layoutEngines: {
+        dagre: "implemented",
+        elk: "reserved"
+      },
+      actions: expect.arrayContaining(["batch", "layout.apply", "node.add"])
+    });
+  });
+
   it("creates a server with in-memory storage", () => {
     const storage = new MemoryStorage();
     const handle = createServer({ storage });

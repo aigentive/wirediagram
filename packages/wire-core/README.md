@@ -63,7 +63,7 @@ type WireDiagram = {
   id?: string;
   title?: string;
   layout: "LR" | "TB" | "RL" | "BT";   // default LR
-  layoutEngine?: "dagre" | "elk";
+  layoutEngine?: "dagre" | "elk"; // "elk" is reserved and currently falls back to dagre.
   nodes: WireNode[];
   edges: WireEdge[];                    // optional explicit edges
   metadata?: Record<string, unknown>;

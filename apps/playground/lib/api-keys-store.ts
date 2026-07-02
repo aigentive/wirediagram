@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID, createHmac, timingSafeEqual } from "node:crypto";
 import { recordAuthenticatedUser } from "@/lib/activity-store";
+import { requireAppSecret } from "@/lib/app-secret";
 import { listCloudPaths, readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import type { CurrentUser } from "@/lib/current-user";
 import { stableStringify } from "@/lib/wire-canonical";
@@ -179,7 +180,7 @@ function parseApiKey(value: string): { ownerKey: string; id: string; secret: str
 }
 
 function hashSecret(secret: string): string {
-  const hmacSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "wire-local-dev-secret";
+  const hmacSecret = requireAppSecret("API key hashing");
   return createHmac("sha256", hmacSecret).update(secret).digest("base64url");
 }
 

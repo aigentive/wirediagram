@@ -29,7 +29,7 @@ export interface WireDocsShape {
 }
 
 export const WIRE_DOCS_VERSION = 1;
-export const WIRE_DOCS_UPDATED_AT = "2026-05-10T00:00:00.000Z";
+export const WIRE_DOCS_UPDATED_AT = "2026-07-02T00:00:00.000Z";
 
 export const LLM_DOCS_ROUTES = [
   { path: "/llm/wire-docs.shape.json", mediaType: "application/json", purpose: "Root machine-readable docs manifest." },
@@ -247,6 +247,7 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
     tools: [
       { name: "v1_get_docs_shape", purpose: "Return structured docs chunks by topic or task.", requiredSequence: ["call before uncertain tasks"] },
       { name: "v1_get_agent_guide", purpose: "Return the compact Markdown operating guide." },
+      { name: "v1_get_capabilities", purpose: "Return server/docs/schema versions and implemented vs reserved capabilities." },
       { name: "create_diagram", purpose: "Create a new diagram, optionally from a template." },
       { name: "load_diagram", purpose: "Load a stored diagram by id." },
       { name: "save_diagram", purpose: "Overwrite a diagram after schema parsing." },
@@ -263,7 +264,7 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
       { name: "update_edge", purpose: "Patch explicit edge labels, handles, style, routing, or data." },
       { name: "remove_edge", purpose: "Remove an explicit edge by id." },
       { name: "add_note", purpose: "Add an annotation note, optionally attached to a node." },
-      { name: "set_layout", purpose: "Change layout direction or engine." },
+      { name: "set_layout", purpose: "Change layout direction. Engine 'elk' is reserved/not implemented and falls back to dagre with a validation warning." },
       { name: "add_group", purpose: "Add a group node and optionally parent existing children." },
       { name: "ungroup", purpose: "Clear group membership while leaving the group node." },
       { name: "patch_metadata", purpose: "Patch diagram.metadata keys without replacing unrelated metadata." },

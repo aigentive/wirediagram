@@ -14,7 +14,8 @@ This spec covers:
 
 - `packages/wire-react/src/options.ts` — `WireOptionSpec`, `WireOptionCatalog`, helpers (`readWireOption`, `patchWireOption`, `wireNodeOptions`, `wireOptionSpecsForNode`, `inferOptionType`).
 - `packages/wire-react/src/components/WireOptionPanel.tsx` — renderer for a list of option specs.
-- `WireProvider` accepts a diagram and dispatches actions; consumers can already pass an `optionCatalog` through downstream context (`WireCanvas` accepts it as a prop).
+- `WireProvider` accepts a diagram and dispatches actions. It does **not** accept `optionCatalog` today.
+- `WireWorkspace` and `WireCanvas` accept `optionCatalog` as the implemented catalog entry points; `WireWorkspace` passes it to `WireCanvas` and `WireOptionPanel`.
 - `WireInspector` (the right rail in the demo apps) currently shows Title / Description / Appearance only. **It does not render `WireOptionPanel`** — this is the primary gap.
 
 ## Out of scope
@@ -31,14 +32,14 @@ This spec covers:
 
 Restructure the inspector into a tabbed surface. Title and Description stay above the tabs (they apply regardless of tab). Below the title block, a 2-segment control switches between:
 
-- **Configure** *(default)* — kind-specific options driven by `WireOptionCatalog`. Renders specs from `wireOptionSpecsForNode(ctx.optionCatalog, node)` using `WireOptionPanel` (or inline equivalent reusing the existing recessed input style). Each row patches via `patchWireOption(node, spec, value)` and dispatches `node.patch`. When the catalog has zero specs for the active kind, render an empty state hint (`"No configuration for ${kind} nodes yet — pass an optionCatalog to enable them."`).
+- **Configure** *(default)* — kind-specific options driven by the `WireOptionCatalog` prop supplied to `WireWorkspace` or `WireCanvas`. Renders specs from `wireOptionSpecsForNode(optionCatalog, node)` using `WireOptionPanel` (or inline equivalent reusing the existing recessed input style). Each row patches via `patchWireOption(node, spec, value)` and dispatches `node.patch`. When the catalog has zero specs for the active kind, render an empty state hint (`"No configuration for ${kind} nodes yet — pass an optionCatalog to enable them."`).
 - **Style** — everything currently in the Appearance section: Card style preset (Neutral / Success / …), Fill / Border / Text colors, Border width, Radius, Shadow, Reset.
 
 Tab segment styling matches the existing wire-design segmented controls (slate-900 active fill, white text). Tab state is component-local (`useState`); selection-change resets to "Configure" when switching nodes.
 
-The catalog flows in via `WireProvider`'s context. `WireInspector` reads `ctx.optionCatalog` and is responsible for the catalog → panel binding; consumers don't write any glue.
+The implemented catalog path is prop-based: consumers pass `optionCatalog` to `WireWorkspace` or `WireCanvas`. A future provider-context API can be added later, but this spec must not document `<WireProvider optionCatalog={...}>` as current behavior until that prop exists.
 
-**Acceptance**: passing an `optionCatalog` to `<WireProvider>` is enough to make the Configure tab populate. The Style tab keeps every existing control, just relocated.
+**Acceptance**: passing an `optionCatalog` to `<WireWorkspace>` or `<WireCanvas>` is enough to make the Configure surface populate. The Style tab keeps every existing control, just relocated.
 
 ### 2. Demo — example catalogs
 
@@ -119,7 +120,7 @@ This file is **demo data**, not a library export. It lives in the playground app
 
 **Files**: `apps/playground/app/playground/PlaygroundClient.tsx`, `apps/playground/app/wires/WiresClient.tsx`
 
-Both pages import `agentCatalog` and pass it to `<WireProvider>` (preferred — single point) or directly to `<WireCanvas optionCatalog={...} />`. After item 1, the inspector picks it up automatically.
+Both pages import `agentCatalog` and pass it to `<WireWorkspace optionCatalog={...} />` or directly to `<WireCanvas optionCatalog={...} />`. Do not pass it to `<WireProvider>` unless a future provider-context API is implemented.
 
 The demo's chat agent (`/api/playground/chat/route.ts`) already builds the input from the diagram. The system prompt gets a short paragraph listing the demo catalog's keys per kind, so the agent can populate them when the user asks ("set the AI node to gpt-5.4 and temperature 0.5"). This is demo behavior, not library behavior — it stays in the playground route.
 

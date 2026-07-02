@@ -82,6 +82,48 @@ const DEFAULT_EDGE_WIDTH = 1.5;
 const DEFAULT_LABEL_FILL = "#334155";
 const DEFAULT_LABEL_BG = "#ffffff";
 const DEFAULT_LABEL_BORDER = "#cbd5e1";
+const SAFE_NAMED_COLORS = new Set([
+  "black",
+  "white",
+  "transparent",
+  "currentcolor",
+  "gray",
+  "grey",
+  "silver",
+  "red",
+  "green",
+  "blue",
+  "yellow",
+  "orange",
+  "purple",
+  "pink",
+  "brown",
+  "cyan",
+  "magenta",
+  "lime",
+  "navy",
+  "teal",
+  "aqua",
+  "maroon",
+  "olive",
+  "fuchsia",
+  "indigo",
+  "violet",
+  "gold",
+  "coral",
+  "tomato",
+  "salmon",
+  "plum",
+  "orchid",
+  "turquoise",
+  "skyblue",
+  "slategray",
+  "slategrey",
+  "darkgray",
+  "darkgrey",
+  "lightgray",
+  "lightgrey"
+]);
 
 function escapeXml(s: string): string {
   return s
@@ -90,6 +132,32 @@ function escapeXml(s: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
+}
+
+function escapeAttr(s: string): string {
+  return escapeXml(s);
+}
+
+function sanitizeCssColor(value: string | undefined, fallback: string): string {
+  const color = value?.trim();
+  if (!color || color.length > 80) return fallback;
+  if (/[\u0000-\u001f\u007f"'<>;&]/.test(color)) return fallback;
+  if (/\burl\s*\(/i.test(color)) return fallback;
+  if (/^#[0-9a-fA-F]{3,4}(?:[0-9a-fA-F]{3,4})?$/.test(color)) return color;
+
+  const named = color.toLowerCase();
+  if (SAFE_NAMED_COLORS.has(named)) return color;
+
+  const fn = color.match(/^(rgb|rgba|hsl|hsla)\((.*)\)$/i);
+  if (fn && /^[0-9.\s,%+/-]+$/.test(fn[2] ?? "")) return color;
+
+  return fallback;
+}
+
+function sanitizeStrokeDasharray(value: string | undefined): string | undefined {
+  const dasharray = value?.trim();
+  if (!dasharray || dasharray.length > 80) return undefined;
+  return /^[0-9.\s,]+$/.test(dasharray) ? dasharray : undefined;
 }
 
 function wrap(text: string, max: number): string[] {
@@ -433,9 +501,9 @@ function resolveEdgeStyle(
 ): ResolvedEdgeStyle {
   const merged: EdgeStyle = { ...(diagramDefault ?? {}), ...(edge.style ?? {}) };
   return {
-    stroke: merged.stroke ?? DEFAULT_EDGE_STROKE,
+    stroke: sanitizeCssColor(merged.stroke, DEFAULT_EDGE_STROKE),
     strokeWidth: merged.strokeWidth ?? DEFAULT_EDGE_WIDTH,
-    strokeDasharray: merged.strokeDasharray,
+    strokeDasharray: sanitizeStrokeDasharray(merged.strokeDasharray),
     markerEnd: merged.markerEnd ?? "arrow",
     markerStart: merged.markerStart ?? "none",
     routing: edge.routing ?? diagramRouting ?? "bezier",
@@ -461,11 +529,11 @@ function resolveNodeStyle(
 ): ResolvedNodeStyle {
   const merged: NodeStyle = { ...(diagramDefault ?? {}), ...(node.style ?? {}) };
   return {
-    fill: merged.fill ?? toneColor.fill,
-    stroke: merged.stroke ?? toneColor.stroke,
+    fill: sanitizeCssColor(merged.fill, sanitizeCssColor(toneColor.fill, TONE_COLORS.default.fill)),
+    stroke: sanitizeCssColor(merged.stroke, sanitizeCssColor(toneColor.stroke, TONE_COLORS.default.stroke)),
     strokeWidth: merged.strokeWidth ?? 1.5,
-    strokeDasharray: merged.strokeDasharray,
-    textColor: merged.textColor ?? toneColor.text,
+    strokeDasharray: sanitizeStrokeDasharray(merged.strokeDasharray),
+    textColor: sanitizeCssColor(merged.textColor, sanitizeCssColor(toneColor.text, TONE_COLORS.default.text)),
     borderRadius: merged.borderRadius,
     opacity: merged.opacity ?? 1,
     shadow: merged.shadow ?? false
@@ -484,6 +552,7 @@ function markerId(shape: EdgeMarker, color: string, dir: "start" | "end"): strin
 function markerDef(shape: EdgeMarker, color: string, dir: "start" | "end"): string {
   if (shape === "none") return "";
   const id = markerId(shape, color, dir);
+  const fill = escapeAttr(sanitizeCssColor(color, DEFAULT_EDGE_STROKE));
   // Use orient="auto" everywhere (universally supported in headless
   // rasterizers like resvg) and markerUnits="userSpaceOnUse" so marker
   // size is independent of stroke width — otherwise a strokeWidth: 4
@@ -497,16 +566,16 @@ function markerDef(shape: EdgeMarker, color: string, dir: "start" | "end"): stri
   const u = ` markerUnits="userSpaceOnUse"`;
   if (shape === "arrow") {
     if (dir === "end") {
-      return `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10"${u} orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="${color}"/></marker>`;
+      return `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10"${u} orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="${fill}"/></marker>`;
     }
-    return `<marker id="${id}" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="10" markerHeight="10"${u} orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="${color}"/></marker>`;
+    return `<marker id="${id}" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="10" markerHeight="10"${u} orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="${fill}"/></marker>`;
   }
   if (shape === "circle") {
-    return `<marker id="${id}" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="8" markerHeight="8"${u} orient="auto"><circle cx="5" cy="5" r="4" fill="${color}"/></marker>`;
+    return `<marker id="${id}" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="8" markerHeight="8"${u} orient="auto"><circle cx="5" cy="5" r="4" fill="${fill}"/></marker>`;
   }
   if (shape === "diamond") {
     const refX = dir === "end" ? 9 : 1;
-    return `<marker id="${id}" viewBox="0 0 10 10" refX="${refX}" refY="5" markerWidth="10" markerHeight="10"${u} orient="auto"><path d="M0,5 L5,0 L10,5 L5,10 z" fill="${color}"/></marker>`;
+    return `<marker id="${id}" viewBox="0 0 10 10" refX="${refX}" refY="5" markerWidth="10" markerHeight="10"${u} orient="auto"><path d="M0,5 L5,0 L10,5 L5,10 z" fill="${fill}"/></marker>`;
   }
   return "";
 }
@@ -522,7 +591,7 @@ const SHADOW_FILTER_DEF =
 
 export function renderToSvg(diagram: WireDiagram, opts: RenderSvgOptions = {}): string {
   const padding = opts.padding ?? 24;
-  const background = opts.background ?? "#ffffff";
+  const background = sanitizeCssColor(opts.background, "#ffffff");
   const toneColors = { ...TONE_COLORS, ...(opts.toneColors ?? {}) };
   const titleWrap = opts.titleWrapChars ?? TITLE_WRAP_CHARS;
 
@@ -718,7 +787,7 @@ export function renderToSvg(diagram: WireDiagram, opts: RenderSvgOptions = {}): 
   parts.push(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">`
   );
-  parts.push(`<rect width="100%" height="100%" fill="${background}"/>`);
+  parts.push(`<rect width="100%" height="100%" fill="${escapeAttr(background)}"/>`);
 
   const defs: string[] = [];
   for (const m of requiredMarkers.values()) defs.push(markerDef(m.shape, m.color, m.dir));
@@ -743,25 +812,25 @@ export function renderToSvg(diagram: WireDiagram, opts: RenderSvgOptions = {}): 
   for (const d of drawables) {
     const geom = edgeGeoms.get(d.edge)!;
     const { path: pathD, start, end, labelPos } = geom;
-    const dashAttr = d.style.strokeDasharray ? ` stroke-dasharray="${escapeXml(d.style.strokeDasharray)}"` : "";
+    const dashAttr = d.style.strokeDasharray ? ` stroke-dasharray="${escapeAttr(d.style.strokeDasharray)}"` : "";
     const markerEndAttr =
       d.style.markerEnd === "none"
         ? ""
-        : ` marker-end="url(#${markerId(d.style.markerEnd, d.style.stroke, "end")})"`;
+        : ` marker-end="url(#${escapeAttr(markerId(d.style.markerEnd, d.style.stroke, "end"))})"`;
     const markerStartAttr =
       d.style.markerStart === "none"
         ? ""
-        : ` marker-start="url(#${markerId(d.style.markerStart, d.style.stroke, "start")})"`;
+        : ` marker-start="url(#${escapeAttr(markerId(d.style.markerStart, d.style.stroke, "start"))})"`;
     parts.push(
-      `<path d="${pathD}" fill="none" stroke="${d.style.stroke}" stroke-width="${d.style.strokeWidth}"${dashAttr}${markerEndAttr}${markerStartAttr}/>`
+      `<path d="${pathD}" fill="none" stroke="${escapeAttr(d.style.stroke)}" stroke-width="${d.style.strokeWidth}"${dashAttr}${markerEndAttr}${markerStartAttr}/>`
     );
 
     const label = d.edge.label ?? d.edge.branch ?? d.edge.fromBranch;
     if (label) {
       const labelStyle: EdgeLabelStyle = { ...(opts.edgeLabelStyle ?? {}), ...(d.edge.labelStyle ?? {}) };
-      const fill = labelStyle.fill ?? DEFAULT_LABEL_FILL;
-      const bg = labelStyle.background ?? DEFAULT_LABEL_BG;
-      const border = labelStyle.border ?? DEFAULT_LABEL_BORDER;
+      const fill = sanitizeCssColor(labelStyle.fill, DEFAULT_LABEL_FILL);
+      const bg = sanitizeCssColor(labelStyle.background, DEFAULT_LABEL_BG);
+      const border = sanitizeCssColor(labelStyle.border, DEFAULT_LABEL_BORDER);
       const fontSize = labelStyle.fontSize ?? 11;
       let lx: number;
       let ly: number;
@@ -777,10 +846,10 @@ export function renderToSvg(diagram: WireDiagram, opts: RenderSvgOptions = {}): 
       }
       const labelW = label.length * (fontSize * 0.55) + 10;
       parts.push(
-        `<rect x="${lx - labelW / 2}" y="${ly - fontSize + 2}" width="${labelW}" height="${fontSize + 5}" rx="3" fill="${bg}" fill-opacity="0.92" stroke="${border}" stroke-width="0.5"/>`
+        `<rect x="${lx - labelW / 2}" y="${ly - fontSize + 2}" width="${labelW}" height="${fontSize + 5}" rx="3" fill="${escapeAttr(bg)}" fill-opacity="0.92" stroke="${escapeAttr(border)}" stroke-width="0.5"/>`
       );
       parts.push(
-        `<text x="${lx}" y="${ly + 1}" text-anchor="middle" font-size="${fontSize}" fill="${fill}">${escapeXml(label)}</text>`
+        `<text x="${lx}" y="${ly + 1}" text-anchor="middle" font-size="${fontSize}" fill="${escapeAttr(fill)}">${escapeXml(label)}</text>`
       );
     }
   }
@@ -801,7 +870,7 @@ export function renderToSvg(diagram: WireDiagram, opts: RenderSvgOptions = {}): 
     const cx = pos.x + pos.width / 2;
     const cy = pos.y + pos.height / 2;
 
-    const dashAttr = style.strokeDasharray ? ` stroke-dasharray="${escapeXml(style.strokeDasharray)}"` : "";
+    const dashAttr = style.strokeDasharray ? ` stroke-dasharray="${escapeAttr(style.strokeDasharray)}"` : "";
     const opacityAttr = style.opacity < 1 ? ` opacity="${style.opacity}"` : "";
     const filterAttr = style.shadow ? ` filter="url(#${SHADOW_FILTER_ID})"` : "";
 
@@ -813,23 +882,23 @@ export function renderToSvg(diagram: WireDiagram, opts: RenderSvgOptions = {}): 
         `${cx},${pos.y + pos.height}`
       ].join(" ");
       parts.push(
-        `<polygon points="${points}" fill="${style.fill}" stroke="${style.stroke}" stroke-width="${style.strokeWidth}"${dashAttr}${opacityAttr}${filterAttr}/>`
+        `<polygon points="${points}" fill="${escapeAttr(style.fill)}" stroke="${escapeAttr(style.stroke)}" stroke-width="${style.strokeWidth}"${dashAttr}${opacityAttr}${filterAttr}/>`
       );
     } else if (shape === "ellipse") {
       parts.push(
-        `<ellipse cx="${cx}" cy="${cy}" rx="${pos.width / 2}" ry="${pos.height / 2}" fill="${style.fill}" stroke="${style.stroke}" stroke-width="${style.strokeWidth}"${dashAttr}${opacityAttr}${filterAttr}/>`
+        `<ellipse cx="${cx}" cy="${cy}" rx="${pos.width / 2}" ry="${pos.height / 2}" fill="${escapeAttr(style.fill)}" stroke="${escapeAttr(style.stroke)}" stroke-width="${style.strokeWidth}"${dashAttr}${opacityAttr}${filterAttr}/>`
       );
     } else if (shape === "note") {
-      const noteFill = node.style?.fill ?? "#fef9c3";
-      const noteStroke = node.style?.stroke ?? "#facc15";
-      const noteDash = node.style?.strokeDasharray ?? "3 3";
+      const noteFill = sanitizeCssColor(node.style?.fill, "#fef9c3");
+      const noteStroke = sanitizeCssColor(node.style?.stroke, "#facc15");
+      const noteDash = sanitizeStrokeDasharray(node.style?.strokeDasharray) ?? "3 3";
       parts.push(
-        `<rect x="${pos.x}" y="${pos.y}" width="${pos.width}" height="${pos.height}" rx="${style.borderRadius ?? 4}" fill="${noteFill}" stroke="${noteStroke}" stroke-width="${style.strokeWidth}" stroke-dasharray="${escapeXml(noteDash)}"${opacityAttr}${filterAttr}/>`
+        `<rect x="${pos.x}" y="${pos.y}" width="${pos.width}" height="${pos.height}" rx="${style.borderRadius ?? 4}" fill="${escapeAttr(noteFill)}" stroke="${escapeAttr(noteStroke)}" stroke-width="${style.strokeWidth}" stroke-dasharray="${escapeAttr(noteDash)}"${opacityAttr}${filterAttr}/>`
       );
     } else {
       const rx = style.borderRadius ?? (shape === "rounded" ? 12 : 4);
       parts.push(
-        `<rect x="${pos.x}" y="${pos.y}" width="${pos.width}" height="${pos.height}" rx="${rx}" fill="${style.fill}" stroke="${style.stroke}" stroke-width="${style.strokeWidth}"${dashAttr}${opacityAttr}${filterAttr}/>`
+        `<rect x="${pos.x}" y="${pos.y}" width="${pos.width}" height="${pos.height}" rx="${rx}" fill="${escapeAttr(style.fill)}" stroke="${escapeAttr(style.stroke)}" stroke-width="${style.strokeWidth}"${dashAttr}${opacityAttr}${filterAttr}/>`
       );
     }
 
@@ -845,7 +914,7 @@ export function renderToSvg(diagram: WireDiagram, opts: RenderSvgOptions = {}): 
       )
       .join("");
     parts.push(
-      `<text text-anchor="middle" font-size="${TITLE_FONT_PX}" font-weight="600" fill="${style.textColor}">${titleText}</text>`
+      `<text text-anchor="middle" font-size="${TITLE_FONT_PX}" font-weight="600" fill="${escapeAttr(style.textColor)}">${titleText}</text>`
     );
 
     if (dims.descLines.length) {
@@ -857,7 +926,7 @@ export function renderToSvg(diagram: WireDiagram, opts: RenderSvgOptions = {}): 
         )
         .join("");
       parts.push(
-        `<text text-anchor="middle" font-size="${DESC_FONT_PX}" fill="${style.textColor}" opacity="0.78">${descText}</text>`
+        `<text text-anchor="middle" font-size="${DESC_FONT_PX}" fill="${escapeAttr(style.textColor)}" opacity="0.78">${descText}</text>`
       );
     }
 

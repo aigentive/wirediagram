@@ -1,6 +1,6 @@
 {
   "name": "@aigentive/wire-monorepo",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
   "description": "Wire — LLM-first diagram library with MCP. Agent-operable diagrams.",
@@ -17,7 +17,7 @@
     "build": "npm run build --workspace @aigentive/wire-core && npm run build --workspace @aigentive/wire-renderers && npm run build --workspace @aigentive/wire-react && npm run build --workspace @aigentive/wire-mcp && npm run build --workspace @aigentive/wire-cli",
     "build:core": "npm run build --workspace @aigentive/wire-core",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run build:core && vitest run",
+    "test": "npm run build && vitest run",
     "test:react": "npm run build:core && npm run test --workspace @aigentive/wire-react",
     "test:react:coverage": "npm run build:core && npm run test:coverage --workspace @aigentive/wire-react",
     "test:e2e": "playwright test",
@@ -32,16 +32,21 @@
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/node": "^22.10.7",
-    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/coverage-v8": "^3.2.6",
     "happy-dom": "^20.9.0",
     "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "vitest": "^3.2.6"
   },
   "overrides": {
     "express-rate-limit": "^8.5.1",
+    "esbuild": "^0.28.1",
     "fast-uri": "^3.1.2",
-    "hono": "^4.12.18",
+    "hono": "^4.12.27",
     "ip-address": "^10.2.0",
+    "qs": "^6.15.3",
+    "undici": "^6.27.0",
+    "vite": "^7.3.6",
+    "ws": "^8.21.0",
     "next": {
       "postcss": "^8.5.12"
     }

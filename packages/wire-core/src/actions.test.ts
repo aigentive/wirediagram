@@ -30,6 +30,14 @@ describe("wire actions", () => {
     expect(result.diagram.nodes.find((n) => n.id === "run")?.tone).toBe("success");
     expect(result.validation.valid).toBe(true);
     expect(result.changedNodeIds).toEqual(["start", "run"]);
+    expect(result.inverse).toEqual({
+      type: "batch",
+      actions: [
+        { type: "node.patch", id: "run", patch: { tone: null } },
+        { type: "node.remove", id: "run" },
+        { type: "node.remove", id: "start" }
+      ]
+    });
   });
 
   it("moves and resizes nodes with inverse patch actions", () => {
@@ -118,6 +126,38 @@ describe("wire actions", () => {
       type: "edge.connect",
       edge: { id: "approval", from: "a", to: "b", label: "new", routing: "straight" }
     });
+  });
+
+  it("undoes and redoes implicit edge disconnects", () => {
+    const connected = applyWireActions(emptyDiagram(), [
+      { type: "node.add", node: { kind: "trigger", title: "A", id: "a" } },
+      { type: "node.add", node: { kind: "action", title: "B", id: "b", from: "a" } }
+    ]).diagram;
+
+    const disconnected = applyWireAction(connected, { type: "edge.disconnect", from: "a", to: "b" });
+    expect(disconnected.diagram.nodes.find((node) => node.id === "b")?.from).toBeUndefined();
+    expect(disconnected.inverse).toEqual({ type: "diagram.replace", diagram: connected });
+
+    const undone = applyWireAction(disconnected.diagram, disconnected.inverse!);
+    expect(undone.diagram).toEqual(connected);
+    const redone = applyWireAction(undone.diagram, undone.inverse!);
+    expect(redone.diagram).toEqual(disconnected.diagram);
+  });
+
+  it("undoes node removal with pruned references intact", () => {
+    const connected = applyWireActions(emptyDiagram(), [
+      { type: "node.add", node: { kind: "trigger", title: "A", id: "a" } },
+      { type: "node.add", node: { kind: "action", title: "B", id: "b", from: "a" } },
+      { type: "node.add", node: { kind: "action", title: "C", id: "c", from: "b" } }
+    ]).diagram;
+
+    const removed = applyWireAction(connected, { type: "node.remove", id: "b" });
+    expect(removed.diagram.nodes.map((node) => node.id)).toEqual(["a", "c"]);
+    expect(removed.diagram.nodes.find((node) => node.id === "c")?.from).toBeUndefined();
+    expect(removed.inverse).toEqual({ type: "diagram.replace", diagram: connected });
+
+    const undone = applyWireAction(removed.diagram, removed.inverse!);
+    expect(undone.diagram).toEqual(connected);
   });
 
   it("patches diagram metadata without replacing unrelated keys", () => {

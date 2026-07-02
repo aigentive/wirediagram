@@ -1,7 +1,9 @@
 import type { NextRequest } from "next/server";
+import { hashIp, resolveClientIp } from "@/lib/ip-quota-store";
 import {
   resolvePublicShare,
   saveEditableShare,
+  ShareRateLimitError,
   shareUrls
 } from "@/lib/share-links-store";
 
@@ -47,7 +49,9 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Re
   }
 
   try {
-    const saved = await saveEditableShare(token, payload.diagram);
+    const saved = await saveEditableShare(token, payload.diagram, {
+      actorKey: `ip:${hashIp(resolveClientIp(req.headers))}`
+    });
     const viewToken = saved.record?.viewToken ?? saved.record?.token ?? token;
     return Response.json({
       diagram: saved.diagram,
@@ -62,6 +66,12 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Re
       })
     });
   } catch (err) {
+    if (err instanceof ShareRateLimitError) {
+      return Response.json(
+        { error: err.message, code: "share-edit-rate-limited", retryAfterSeconds: err.retryAfterSeconds },
+        { status: 429, headers: { "retry-after": String(err.retryAfterSeconds) } }
+      );
+    }
     return Response.json(
       { error: err instanceof Error ? err.message : String(err) },
       { status: 422 }

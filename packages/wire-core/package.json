@@ -1,6 +1,6 @@
 {
   "name": "@aigentive/wire-core",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Wire — canonical schema, validation, normalization, and layout for LLM-first diagrams.",
   "license": "Apache-2.0",
   "type": "module",

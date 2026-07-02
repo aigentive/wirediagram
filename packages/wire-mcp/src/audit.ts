@@ -14,17 +14,59 @@ export interface AuditEvent {
   diagramId?: string;
 }
 
-const REDACTED_KEYS = new Set(["body", "data", "prompt", "schema"]);
+const REDACTED_KEY_PATTERNS = [
+  "key",
+  "token",
+  "secret",
+  "authorization",
+  "apikey",
+  "password",
+  "prompt",
+  "diagram_json",
+  "data",
+  "metadata",
+  "schema",
+  "body"
+];
 
-function summariseParams(params: unknown): string {
+export function summariseParams(params: unknown): string {
   if (!params || typeof params !== "object") return String(params ?? "");
   return Object.entries(params as Record<string, unknown>)
     .map(([k, v]) => {
-      if (REDACTED_KEYS.has(k)) return `${k}=<redacted>`;
-      const str = typeof v === "object" ? JSON.stringify(v) : String(v);
+      const summary = redactedSummary(k, v);
+      if (summary) return `${k}=${summary}`;
+      const safeValue = sanitizeAuditValue(v);
+      const str = typeof safeValue === "object" ? JSON.stringify(safeValue) : String(safeValue);
       return `${k}=${str.length > 80 ? `${str.slice(0, 80)}…` : str}`;
     })
     .join(" ");
+}
+
+export function sanitizeAuditValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map((item) => sanitizeAuditValue(item));
+  if (!value || typeof value !== "object") return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+    const summary = redactedSummary(key, nested);
+    out[key] = summary ?? sanitizeAuditValue(nested);
+  }
+  return out;
+}
+
+function redactedSummary(key: string, value: unknown): string | null {
+  const normalized = key.replace(/[-_\s]/g, "").toLowerCase();
+  if (normalized === "diagramid") return null;
+  if (normalized === "wireid") return null;
+  if (normalized === "actions" && Array.isArray(value)) {
+    const types = value
+      .map((action) => action && typeof action === "object" ? (action as { type?: unknown }).type : null)
+      .filter((type): type is string => typeof type === "string");
+    const uniqueTypes = Array.from(new Set(types));
+    return `<redacted count=${value.length}${uniqueTypes.length ? ` types=${uniqueTypes.join(",")}` : ""}>`;
+  }
+  if (normalized === "diagram" || normalized === "diagramjson") return "<redacted>";
+  if (REDACTED_KEY_PATTERNS.some((pattern) => normalized.includes(pattern))) return "<redacted>";
+  return null;
 }
 
 export interface AuditLoggerOptions {
