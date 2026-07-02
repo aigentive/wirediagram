@@ -165,6 +165,38 @@ export async function recordPlaygroundChatMessages(options: {
   });
 }
 
+export async function recordPublicShareEdit(options: {
+  owner: ActivityUser;
+  wireId: string;
+  token: string;
+  actorKey: string | null;
+  changedNodeCount: number;
+  changedEdgeCount: number;
+}): Promise<void> {
+  await recordActivity("recordPublicShareEdit", async () => {
+    const db = await getDbClient();
+    await upsertUser(db, options.owner);
+    await db.execute({
+      sql: `
+INSERT INTO wire_user_events (id, user_key, event_type, metadata_json, created_at)
+VALUES (?, ?, 'public_share_edit', ?, ?)
+`,
+      args: [
+        randomUUID(),
+        options.owner.key,
+        JSON.stringify({
+          wireId: options.wireId,
+          token: options.token,
+          actorKey: options.actorKey,
+          changedNodeCount: options.changedNodeCount,
+          changedEdgeCount: options.changedEdgeCount
+        }),
+        new Date().toISOString()
+      ]
+    });
+  });
+}
+
 async function recordActivity(label: string, write: () => Promise<void>): Promise<void> {
   if (!shouldUseDatabaseStore()) return;
   try {

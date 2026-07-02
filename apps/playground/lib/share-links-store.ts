@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { parseWireDiagram, type WireDiagram } from "@aigentive/wire-core";
+import { recordPublicShareEdit } from "@/lib/activity-store";
 import { listCloudPaths, readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import type { CurrentUser } from "@/lib/current-user";
 import { resolveShareToken } from "@/lib/share-store";
@@ -177,6 +178,27 @@ export async function revokeWireShareLink(
   return revoked;
 }
 
+export async function rotateWireShareLink(
+  user: CurrentUser,
+  token: string,
+  options: { wireId?: string } = {}
+): Promise<{ revoked: ShareLinkRecord; replacement: ShareLinkRecord }> {
+  const record = await revokeWireShareLink(user, token, options);
+  const loaded = await loadUserWire(user, record.wireId);
+  if (!loaded) throw new Error("Wire not found.");
+  const links = await createWireShareLinks({
+    user,
+    wire: loaded.wire,
+    scope: record.scope,
+    pinRevision: record.pinned,
+    expiresAt: record.expiresAt
+  });
+  return {
+    revoked: record,
+    replacement: record.scope === "edit" ? links.edit! : links.view
+  };
+}
+
 export async function readShareLink(token: string): Promise<ShareLinkRecord | null> {
   if (!TOKEN_RE.test(token)) return null;
   const record = await readJson<ShareLinkRecord>(sharePath(token));
@@ -223,19 +245,34 @@ export async function resolvePublicShare(token: string, requiredScope: ShareScop
   };
 }
 
-export async function saveEditableShare(token: string, diagram: unknown): Promise<ResolvedShare> {
+export async function saveEditableShare(
+  token: string,
+  diagram: unknown,
+  options: { actorKey?: string | null } = {}
+): Promise<ResolvedShare> {
   const record = await readShareLink(token);
   if (!record || record.scope !== "edit") {
     throw new Error("Edit share not found.");
   }
   await assertEditShareWriteAllowed(token);
+  const owner = ownerUser(record);
+  const before = await loadUserWire(owner, record.wireId);
 
   const saved = await saveUserWire({
-    user: ownerUser(record),
+    user: owner,
     wireId: record.wireId,
     diagram,
     source: "manual",
     summary: "Updated from public edit share."
+  });
+  const changed = before ? changedCounts(before.diagram, saved.diagram) : { nodeCount: 0, edgeCount: 0 };
+  await recordPublicShareEdit({
+    owner,
+    wireId: record.wireId,
+    token,
+    actorKey: options.actorKey ?? null,
+    changedNodeCount: changed.nodeCount,
+    changedEdgeCount: changed.edgeCount
   });
 
   return {
@@ -244,6 +281,25 @@ export async function saveEditableShare(token: string, diagram: unknown): Promis
     wire: saved.wire,
     legacyToken: null
   };
+}
+
+function changedCounts(before: WireDiagram, after: WireDiagram): { nodeCount: number; edgeCount: number } {
+  return {
+    nodeCount: changedItemCount(before.nodes, after.nodes),
+    edgeCount: changedItemCount(
+      before.edges.map((edge, index) => ({ ...edge, id: edge.id ?? `${edge.from}|${edge.to}|${edge.branch ?? ""}|${index}` })),
+      after.edges.map((edge, index) => ({ ...edge, id: edge.id ?? `${edge.from}|${edge.to}|${edge.branch ?? ""}|${index}` }))
+    )
+  };
+}
+
+function changedItemCount<T extends { id?: string }>(before: T[], after: T[]): number {
+  const beforeById = new Map(before.map((item) => [item.id, item]));
+  const afterById = new Map(after.map((item) => [item.id, item]));
+  const ids = [...new Set([...beforeById.keys(), ...afterById.keys()])].filter(
+    (id): id is string => typeof id === "string"
+  );
+  return ids.filter((id) => JSON.stringify(beforeById.get(id)) !== JSON.stringify(afterById.get(id))).length;
 }
 
 export class ShareRateLimitError extends Error {

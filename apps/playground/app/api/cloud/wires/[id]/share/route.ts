@@ -4,7 +4,9 @@ import {
   createWireShareLinks,
   listWireShareLinks,
   publicSharePayload,
+  rotateWireShareLink,
   revokeWireShareLink,
+  shareUrls,
   type ShareScope
 } from "@/lib/share-links-store";
 import { loadUserWire, WireNotFoundError } from "@/lib/wires-store";
@@ -26,11 +28,29 @@ export async function GET(req: NextRequest, context: RouteContext): Promise<Resp
 
 export async function POST(req: NextRequest, context: RouteContext): Promise<Response> {
   const options = await readShareOptions(req);
-  const user = await requireApiKeyUser(req, options.scope === "edit" ? ["wires:read", "wires:write"] : ["wires:read"]);
+  const user = await requireApiKeyUser(req, options.scope === "edit" || options.rotateToken ? ["wires:read", "wires:write"] : ["wires:read"]);
   if (user instanceof Response) return user;
 
   try {
     const { id } = await context.params;
+    if (options.rotateToken) {
+      const rotated = await rotateWireShareLink(user, options.rotateToken, { wireId: id });
+      const viewToken = rotated.replacement.scope === "edit"
+        ? rotated.replacement.viewToken ?? rotated.replacement.token
+        : rotated.replacement.token;
+      return Response.json({
+        revoked: rotated.revoked,
+        share: rotated.replacement,
+        viewToken,
+        editToken: rotated.replacement.scope === "edit" ? rotated.replacement.token : null,
+        scope: rotated.replacement.scope,
+        urls: shareUrls(req.nextUrl.origin, {
+          viewToken,
+          editToken: rotated.replacement.scope === "edit" ? rotated.replacement.token : null,
+          wireId: rotated.replacement.wireId
+        })
+      });
+    }
     const loaded = await loadUserWire(user, id);
     if (!loaded) return Response.json({ error: "Wire not found." }, { status: 404 });
     const links = await createWireShareLinks({
@@ -76,7 +96,12 @@ export async function DELETE(req: NextRequest, context: RouteContext): Promise<R
   }
 }
 
-async function readShareOptions(req: NextRequest): Promise<{ scope: ShareScope; pinRevision: boolean; expiresAt: string | null }> {
+async function readShareOptions(req: NextRequest): Promise<{
+  scope: ShareScope;
+  pinRevision: boolean;
+  expiresAt: string | null;
+  rotateToken: string | null;
+}> {
   let body: unknown = null;
   try {
     body = await req.json();
@@ -84,12 +109,13 @@ async function readShareOptions(req: NextRequest): Promise<{ scope: ShareScope; 
     body = null;
   }
   const payload = body && typeof body === "object"
-    ? body as { scope?: unknown; pinRevision?: unknown; expiresAt?: unknown; expiresInSeconds?: unknown }
+    ? body as { scope?: unknown; pinRevision?: unknown; expiresAt?: unknown; expiresInSeconds?: unknown; rotateToken?: unknown }
     : {};
   return {
     scope: payload.scope === "edit" ? "edit" : "view",
     pinRevision: payload.pinRevision === true,
-    expiresAt: resolveExpiresAt(payload)
+    expiresAt: resolveExpiresAt(payload),
+    rotateToken: typeof payload.rotateToken === "string" && payload.rotateToken.trim() ? payload.rotateToken.trim() : null
   };
 }
 

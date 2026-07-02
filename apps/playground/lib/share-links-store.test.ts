@@ -9,6 +9,7 @@ import {
   listWireShareLinks,
   resolvePublicShare,
   revokeWireShareLink,
+  rotateWireShareLink,
   saveEditableShare,
   ShareRateLimitError
 } from "./share-links-store";
@@ -53,6 +54,12 @@ describe("share links", () => {
       const revoked = await revokeWireShareLink(user, active.view.token, { wireId: wire.id });
       expect(revoked.revokedAt).toEqual(expect.any(String));
       expect(await resolvePublicShare(active.view.token, "view")).toBeNull();
+
+      const rotated = await rotateWireShareLink(user, active.edit!.token, { wireId: wire.id });
+      expect(rotated.revoked.token).toBe(active.edit!.token);
+      expect(rotated.replacement.scope).toBe("edit");
+      expect(rotated.replacement.token).not.toBe(active.edit!.token);
+      expect(await resolvePublicShare(rotated.replacement.token, "edit")).toBeTruthy();
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -66,7 +73,7 @@ describe("share links", () => {
       const links = await createWireShareLinks({ user, wire, scope: "edit" });
       const token = links.edit!.token;
 
-      await saveEditableShare(token, diagram);
+      await saveEditableShare(token, diagram, { actorKey: "ip:test" });
       await expect(saveEditableShare(token, diagram)).rejects.toBeInstanceOf(ShareRateLimitError);
     } finally {
       rmSync(root, { recursive: true, force: true });

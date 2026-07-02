@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { hashIp, resolveClientIp } from "@/lib/ip-quota-store";
 import {
   resolvePublicShare,
   saveEditableShare,
@@ -48,7 +49,9 @@ export async function PATCH(req: NextRequest, context: RouteContext): Promise<Re
   }
 
   try {
-    const saved = await saveEditableShare(token, payload.diagram);
+    const saved = await saveEditableShare(token, payload.diagram, {
+      actorKey: `ip:${hashIp(resolveClientIp(req.headers))}`
+    });
     const viewToken = saved.record?.viewToken ?? saved.record?.token ?? token;
     return Response.json({
       diagram: saved.diagram,

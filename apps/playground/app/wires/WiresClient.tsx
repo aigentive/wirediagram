@@ -256,11 +256,33 @@ type ShareResponse = {
   editToken?: string | null;
   scope?: "view" | "edit";
   pinned?: boolean;
+  share?: ShareRecord;
+  revoked?: ShareRecord;
   urls?: ShareUrls;
   previewUrl?: string;
   editUrl?: string | null;
   error?: string;
 };
+
+type ShareRecord = {
+  token: string;
+  scope: "view" | "edit";
+  ownerKey: string;
+  wireId: string;
+  contentToken: string | null;
+  viewToken: string | null;
+  pinned: boolean;
+  createdAt: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+};
+
+type ShareListResponse = {
+  shares?: ShareRecord[];
+  error?: string;
+};
+
+type ShareExpiryValue = "never" | "7" | "30" | "90";
 
 export function WiresClient({
   user,
@@ -290,7 +312,9 @@ export function WiresClient({
   const [shareOpen, setShareOpen] = useState(false);
   const [shareScope, setShareScope] = useState<"view" | "edit">("view");
   const [sharePin, setSharePin] = useState(false);
+  const [shareExpiry, setShareExpiry] = useState<ShareExpiryValue>("never");
   const [shareResult, setShareResult] = useState<ShareResponse | null>(null);
+  const [shareLinks, setShareLinks] = useState<ShareRecord[]>([]);
   const [shareLoading, setShareLoading] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [canvasRevision, setCanvasRevision] = useState(0);
@@ -542,6 +566,7 @@ export function WiresClient({
     setPendingOpenAIChat(null);
     setShareMessage(null);
     setShareResult(null);
+    setShareLinks([]);
     setExportMessage(null);
     setTraces([]);
     setLoadingWireId(null);
@@ -799,16 +824,38 @@ export function WiresClient({
     [workspace]
   );
 
+  const loadShareLinks = useCallback(async () => {
+    if (!workspace) return;
+    try {
+      const res = await fetch(`/api/wires/${workspace.wire.id}/share`, { cache: "no-store" });
+      const data = await readJsonResponse<ShareListResponse>(res);
+      if (!res.ok || data.error || !data.shares) {
+        throw new Error(data.error ?? `Request failed with ${res.status}`);
+      }
+      setShareLinks(data.shares);
+    } catch (err) {
+      setShareMessage(err instanceof Error ? err.message : String(err));
+    }
+  }, [workspace]);
+
+  useEffect(() => {
+    if (!shareOpen) return;
+    void loadShareLinks();
+  }, [loadShareLinks, shareOpen]);
+
   const shareWire = useCallback(async () => {
     if (!workspace) return;
     setShareLoading(true);
     setShareMessage(null);
     setShareResult(null);
     try {
+      const expiresInSeconds = shareExpiry === "never"
+        ? undefined
+        : Number(shareExpiry) * 24 * 60 * 60;
       const res = await fetch(`/api/wires/${workspace.wire.id}/share`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ scope: shareScope, pinRevision: sharePin })
+        body: JSON.stringify({ scope: shareScope, pinRevision: sharePin, expiresInSeconds })
       });
       const data = await readJsonResponse<ShareResponse>(res);
       const viewUrl = data.urls?.view ?? data.previewUrl;
@@ -824,12 +871,59 @@ export function WiresClient({
         copied = false;
       }
       setShareMessage(copied ? "View link copied." : "Share link ready.");
+      await loadShareLinks();
     } catch (err) {
       setShareMessage(err instanceof Error ? err.message : String(err));
     } finally {
       setShareLoading(false);
     }
-  }, [sharePin, shareScope, workspace]);
+  }, [loadShareLinks, shareExpiry, sharePin, shareScope, workspace]);
+
+  const revokeShare = useCallback(async (token: string) => {
+    if (!workspace) return;
+    setShareLoading(true);
+    setShareMessage(null);
+    try {
+      const res = await fetch(`/api/wires/${workspace.wire.id}/share?token=${encodeURIComponent(token)}`, {
+        method: "DELETE"
+      });
+      const data = await readJsonResponse<{ error?: string }>(res);
+      if (!res.ok || data.error) {
+        throw new Error(data.error ?? `Request failed with ${res.status}`);
+      }
+      setShareResult(null);
+      setShareMessage("Share link revoked.");
+      await loadShareLinks();
+    } catch (err) {
+      setShareMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setShareLoading(false);
+    }
+  }, [loadShareLinks, workspace]);
+
+  const rotateShare = useCallback(async (token: string) => {
+    if (!workspace) return;
+    setShareLoading(true);
+    setShareMessage(null);
+    try {
+      const res = await fetch(`/api/wires/${workspace.wire.id}/share`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ rotateToken: token })
+      });
+      const data = await readJsonResponse<ShareResponse>(res);
+      if (!res.ok || data.error || !data.urls?.view) {
+        throw new Error(data.error ?? `Request failed with ${res.status}`);
+      }
+      setShareResult(data);
+      setShareMessage("Share link rotated.");
+      await loadShareLinks();
+    } catch (err) {
+      setShareMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setShareLoading(false);
+    }
+  }, [loadShareLinks, workspace]);
 
   const copyExport = useCallback(async (value: string) => {
     setExportMessage(null);
@@ -1341,12 +1435,17 @@ export function WiresClient({
           title={workspace.wire.title}
           scope={shareScope}
           pinRevision={sharePin}
+          expiry={shareExpiry}
           result={shareResult}
+          links={shareLinks}
           loading={shareLoading}
           message={shareMessage}
           onScopeChange={setShareScope}
           onPinChange={setSharePin}
+          onExpiryChange={setShareExpiry}
           onCreate={() => void shareWire()}
+          onRevoke={(token) => void revokeShare(token)}
+          onRotate={(token) => void rotateShare(token)}
           onClose={() => setShareOpen(false)}
         />
       ) : null}
@@ -1582,23 +1681,33 @@ function ShareDialog({
   title,
   scope,
   pinRevision,
+  expiry,
   result,
+  links,
   loading,
   message,
   onScopeChange,
   onPinChange,
+  onExpiryChange,
   onCreate,
+  onRevoke,
+  onRotate,
   onClose
 }: {
   title: string;
   scope: "view" | "edit";
   pinRevision: boolean;
+  expiry: ShareExpiryValue;
   result: ShareResponse | null;
+  links: ShareRecord[];
   loading: boolean;
   message: string | null;
   onScopeChange: (value: "view" | "edit") => void;
   onPinChange: (value: boolean) => void;
+  onExpiryChange: (value: ShareExpiryValue) => void;
   onCreate: () => void;
+  onRevoke: (token: string) => void;
+  onRotate: (token: string) => void;
   onClose: () => void;
 }) {
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
@@ -1671,6 +1780,19 @@ function ShareDialog({
                 />
                 Pin to current revision
               </label>
+              <label className="grid max-w-[220px] gap-1 text-[12px] font-bold text-slate-600">
+                Expires
+                <select
+                  value={expiry}
+                  onChange={(event) => onExpiryChange(event.currentTarget.value as ShareExpiryValue)}
+                  className="h-9 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-700"
+                >
+                  <option value="never">Never</option>
+                  <option value="7">7 days</option>
+                  <option value="30">30 days</option>
+                  <option value="90">90 days</option>
+                </select>
+              </label>
               <button
                 type="button"
                 onClick={onCreate}
@@ -1698,6 +1820,29 @@ function ShareDialog({
                 Create a link to populate public view and embed URLs.
               </div>
             )}
+
+            <div className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+              <div className="flex min-h-10 items-center justify-between gap-3 border-b border-slate-100 px-3">
+                <span className="text-[12px] font-bold uppercase tracking-wide text-slate-500">Existing links</span>
+                <span className="text-[11px] font-semibold text-slate-400">{links.length} total</span>
+              </div>
+              {links.length ? (
+                <div className="divide-y divide-slate-100">
+                  {links.map((link) => (
+                    <ShareLinkRow
+                      key={link.token}
+                      link={link}
+                      loading={loading}
+                      onCopy={() => void copy("Token", link.token)}
+                      onRotate={() => onRotate(link.token)}
+                      onRevoke={() => onRevoke(link.token)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 text-[12px] font-semibold text-slate-500">No share links yet.</div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1706,6 +1851,70 @@ function ShareDialog({
           <span className="min-w-0 truncate">{status ?? "View tokens and edit tokens are separate secrets."}</span>
         </div>
       </section>
+    </div>
+  );
+}
+
+function ShareLinkRow({
+  link,
+  loading,
+  onCopy,
+  onRotate,
+  onRevoke
+}: {
+  link: ShareRecord;
+  loading: boolean;
+  onCopy: () => void;
+  onRotate: () => void;
+  onRevoke: () => void;
+}) {
+  const expired = Boolean(link.expiresAt && Date.parse(link.expiresAt) <= Date.now());
+  const inactive = Boolean(link.revokedAt || expired);
+  const status = link.revokedAt ? "Revoked" : expired ? "Expired" : "Active";
+  return (
+    <div className="grid gap-2 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-md bg-slate-100 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-600">{link.scope}</span>
+          {link.pinned ? <span className="rounded-md bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700">Pinned</span> : null}
+          <span className={inactive ? "text-[12px] font-bold text-slate-400" : "text-[12px] font-bold text-emerald-700"}>{status}</span>
+          {link.expiresAt ? (
+            <span className="text-[11px] font-semibold text-slate-400">expires {formatShortDate(link.expiresAt)}</span>
+          ) : null}
+        </div>
+        <code className="mt-1 block truncate rounded-md bg-slate-50 px-2 py-1 font-mono text-[11px] font-semibold text-slate-600">{link.token}</code>
+      </div>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={onCopy}
+          className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-950"
+          aria-label="Copy token"
+          title="Copy token"
+        >
+          <Copy size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={onRotate}
+          disabled={loading || inactive}
+          className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-45"
+          aria-label="Rotate link"
+          title="Rotate link"
+        >
+          <RefreshCcw size={13} />
+        </button>
+        <button
+          type="button"
+          onClick={onRevoke}
+          disabled={loading || inactive}
+          className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 text-slate-500 hover:border-red-200 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-45"
+          aria-label="Revoke link"
+          title="Revoke link"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
     </div>
   );
 }
