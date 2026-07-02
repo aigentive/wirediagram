@@ -1,13 +1,13 @@
 {
   "name": "@aigentive/wire-monorepo",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "type": "module",
   "description": "Wire — LLM-first diagram library with MCP. Agent-operable diagrams.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aigentive/wirediagram.git"
+    "url": "https://github.com/aigentive/wirediagram"
   },
   "workspaces": [
     "packages/*",

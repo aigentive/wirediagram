@@ -3,6 +3,11 @@
   "version": "1.0.2",
   "description": "Wire — server/static renderers and framework-neutral adapter output.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aigentive/wirediagram",
+    "directory": "packages/wire-renderers"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,7 +27,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@aigentive/wire-core": "^1.0.3"
+    "@aigentive/wire-core": "^1.0.4"
   },
   "publishConfig": {
     "access": "public",
