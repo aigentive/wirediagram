@@ -25,12 +25,12 @@ function freePort(): Promise<number> {
   });
 }
 
-async function waitForHealth(url: string): Promise<void> {
+async function waitForHealth(url: string, init?: RequestInit): Promise<void> {
   const deadline = Date.now() + 10_000;
   let lastError = "";
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, init);
       if (res.ok) return;
       lastError = `${res.status} ${await res.text()}`;
     } catch (err) {
@@ -71,6 +71,42 @@ afterAll(async () => {
 });
 
 describe("streamable HTTP MCP roundtrip", () => {
+  it("rejects browser requests from disallowed origins", async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/mcp`, {
+      headers: { origin: "https://evil.example" }
+    });
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toEqual({ error: "Origin is not allowed for MCP HTTP." });
+  });
+
+  it("requires a bearer token when WIRE_MCP_TOKEN is configured", async () => {
+    const tokenTmp = mkdtempSync(join(tmpdir(), "wire-http-token-test-"));
+    const tokenPort = await freePort();
+    const tokenChild = spawn("node", [SERVER, "--http"], {
+      env: {
+        ...process.env,
+        WIRE_STORAGE_DIR: tokenTmp,
+        WIRE_HTTP_HOST: "127.0.0.1",
+        WIRE_HTTP_PORT: String(tokenPort),
+        WIRE_MCP_TOKEN: "test-token"
+      },
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    try {
+      await waitForHealth(`http://127.0.0.1:${tokenPort}/health`, {
+        headers: { authorization: "Bearer test-token" }
+      });
+
+      const res = await fetch(`http://127.0.0.1:${tokenPort}/mcp`);
+      expect(res.status).toBe(401);
+      await expect(res.json()).resolves.toEqual({ error: "MCP bearer token required." });
+    } finally {
+      tokenChild.kill();
+      rmSync(tokenTmp, { recursive: true, force: true });
+    }
+  });
+
   it("supports multiple client sessions against shared storage", async () => {
     const first = await createClient("wire-http-smoke-1");
     try {

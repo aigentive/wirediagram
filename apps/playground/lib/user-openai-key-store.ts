@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
+import { requireAppSecret } from "@/lib/app-secret";
 import { deleteCloudValue, readCloudJson, writeCloudText } from "@/lib/cloud-kv-store";
 import type { CurrentUser } from "@/lib/current-user";
 import { getDbClient, shouldUseDatabaseStore } from "@/lib/db/client";
@@ -88,7 +89,7 @@ function keyPath(user: CurrentUser): string {
 }
 
 function deriveKey(userKey: string): Buffer {
-  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "wire-local-dev-secret";
+  const secret = requireAppSecret("OpenAI key encryption");
   const ikm = Buffer.from(secret, "utf8");
   const salt = Buffer.from(userKey, "utf8");
   const derived = hkdfSync("sha256", ikm, salt, HKDF_INFO, ENCRYPTION_KEY_LENGTH);

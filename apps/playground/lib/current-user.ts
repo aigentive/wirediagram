@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { createHmac } from "node:crypto";
+import { requireAppSecret } from "@/lib/app-secret";
 import { recordAuthenticatedUser } from "@/lib/activity-store";
 
 export type CurrentUser = {
@@ -30,6 +31,6 @@ export async function requireCurrentUser(): Promise<CurrentUser | Response> {
 }
 
 function userStorageKey(email: string): string {
-  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "wire-local-dev-secret";
+  const secret = requireAppSecret("User storage keys");
   return createHmac("sha256", secret).update(email.toLowerCase()).digest("base64url").slice(0, 32);
 }

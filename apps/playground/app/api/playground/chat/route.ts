@@ -8,6 +8,10 @@ import {
 import { WIRE_AGENT_GUIDE } from "@aigentive/wire-mcp/dist/agent-guide.js";
 import type { NextRequest } from "next/server";
 import { recordPlaygroundChatMessages } from "@/lib/activity-store";
+import {
+  resolveWireChatExecutionContext,
+  type WireChatSurface
+} from "@/lib/chat-execution-context";
 import { getCurrentUser, type CurrentUser } from "@/lib/current-user";
 import {
   IP_QUOTA_LIMIT,
@@ -37,6 +41,11 @@ export const dynamic = "force-dynamic";
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+};
+
+type PlaygroundChatOptions = {
+  user?: CurrentUser | null;
+  surface?: WireChatSurface;
 };
 
 type ToolTrace = {
@@ -295,8 +304,16 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 export async function POST(req: NextRequest): Promise<Response> {
+  return runPlaygroundChat(req);
+}
+
+export async function runPlaygroundChat(req: Request, options: PlaygroundChatOptions = {}): Promise<Response> {
   try {
-    return await handlePost(req);
+    const trustedUser = options.user !== undefined ? options.user : await getCurrentUser();
+    return await handlePost(req, {
+      user: trustedUser,
+      surface: options.surface
+    });
   } catch (err) {
     return jsonResponse(
       { error: err instanceof Error ? err.message : String(err) },
@@ -305,7 +322,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 }
 
-async function handlePost(req: NextRequest): Promise<Response> {
+async function handlePost(req: Request, options: PlaygroundChatOptions): Promise<Response> {
   let body: unknown;
   try {
     body = await req.json();
@@ -341,7 +358,12 @@ async function handlePost(req: NextRequest): Promise<Response> {
     );
   }
 
-  const sessionUser = await resolveSessionUser(req.headers);
+  const context = resolveWireChatExecutionContext({
+    headers: req.headers,
+    trustedUser: options.user ?? null,
+    trustedSurface: options.surface
+  });
+  const sessionUser = context.user;
   let storedKey: string | null = null;
   if (sessionUser) {
     storedKey = await getUserOpenAIKey(sessionUser);
@@ -461,7 +483,7 @@ async function handlePost(req: NextRequest): Promise<Response> {
       ? run.saved.summary.trim()
       : "Wire diagram updated.";
 
-  if (req.headers.get("x-wire-chat-surface") !== "wires") {
+  if (context.surface !== "wires") {
     await recordPlaygroundChatMessages({
       user: sessionUser,
       actorKey: sessionUser ? null : ipHash ? `ip:${ipHash}` : null,
@@ -511,20 +533,6 @@ function freeQuotaPayload(used: number): {
     remaining,
     exhausted: remaining === 0
   };
-}
-
-async function resolveSessionUser(headers: Headers): Promise<CurrentUser | null> {
-  const internalUserKey = headers.get("x-wire-user-key")?.trim();
-  const internalUserEmail = headers.get("x-wire-user-email")?.trim();
-  if (internalUserKey && internalUserEmail) {
-    return {
-      key: internalUserKey,
-      email: internalUserEmail,
-      name: null,
-      image: null
-    };
-  }
-  return getCurrentUser();
 }
 
 async function runValidatedDiagramAgent({
