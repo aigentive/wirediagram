@@ -24,7 +24,7 @@
     "@aigentive/wire-renderers": "^1.0.2"
   },
   "devDependencies": {
-    "tsx": "^4.19.2"
+    "tsx": "^4.22.5"
   },
   "publishConfig": {
     "access": "public",
