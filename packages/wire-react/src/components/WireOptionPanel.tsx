@@ -50,7 +50,7 @@ export function WireOptionPanel({
   if (!node) {
     return (
       <aside
-        className={cx("grid gap-2 rounded-md bg-wire-surface p-3", className)}
+        className={cx("wire-option-panel wire-option-panel--styled grid gap-2 rounded-md bg-wire-surface p-3", className)}
         style={style}
       >
         <Eyebrow muted>{title}</Eyebrow>
@@ -64,7 +64,7 @@ export function WireOptionPanel({
 
   return (
     <aside
-      className={cx("grid gap-3 rounded-md bg-wire-surface p-3", className)}
+      className={cx("wire-option-panel wire-option-panel--styled grid gap-3 rounded-md bg-wire-surface p-3", className)}
       style={style}
     >
       <Eyebrow muted>{title}</Eyebrow>
@@ -108,14 +108,14 @@ function OptionField({
   const label = spec.label ?? labelFromKey(spec.key);
 
   return (
-    <label className="grid">
-      <span className={FIELD_LABEL_CLASS}>{label}</span>
+    <label className="wire-option-field grid">
+      <span className={cx("wire-option-field__label", FIELD_LABEL_CLASS)}>{label}</span>
       {type === "textarea" ? (
         <textarea
           value={rawValue === undefined ? "" : String(rawValue)}
           placeholder={spec.placeholder}
           onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
-          className={cx(CONTROL_CLASS, "min-h-[72px] resize-y")}
+          className={cx("wire-option-control", CONTROL_CLASS, "min-h-[72px] resize-y")}
         />
       ) : type === "boolean" ? (
         <input
@@ -133,13 +133,13 @@ function OptionField({
           max={spec.max}
           step={spec.step}
           onChange={(event) => onChange(event.target.value === "" ? null : Number(event.target.value))}
-          className={CONTROL_CLASS}
+          className={cx("wire-option-control", CONTROL_CLASS)}
         />
       ) : type === "select" ? (
         <select
           value={choiceValueToInputValue(rawValue)}
           onChange={(event) => onChange(valueFromChoice(event.target.value, spec.options ?? []))}
-          className={CONTROL_CLASS}
+          className={cx("wire-option-control", CONTROL_CLASS)}
         >
           <option value="">Unset</option>
           {(spec.options ?? []).map((choice) => (
@@ -153,11 +153,11 @@ function OptionField({
           value={rawValue === undefined ? "" : String(rawValue)}
           placeholder={spec.placeholder}
           onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
-          className={CONTROL_CLASS}
+          className={cx("wire-option-control", CONTROL_CLASS)}
         />
       )}
       {spec.description ? (
-        <span className="mt-1 text-[11px] leading-snug text-wire-tertiary">{spec.description}</span>
+        <span className="wire-option-field__description mt-1 text-[11px] leading-snug text-wire-tertiary">{spec.description}</span>
       ) : null}
     </label>
   );

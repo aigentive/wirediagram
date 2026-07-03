@@ -20,6 +20,7 @@ export function StatusPill({ kind, children, className }: StatusPillProps): Reac
   return (
     <span
       className={cx(
+        "wire-status-pill",
         "inline-block rounded-sm px-[7px] py-[3px] text-[10px] font-bold uppercase tracking-[0.08em]",
         PILL_CLASS[kind],
         className

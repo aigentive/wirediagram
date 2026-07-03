@@ -58,6 +58,7 @@ export function NodeCard({
     <div
       aria-selected={ariaSelected ?? selected}
       className={cx(
+        "wire-node-card wire-node-card--styled",
         "group/node flex flex-col gap-1 rounded-lg border px-3 pb-[10px] pt-[9px] transition-shadow duration-150",
         hasAuxContent ? null : "justify-center",
         selected ? "border-wire-focus" : "border-wire",

@@ -35,7 +35,7 @@ export function WireNodeList({
   return (
     <div
       className={cx(
-        "grid content-start gap-1 overflow-auto rounded-lg bg-wire-surface p-1.5",
+        "wire-node-list wire-node-list--styled grid content-start gap-1 overflow-auto rounded-lg bg-wire-surface p-1.5",
         className
       )}
       style={style}
@@ -48,7 +48,7 @@ export function WireNodeList({
             type="button"
             aria-selected={selected}
             className={cx(
-              "grid w-full grid-cols-[auto_1fr] items-start gap-x-2 gap-y-0.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-wire-sunken",
+              "wire-node-list__item grid w-full grid-cols-[auto_1fr] items-start gap-x-2 gap-y-0.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-wire-sunken",
               selected ? "bg-wire-sunken" : "bg-transparent"
             )}
             onClick={() => {

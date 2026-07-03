@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactElement } from "react";
 import { useWireHistory, useWireMode } from "../hooks.js";
+import { cx } from "./classes.js";
 
 export interface WireToolbarProps {
   className?: string;
@@ -54,14 +55,14 @@ export function WireToolbar({ className, style }: WireToolbarProps): ReactElemen
   const redoStyle = history.canRedo ? ICON_BUTTON_STYLE : { ...ICON_BUTTON_STYLE, ...DISABLED_STYLE };
 
   return (
-    <div className={className} style={{ ...BAR_STYLE, ...style }}>
-      <button type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" style={undoStyle}>
+    <div className={cx("wire-toolbar wire-toolbar--styled", className)} style={{ ...BAR_STYLE, ...style }}>
+      <button className="wire-toolbar__button" type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" style={undoStyle}>
         ↺
       </button>
-      <button type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" style={redoStyle}>
+      <button className="wire-toolbar__button" type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" style={redoStyle}>
         ↻
       </button>
-      <button type="button" onClick={() => setMode(mode === "edit" ? "view" : "edit")} style={BUTTON_STYLE}>
+      <button className="wire-toolbar__button" type="button" onClick={() => setMode(mode === "edit" ? "view" : "edit")} style={BUTTON_STYLE}>
         {mode === "edit" ? "View" : "Edit"}
       </button>
     </div>

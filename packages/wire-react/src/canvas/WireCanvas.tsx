@@ -44,6 +44,7 @@ import {
   type WireNodeRenderer
 } from "./nodeTypes.js";
 import type { WireOptionCatalog } from "../options.js";
+import { cx } from "../components/classes.js";
 
 export interface WireEdgeRenderContext {
   edge: WireCanvasEdgeGeometry["edge"];
@@ -777,7 +778,7 @@ function WireCanvasInner({
     <div
       ref={containerRef}
       data-wire-canvas
-      className={className}
+      className={cx("wire-canvas wire-canvas--styled", className)}
       style={rootStyle}
       onPointerDown={handlePanePointerDown}
       onPointerMove={handlePanePointerMove}
@@ -786,6 +787,7 @@ function WireCanvasInner({
       onClick={handlePaneClick}
     >
       <div
+        className="wire-canvas__viewport"
         style={{
           position: "absolute",
           left: 0,
@@ -844,6 +846,7 @@ function WireCanvasInner({
               data-wire-interactive
               data-wire-node
               data-wire-node-id={frame.id}
+              className="wire-node wire-node--styled"
               onPointerDown={(event) => handleNodePointerDown(event, frame)}
               onPointerMove={handleNodePointerMove}
               onPointerUp={handleNodePointerUp}
@@ -944,7 +947,7 @@ function WireEdge({
   };
 
   return (
-    <g data-wire-interactive data-wire-edge data-wire-edge-id={geometry.edge.id}>
+    <g className="wire-edge wire-edge--styled" data-wire-interactive data-wire-edge data-wire-edge-id={geometry.edge.id}>
       {renderEdge ? renderEdge(context) : (
         <path
           d={geometry.path}
@@ -1049,6 +1052,7 @@ function WireHandles({
             data-wire-side={side}
             data-wire-source-handle={isSource ? "true" : undefined}
             data-wire-target-handle={isTarget ? "true" : undefined}
+            className="wire-handle wire-handle--styled"
             disabled={!editable || !isSource}
             onPointerDown={isSource ? (event) => onSourcePointerDown(event, frame, side) : undefined}
             onPointerMove={isSource ? onSourcePointerMove : undefined}
@@ -1092,6 +1096,7 @@ function WireControls({
   return (
     <div
       data-wire-interactive
+      className="wire-controls wire-controls--styled"
       style={{
         position: "absolute",
         left: 12,
@@ -1191,6 +1196,7 @@ function WireMiniMap({
   return (
     <svg
       data-wire-interactive
+      className="wire-minimap wire-minimap--styled"
       aria-label="Canvas minimap"
       width={width}
       height={height}

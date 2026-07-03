@@ -23,6 +23,8 @@ describe("shared editor components", () => {
     expect(markup).toContain("Memory");
     expect(markup).toContain("Guardrail");
     expect(markup).toContain("Group");
+    expect(markup).toContain("wire-palette wire-palette--styled");
+    expect(markup).toContain("wire-palette__item");
     expect(markup).toContain("rounded-md");
     expect(markup).toContain("bg-wire-kind-trigger-bg");
   });
@@ -35,6 +37,8 @@ describe("shared editor components", () => {
     );
 
     expect(markup).toContain("aria-label=\"Undo\"");
+    expect(markup).toContain("wire-toolbar wire-toolbar--styled");
+    expect(markup).toContain("wire-toolbar__button");
     expect(markup).toContain("cursor:not-allowed");
     expect(markup).toContain("View");
   });
@@ -48,6 +52,7 @@ describe("shared editor components", () => {
 
     expect(markup).toContain("Valid");
     expect(markup).toContain("Validation");
+    expect(markup).toContain("wire-validation-panel wire-validation-panel--styled");
     expect(markup).toContain("text-wire-status-valid");
   });
 
@@ -80,6 +85,8 @@ describe("shared editor components", () => {
     );
 
     expect(markup).toContain("Model");
+    expect(markup).toContain("wire-option-panel wire-option-panel--styled");
+    expect(markup).toContain("wire-option-field");
     expect(markup).toContain("gpt-4.1-mini");
     expect(markup).toContain("Temperature");
     expect(markup).toContain("value=\"0.2\"");
@@ -102,6 +109,8 @@ describe("shared editor components", () => {
 
     expect(markup).toContain("Start");
     expect(markup).not.toContain("Stage");
+    expect(markup).toContain("wire-node-list wire-node-list--styled");
+    expect(markup).toContain("wire-node-list__item");
     expect(markup).toContain("rounded-lg");
   });
 

@@ -50,7 +50,7 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
   if (!node) {
     return (
       <aside
-        className={cx("grid gap-2 rounded-md bg-wire-surface p-3", className)}
+        className={cx("wire-inspector wire-inspector--styled grid gap-2 rounded-md bg-wire-surface p-3", className)}
         style={style}
       >
         <Eyebrow muted>Options</Eyebrow>
@@ -73,13 +73,13 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
 
   return (
     <aside
-      className={cx("grid gap-3 rounded-md bg-wire-surface p-3", className)}
+      className={cx("wire-inspector wire-inspector--styled grid gap-3 rounded-md bg-wire-surface p-3", className)}
       style={style}
     >
       <Eyebrow muted>Options</Eyebrow>
 
       <label className="grid">
-        <span className={FIELD_LABEL}>Title</span>
+        <span className={cx("wire-field-label", FIELD_LABEL)}>Title</span>
         <input
           className={TEXT_INPUT}
           value={node.title}
@@ -88,7 +88,7 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
       </label>
 
       <label className="grid">
-        <span className={FIELD_LABEL}>Description</span>
+        <span className={cx("wire-field-label", FIELD_LABEL)}>Description</span>
         <textarea
           className={cx(TEXT_INPUT, "min-h-[68px] resize-y")}
           value={node.description ?? ""}
@@ -123,7 +123,7 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
         </div>
 
         <label className="grid">
-          <span className={FIELD_LABEL}>Card style</span>
+          <span className={cx("wire-field-label", FIELD_LABEL)}>Card style</span>
           <select
             className={TEXT_INPUT}
             value={appearance.mode}
@@ -169,7 +169,7 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
 
         <div className="grid grid-cols-2 gap-2">
           <label className="grid">
-            <span className={FIELD_LABEL}>Border width</span>
+            <span className={cx("wire-field-label", FIELD_LABEL)}>Border width</span>
             <NumberFieldWithUnit
               value={appearance.strokeWidth}
               placeholder="1"
@@ -181,7 +181,7 @@ export function WireInspector({ className, style }: WireInspectorProps): ReactEl
           </label>
 
           <label className="grid">
-            <span className={FIELD_LABEL}>Radius</span>
+            <span className={cx("wire-field-label", FIELD_LABEL)}>Radius</span>
             <NumberFieldWithUnit
               value={appearance.borderRadius}
               placeholder="8"
@@ -262,7 +262,7 @@ function ColorField({
 }): ReactElement {
   return (
     <div className="grid gap-1">
-      <span className={FIELD_LABEL}>{label}</span>
+      <span className={cx("wire-field-label", FIELD_LABEL)}>{label}</span>
       <div className="flex min-w-0 items-center gap-2">
         <input
           aria-label={`${label} swatch`}

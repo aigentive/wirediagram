@@ -27,7 +27,7 @@ export function WireValidationPanel({ className, style }: WireValidationPanelPro
   return (
     <section
       className={cx(
-        "grid gap-0 overflow-hidden rounded-md",
+        "wire-validation-panel wire-validation-panel--styled grid gap-0 overflow-hidden rounded-md",
         className
       )}
       style={style}
@@ -44,7 +44,7 @@ export function WireValidationPanel({ className, style }: WireValidationPanelPro
             return (
               <li
                 key={`${issue.code}-${issue.nodeId ?? issue.edgeId ?? index}`}
-                className="flex items-start gap-2 text-[12px] leading-snug text-wire-secondary"
+                className="wire-validation-panel__issue flex items-start gap-2 text-[12px] leading-snug text-wire-secondary"
               >
                 <span
                   aria-hidden

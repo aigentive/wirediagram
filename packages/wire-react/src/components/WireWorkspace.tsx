@@ -107,6 +107,7 @@ export function WireWorkspace({
     >
       <main
         className={cx(
+          "wire-workspace wire-workspace--styled",
           layout === "fixed"
             ? "fixed inset-0 grid grid-rows-[auto_minmax(420px,55vh)_auto] gap-3 overflow-auto bg-slate-100 p-3 text-slate-950 dark:bg-slate-900 dark:text-slate-50 lg:grid-cols-[280px_minmax(0,1fr)_320px] lg:grid-rows-none lg:gap-0 lg:overflow-hidden lg:p-0"
             : "grid min-h-[560px] grid-rows-[auto_minmax(420px,1fr)_auto] gap-3 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 p-3 text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:grid-rows-none lg:gap-0 lg:p-0",
@@ -114,15 +115,15 @@ export function WireWorkspace({
         )}
         style={style}
       >
-        <aside className={cx("grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3.5 lg:p-4", sidebarClassName)}>
-          <header className="grid gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-800">
-            <div className="text-xl font-bold leading-tight tracking-normal text-slate-950 dark:text-slate-50">{title}</div>
-            {subtitle ? <div className="text-[13px] text-slate-500 dark:text-slate-400">{subtitle}</div> : null}
+        <aside className={cx("wire-workspace__sidebar grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3.5 lg:p-4", sidebarClassName)}>
+          <header className="wire-workspace__header grid gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-800">
+            <div className="wire-workspace__title text-xl font-bold leading-tight tracking-normal text-slate-950 dark:text-slate-50">{title}</div>
+            {subtitle ? <div className="wire-workspace__subtitle text-[13px] text-slate-500 dark:text-slate-400">{subtitle}</div> : null}
           </header>
           {sidebar ?? (showNodeList ? <WireNodeList /> : null)}
         </aside>
 
-        <section className={cx("relative min-h-[420px] min-w-0 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 lg:min-h-0 lg:rounded-none lg:border-0", canvasClassName)}>
+        <section className={cx("wire-workspace__canvas-region relative min-h-[420px] min-w-0 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 lg:min-h-0 lg:rounded-none lg:border-0", canvasClassName)}>
           <WireCanvas
             mode="edit"
             fitView={false}
@@ -135,7 +136,7 @@ export function WireWorkspace({
           />
         </section>
 
-        <aside className={cx("grid content-start gap-3 lg:p-4", inspectorClassName)}>
+        <aside className={cx("wire-workspace__inspector grid content-start gap-3 lg:p-4", inspectorClassName)}>
           {inspector ?? (
             <>
               {showOptions && optionCatalog ? <WireOptionPanel catalog={optionCatalog} nodeId={activeInspectNodeId} /> : null}

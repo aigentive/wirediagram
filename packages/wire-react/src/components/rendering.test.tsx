@@ -25,10 +25,12 @@ describe("wire component rendering surfaces", () => {
     );
 
     expect(viewer).toContain("data-wire-canvas=\"true\"");
+    expect(viewer).toContain("wire-canvas wire-canvas--styled");
     expect(viewer).toContain("Canvas minimap");
     expect(viewer).toContain("queued");
     expect(viewer).toContain("wire-canvas-arrow-end");
     expect(editor).toContain("Zoom in");
+    expect(editor).toContain("wire-controls wire-controls--styled");
     expect(editor).toContain("Fit view");
     expect(editor).toContain("data-wire-handle=\"true\"");
     expect(editor).toContain("wire-canvas-circle-start");
@@ -51,6 +53,8 @@ describe("wire component rendering surfaces", () => {
 
     expect(markup).toContain("Workflow");
     expect(markup).toContain("Production");
+    expect(markup).toContain("wire-workspace wire-workspace--styled");
+    expect(markup).toContain("wire-workspace__canvas-region");
     expect(markup).toContain("Custom nav");
     expect(markup).toContain("Custom inspector");
     expect(markup).toContain("data-wire-canvas=\"true\"");
@@ -92,6 +96,7 @@ describe("wire component rendering surfaces", () => {
       </WireContext.Provider>
     );
     expect(emptyMarkup).toContain("No node selected");
+    expect(emptyMarkup).toContain("wire-inspector wire-inspector--styled");
 
     const diagram = sampleDiagram();
     const selectedMarkup = renderToStaticMarkup(
@@ -169,6 +174,8 @@ describe("wire component rendering surfaces", () => {
     );
 
     expect(markup).toContain("Owner");
+    expect(markup).toContain("wire-option-panel wire-option-panel--styled");
+    expect(markup).toContain("wire-option-field");
     expect(markup).toContain("Review carefully");
     expect(markup).toContain("value=\"2\"");
     expect(markup).toContain("checked=\"\"");
