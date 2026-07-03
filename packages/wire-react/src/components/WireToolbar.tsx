@@ -62,7 +62,7 @@ export function WireToolbar({ className, style }: WireToolbarProps): ReactElemen
       <button className="wire-toolbar__button" type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" style={redoStyle}>
         ↻
       </button>
-      <button className="wire-toolbar__button" type="button" onClick={() => setMode(mode === "edit" ? "view" : "edit")} style={BUTTON_STYLE}>
+      <button className="wire-toolbar__button" type="button" onClick={() => setMode(mode === "edit" ? "view" : "edit", { source: "workspace", previousMode: mode, cause: "toolbar" })} style={BUTTON_STYLE}>
         {mode === "edit" ? "View" : "Edit"}
       </button>
     </div>

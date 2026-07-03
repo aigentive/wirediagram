@@ -25,6 +25,7 @@ import type {
 } from "@aigentive/wire-core";
 import { useWireActions, useWireContext } from "../hooks.js";
 import type { WireMode, WireSelection, WireViewport } from "../provider/types.js";
+import { normalizeWireSelection, sameWireSelection } from "../provider/runtimeState.js";
 import { wireActionsFromSelectionDelete } from "./changeActions.js";
 import {
   buildWireCanvasModel,
@@ -184,6 +185,7 @@ function WireCanvasInner({
   const dragPositionsRef = useRef<Map<string, Point> | undefined>(undefined);
   const viewportRafRef = useRef<number | null>(null);
   const pendingViewportRef = useRef<WireViewport | null>(null);
+  const pendingViewportEventRef = useRef<Parameters<typeof ctx.viewportActions.setViewport>[1]>();
   const dragRafRef = useRef<number | null>(null);
   const pendingDragPositionsRef = useRef<Map<string, Point> | null>(null);
   const modelBoundsRef = useRef<WireCanvasBounds | null>(null);
@@ -282,7 +284,7 @@ function WireCanvasInner({
   );
 
   const setWireViewport = useCallback(
-    (viewport: WireViewport) => {
+    (viewport: WireViewport, event?: Parameters<typeof ctx.viewportActions.setViewport>[1]) => {
       const next: WireViewport = {
         x: viewport.x,
         y: viewport.y,
@@ -290,16 +292,19 @@ function WireCanvasInner({
       };
       viewportRef.current = next;
       pendingViewportRef.current = next;
+      pendingViewportEventRef.current = event;
       if (viewportRafRef.current !== null) return;
       if (typeof requestAnimationFrame === "undefined") {
-        ctx.viewportActions.setViewport(next);
+        ctx.viewportActions.setViewport(next, event);
         return;
       }
       viewportRafRef.current = requestAnimationFrame(() => {
         viewportRafRef.current = null;
         const queued = pendingViewportRef.current;
+        const queuedEvent = pendingViewportEventRef.current;
         pendingViewportRef.current = null;
-        if (queued) ctx.viewportActions.setViewport(queued);
+        pendingViewportEventRef.current = undefined;
+        if (queued) ctx.viewportActions.setViewport(queued, queuedEvent);
       });
     },
     [ctx.viewportActions.setViewport, maxZoom, minZoom]
@@ -319,16 +324,19 @@ function WireCanvasInner({
   }, []);
 
   const setWireSelection = useCallback(
-    (selection: WireSelection, source: "canvas" | "api" = "canvas") => {
-      selectionRef.current = selection;
-      ctx.selectionActions.setSelection(selection);
-      ctx.eventActions.emit({ type: "selection.change", source, selection });
+    (selection: WireSelection, source: "canvas" | "api" = "canvas", cause: "node" | "edge" | "pane" | "keyboard" | "api" = "api") => {
+      const previousSelection = selectionRef.current;
+      const nextSelection = normalizeWireSelection(selection);
+      if (sameWireSelection(previousSelection, nextSelection)) return;
+      selectionRef.current = nextSelection;
+      ctx.selectionActions.setSelection(nextSelection, { source, previousSelection, cause });
+      ctx.eventActions.emit({ type: "selection.change", source, selection: nextSelection, previousSelection, cause });
     },
     [ctx.eventActions.emit, ctx.selectionActions.setSelection]
   );
 
-  const clearWireSelection = useCallback(() => {
-    setWireSelection({ nodeIds: [], edgeIds: [] });
+  const clearWireSelection = useCallback((cause: "pane" | "keyboard" | "api" = "api") => {
+    setWireSelection({ nodeIds: [], edgeIds: [] }, "canvas", cause);
   }, [setWireSelection]);
 
   const clearDragPreview = useCallback(() => {
@@ -348,7 +356,10 @@ function WireCanvasInner({
     if (rect.width <= 0 || rect.height <= 0) return false;
     const bounds = modelBoundsRef.current;
     if (!bounds) return false;
-    setWireViewport(fitViewportForBounds(bounds, rect.width, rect.height, fitViewPadding, minZoom, maxZoom));
+    setWireViewport(
+      fitViewportForBounds(bounds, rect.width, rect.height, fitViewPadding, minZoom, maxZoom),
+      { source: "canvas", cause: "fit-view", intent: "fit-view" }
+    );
     setFitReady(true);
     return true;
   }, [fitViewPadding, maxZoom, minZoom, setWireViewport]);
@@ -400,7 +411,7 @@ function WireCanvasInner({
 
       event.preventDefault();
       dispatchMany(nextActions);
-      clearWireSelection();
+      clearWireSelection("keyboard");
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -429,7 +440,7 @@ function WireCanvasInner({
         x: event.clientX - rect.left - world.x * zoom,
         y: event.clientY - rect.top - world.y * zoom,
         zoom
-      });
+      }, { source: "canvas", cause: "zoom" });
     },
     [canZoom, maxZoom, minZoom, setWireViewport, zoomStep]
   );
@@ -467,7 +478,7 @@ function WireCanvasInner({
         x: pan.startViewport.x + dx,
         y: pan.startViewport.y + dy,
         zoom: pan.startViewport.zoom
-      });
+      }, { source: "canvas", cause: "pan" });
     },
     [setWireViewport]
   );
@@ -503,7 +514,7 @@ function WireCanvasInner({
       }
       if (isInteractiveTarget(event.target)) return;
       ctx.eventActions.emit({ type: "pane.click", source: "canvas" });
-      if (interaction.clearSelectionOnPaneClick) clearWireSelection();
+      if (interaction.clearSelectionOnPaneClick) clearWireSelection("pane");
     },
     [clearWireSelection, ctx.eventActions, interaction.clearSelectionOnPaneClick]
   );
@@ -525,7 +536,7 @@ function WireCanvasInner({
         return;
       }
       if (interaction.selectOnNodeClick && !selectionRef.current.nodeIds.includes(frame.id)) {
-        setWireSelection({ nodeIds: [frame.id], edgeIds: [] });
+        setWireSelection({ nodeIds: [frame.id], edgeIds: [] }, "canvas", "node");
       }
       if (inspectOnNodeClick) {
         ctx.eventActions.emit({ type: "node.inspect", source: "canvas", nodeId: frame.id });
@@ -739,7 +750,7 @@ function WireCanvasInner({
         ctx.eventActions.emit({ type: "node.inspect", source: "canvas", nodeId: node.id });
       }
       if (!interaction.selectOnNodeClick) return;
-      setWireSelection({ nodeIds: [node.id], edgeIds: [] });
+      setWireSelection({ nodeIds: [node.id], edgeIds: [] }, "canvas", "node");
     },
     [ctx.eventActions, inspectOnNodeClick, interaction.selectOnNodeClick, setWireSelection]
   );
@@ -749,7 +760,7 @@ function WireCanvasInner({
       event.stopPropagation();
       ctx.eventActions.emit({ type: "edge.click", source: "canvas", edgeId });
       if (!interaction.selectOnEdgeClick) return;
-      setWireSelection({ nodeIds: [], edgeIds: [edgeId] });
+      setWireSelection({ nodeIds: [], edgeIds: [edgeId] }, "canvas", "edge");
     },
     [ctx.eventActions, interaction.selectOnEdgeClick, setWireSelection]
   );
@@ -905,8 +916,8 @@ function WireCanvasInner({
       {showControls ? (
         <WireControls
           onFit={fitToView}
-          onZoomIn={() => setWireViewport(zoomViewport(ctx.viewport, zoomStep, minZoom, maxZoom))}
-          onZoomOut={() => setWireViewport(zoomViewport(ctx.viewport, 1 / zoomStep, minZoom, maxZoom))}
+          onZoomIn={() => setWireViewport(zoomViewport(ctx.viewport, zoomStep, minZoom, maxZoom), { source: "canvas", cause: "zoom" })}
+          onZoomOut={() => setWireViewport(zoomViewport(ctx.viewport, 1 / zoomStep, minZoom, maxZoom), { source: "canvas", cause: "zoom" })}
         />
       ) : null}
     </div>

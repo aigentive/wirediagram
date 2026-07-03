@@ -8,6 +8,7 @@ import type {
 import type {
   WireHistoryActions,
   WireEventActions,
+  WireEventSource,
   WireMode,
   WireReactState,
   WireSelection,
@@ -28,7 +29,16 @@ export interface WireContextValue extends WireReactState {
   viewportActions: WireViewportActions;
   eventActions: WireEventActions;
   historyActions: WireHistoryActions;
-  setMode(mode: WireMode): void;
+  setMode(mode: WireMode, event?: {
+    source?: WireEventSource;
+    previousMode?: WireMode;
+    cause?: "toolbar" | "keyboard" | "api";
+  }): void;
+  markClean(event?: {
+    source?: WireEventSource;
+    previousDirty?: boolean;
+    cause?: "reset" | "api";
+  }): void;
 }
 
 export const WireContext = createContext<WireContextValue | null>(null);

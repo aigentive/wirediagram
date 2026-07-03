@@ -349,6 +349,7 @@ function contextFor(
       undo: () => undefined,
       redo: () => undefined
     },
-    setMode: () => undefined
+    setMode: () => undefined,
+    markClean: () => undefined
   };
 }

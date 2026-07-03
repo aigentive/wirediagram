@@ -3,7 +3,7 @@ import type { ApplyWireActionResult, WireAction, WireDiagram } from "@aigentive/
 import { WireCanvas, type WireCanvasProps } from "../canvas/WireCanvas.js";
 import type { WireNodeRenderer } from "../canvas/nodeTypes.js";
 import { WireProvider } from "../provider/WireProvider.js";
-import type { WireChangeEvent, WireEvent } from "../provider/types.js";
+import type { WireChangeEvent, WireEvent, WireEventSource, WireMode, WireSelection, WireViewport } from "../provider/types.js";
 import type { WireOptionCatalog } from "../options.js";
 import { cx } from "./classes.js";
 import { WireGroupFrame, WireNodeCardView } from "./WireNodeCardView.js";
@@ -19,6 +19,34 @@ export interface WireWorkspaceProps {
   onEvent?: (event: WireEvent) => void;
   validateOnChange?: boolean;
   history?: boolean;
+  selection?: WireSelection;
+  defaultSelection?: WireSelection;
+  onSelectionChange?: (selection: WireSelection, event: Extract<WireEvent, { type: "selection.change" }>) => void;
+  viewport?: WireViewport;
+  defaultViewport?: WireViewport;
+  onViewportChange?: (viewport: WireViewport, event: {
+    source: WireEventSource;
+    viewport: WireViewport;
+    previousViewport?: WireViewport;
+    cause?: "pan" | "zoom" | "fit-view" | "keyboard" | "api";
+    intent?: "fit-view" | "fit-selection";
+  }) => void;
+  mode?: WireMode;
+  defaultMode?: WireMode;
+  onModeChange?: (mode: WireMode, event: {
+    source: WireEventSource;
+    mode: WireMode;
+    previousMode?: WireMode;
+    cause?: "toolbar" | "keyboard" | "api";
+  }) => void;
+  dirty?: boolean;
+  defaultDirty?: boolean;
+  onDirtyChange?: (dirty: boolean, event: {
+    source: WireEventSource;
+    dirty: boolean;
+    previousDirty?: boolean;
+    cause?: "edit" | "undo" | "redo" | "reset" | "api";
+  }) => void;
   optionCatalog?: WireOptionCatalog;
   inspectNodeId?: string;
   defaultInspectNodeId?: string;
@@ -34,7 +62,7 @@ export interface WireWorkspaceProps {
   layout?: "fixed" | "embedded";
   renderNodeCard?: WireNodeRenderer;
   renderGroup?: WireNodeRenderer;
-  canvasProps?: Omit<WireCanvasProps, "optionCatalog" | "renderNodeCard" | "renderGroup">;
+  canvasProps?: Omit<WireCanvasProps, "mode" | "optionCatalog" | "renderNodeCard" | "renderGroup">;
   className?: string;
   sidebarClassName?: string;
   canvasClassName?: string;
@@ -50,6 +78,18 @@ export function WireWorkspace({
   onEvent,
   validateOnChange,
   history,
+  selection,
+  defaultSelection,
+  onSelectionChange,
+  viewport,
+  defaultViewport,
+  onViewportChange,
+  mode,
+  defaultMode,
+  onModeChange,
+  dirty,
+  defaultDirty,
+  onDirtyChange,
   optionCatalog,
   inspectNodeId,
   defaultInspectNodeId,
@@ -104,6 +144,18 @@ export function WireWorkspace({
       onEvent={handleEvent}
       validateOnChange={validateOnChange}
       history={history}
+      selection={selection}
+      defaultSelection={defaultSelection}
+      onSelectionChange={onSelectionChange}
+      viewport={viewport}
+      defaultViewport={defaultViewport}
+      onViewportChange={onViewportChange}
+      mode={mode}
+      defaultMode={defaultMode}
+      onModeChange={onModeChange}
+      dirty={dirty}
+      defaultDirty={defaultDirty}
+      onDirtyChange={onDirtyChange}
     >
       <main
         className={cx(
@@ -125,7 +177,6 @@ export function WireWorkspace({
 
         <section className={cx("wire-workspace__canvas-region relative min-h-[420px] min-w-0 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 lg:min-h-0 lg:rounded-none lg:border-0", canvasClassName)}>
           <WireCanvas
-            mode="edit"
             fitView={false}
             showMiniMap
             {...canvasProps}

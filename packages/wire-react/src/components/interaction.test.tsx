@@ -202,7 +202,7 @@ describe("wire component interactions", () => {
 
     expect(undo).toHaveBeenCalledOnce();
     expect(redo).toHaveBeenCalledOnce();
-    expect(setMode).toHaveBeenCalledWith("view");
+    expect(setMode).toHaveBeenCalledWith("view", { source: "workspace", previousMode: "edit", cause: "toolbar" });
   });
 });
 
@@ -243,7 +243,7 @@ function contextFor(
     canRedo?: boolean;
     undo?: () => ApplyWireActionResult | undefined;
     redo?: () => ApplyWireActionResult | undefined;
-    setMode?: (mode: "view" | "edit" | "connect" | "comment") => void;
+    setMode?: (mode: "view" | "edit" | "connect" | "comment", event?: Parameters<WireContextValue["setMode"]>[1]) => void;
   } = {}
 ): WireContextValue {
   const validation = overrides.validation ?? validate(diagram);
@@ -282,7 +282,8 @@ function contextFor(
       undo: overrides.undo ?? (() => undefined),
       redo: overrides.redo ?? (() => undefined)
     },
-    setMode: overrides.setMode ?? (() => undefined)
+    setMode: overrides.setMode ?? (() => undefined),
+    markClean: () => undefined
   };
 }
 

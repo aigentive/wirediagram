@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactElement, ReactNode } from "react";
 import type { WireNode } from "@aigentive/wire-core";
 import { useWireDiagram, useWireEvents, useWireSelection } from "../hooks.js";
+import { normalizeWireSelection, sameWireSelection } from "../provider/runtimeState.js";
 import { KindChip } from "../primitives/KindChip.js";
 import { cx } from "./classes.js";
 
@@ -55,9 +56,11 @@ export function WireNodeList({
               events.emit({ type: "node.click", source: "node-list", nodeId: node.id });
               if (inspectOnClick) events.emit({ type: "node.inspect", source: "node-list", nodeId: node.id });
               if (selectOnClick) {
-                const nextSelection = { nodeIds: [node.id], edgeIds: [] };
-                selectionActions.setSelection(nextSelection);
-                events.emit({ type: "selection.change", source: "node-list", selection: nextSelection });
+                const nextSelection = normalizeWireSelection({ nodeIds: [node.id], edgeIds: [] });
+                if (!sameWireSelection(selection, nextSelection)) {
+                  selectionActions.setSelection(nextSelection, { source: "node-list", previousSelection: selection, cause: "node" });
+                  events.emit({ type: "selection.change", source: "node-list", selection: nextSelection, previousSelection: selection, cause: "node" });
+                }
               }
             }}
           >
