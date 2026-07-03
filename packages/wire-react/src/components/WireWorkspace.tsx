@@ -5,7 +5,7 @@ import type { WireNodeRenderer } from "../canvas/nodeTypes.js";
 import { WireProvider } from "../provider/WireProvider.js";
 import type { WireChangeEvent, WireEvent, WireEventSource, WireMode, WireSelection, WireViewport } from "../provider/types.js";
 import type { WireOptionCatalog } from "../options.js";
-import { cx } from "./classes.js";
+import { cx, themeClass, type WireColorMode } from "./classes.js";
 import { WireGroupFrame, WireNodeCardView } from "./WireNodeCardView.js";
 import { WireInspector, type WireInspectorProps } from "./WireInspector.js";
 import { WireNodeList } from "./WireNodeList.js";
@@ -53,6 +53,19 @@ export interface WireWorkspaceProps {
   }) => void;
   optionCatalog?: WireOptionCatalog;
   readOnly?: boolean;
+  colorMode?: WireColorMode;
+  unstyled?: boolean;
+  classNames?: {
+    root?: string;
+    header?: string;
+    sidebar?: string;
+    canvasRegion?: string;
+    canvas?: string;
+    inspector?: string;
+    nodeList?: string;
+    optionPanel?: string;
+    validationPanel?: string;
+  };
   inspectNodeId?: string;
   defaultInspectNodeId?: string;
   onInspectNodeChange?: (nodeId: string | undefined, event: WireEvent) => void;
@@ -101,6 +114,9 @@ export function WireWorkspace({
   onDirtyChange,
   optionCatalog,
   readOnly = false,
+  colorMode,
+  unstyled = false,
+  classNames,
   inspectNodeId,
   defaultInspectNodeId,
   onInspectNodeChange,
@@ -219,37 +235,44 @@ export function WireWorkspace({
       <main
         ref={mainRef}
         className={cx(
-          "wire-workspace wire-workspace--styled",
-          layout === "fixed"
+          "wire-workspace",
+          !unstyled && "wire-workspace--styled",
+          !unstyled && (layout === "fixed"
             ? "fixed inset-0 grid grid-rows-[auto_minmax(420px,55vh)_auto] gap-3 overflow-auto bg-slate-100 p-3 text-slate-950 dark:bg-slate-900 dark:text-slate-50 lg:grid-cols-[280px_minmax(0,1fr)_320px] lg:grid-rows-none lg:gap-0 lg:overflow-hidden lg:p-0"
-            : "grid min-h-[560px] grid-rows-[auto_minmax(420px,1fr)_auto] gap-3 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 p-3 text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:grid-rows-none lg:gap-0 lg:p-0",
+            : "grid min-h-[560px] grid-rows-[auto_minmax(420px,1fr)_auto] gap-3 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 p-3 text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:grid-rows-none lg:gap-0 lg:p-0"),
+          themeClass(colorMode),
+          classNames?.root,
           className
         )}
+        data-wire-theme={colorMode}
         style={style}
       >
-        <aside className={cx("wire-workspace__sidebar grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3.5 lg:p-4", sidebarClassName)}>
-          <header className="wire-workspace__header grid gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-800">
-            <div className="wire-workspace__title text-xl font-bold leading-tight tracking-normal text-slate-950 dark:text-slate-50">{title}</div>
-            {subtitle ? <div className="wire-workspace__subtitle text-[13px] text-slate-500 dark:text-slate-400">{subtitle}</div> : null}
+        <aside className={cx("wire-workspace__sidebar", !unstyled && "grid min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-3.5 lg:p-4", classNames?.sidebar, sidebarClassName)}>
+          <header className={cx("wire-workspace__header", !unstyled && "grid gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-800", classNames?.header)}>
+            <div className={cx("wire-workspace__title", !unstyled && "text-xl font-bold leading-tight tracking-normal text-slate-950 dark:text-slate-50")}>{title}</div>
+            {subtitle ? <div className={cx("wire-workspace__subtitle", !unstyled && "text-[13px] text-slate-500 dark:text-slate-400")}>{subtitle}</div> : null}
           </header>
-          {sidebar ?? (showNodeList ? <WireNodeList /> : null)}
+          {sidebar ?? (showNodeList ? <WireNodeList unstyled={unstyled} className={classNames?.nodeList} /> : null)}
         </aside>
 
-        <section className={cx("wire-workspace__canvas-region relative min-h-[420px] min-w-0 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 lg:min-h-0 lg:rounded-none lg:border-0", canvasClassName)}>
+        <section className={cx("wire-workspace__canvas-region", !unstyled && "relative min-h-[420px] min-w-0 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 lg:min-h-0 lg:rounded-none lg:border-0", classNames?.canvasRegion, canvasClassName)}>
           <WireCanvas
             fitView={false}
             showMiniMap
             {...canvasProps}
+            colorMode={canvasProps?.colorMode ?? colorMode}
+            unstyled={unstyled || Boolean(canvasProps?.unstyled)}
+            classNames={{ ...canvasProps?.classNames, root: cx(classNames?.canvas, canvasProps?.classNames?.root) }}
             optionCatalog={optionCatalog}
             renderNodeCard={renderNodeCard}
             renderGroup={renderGroup}
-            className={cx("absolute inset-0 h-full w-full", canvasProps?.className)}
+            className={cx(!unstyled && "absolute inset-0 h-full w-full", canvasProps?.className)}
           />
         </section>
 
         <aside
           ref={inspectorRef}
-          className={cx("wire-workspace__inspector grid content-start gap-3 lg:p-4", inspectorClassName)}
+          className={cx("wire-workspace__inspector", !unstyled && "grid content-start gap-3 lg:p-4", classNames?.inspector, inspectorClassName)}
           onKeyDown={(event) => {
             if (event.key !== "Enter" || !event.altKey || !event.shiftKey) return;
             event.preventDefault();
@@ -268,6 +291,13 @@ export function WireWorkspace({
               edgeId={activeInspectEdgeId}
               optionCatalog={optionCatalog}
               readOnly={readOnly || inspectorProps?.readOnly}
+              colorMode={inspectorProps?.colorMode ?? colorMode}
+              unstyled={unstyled || Boolean(inspectorProps?.unstyled)}
+              classNames={{
+                ...inspectorProps?.classNames,
+                panel: cx(classNames?.optionPanel, inspectorProps?.classNames?.panel),
+                validation: cx(classNames?.validationPanel, inspectorProps?.classNames?.validation)
+              }}
               tabs={inspectorProps?.tabs ?? inspectorTabs}
               className={cx(inspectorProps?.className)}
             />

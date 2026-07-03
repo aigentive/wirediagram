@@ -12,6 +12,15 @@ export interface NodeCardProps {
   selected?: boolean;
   children?: ReactNode;
   footer?: ReactNode;
+  unstyled?: boolean;
+  classNames?: {
+    root?: string;
+    header?: string;
+    title?: string;
+    meta?: string;
+    content?: string;
+    footer?: string;
+  };
   className?: string;
   style?: CSSProperties;
   ariaSelected?: boolean;
@@ -38,6 +47,8 @@ export function NodeCard({
   selected,
   children,
   footer,
+  unstyled = false,
+  classNames,
   className,
   style,
   ariaSelected,
@@ -45,43 +56,62 @@ export function NodeCard({
 }: NodeCardProps): ReactElement {
   const tint = KIND_TINT[kindChipKey(kind)];
   const hasAuxContent = Boolean(showKindChip || refLabel || meta || children || footer);
-  const cardStyle: CSSProperties = {
-    backgroundImage: `linear-gradient(180deg, ${tint} 0%, var(--wire-bg-surface) 80%)`,
-    backgroundColor: "var(--wire-bg-surface)",
-    boxShadow: selected
-      ? "var(--wire-card-shadow-selected)"
-      : "var(--wire-card-shadow)",
-    minWidth: 220,
-    ...style
-  };
+  const cardStyle: CSSProperties | undefined = unstyled
+    ? style
+    : {
+      backgroundImage: `linear-gradient(180deg, ${tint} 0%, var(--wire-bg-surface) 80%)`,
+      backgroundColor: "var(--wire-bg-surface)",
+      boxShadow: selected
+        ? "var(--wire-card-shadow-selected)"
+        : "var(--wire-card-shadow)",
+      minWidth: 220,
+      ...style
+    };
   return (
     <div
       aria-selected={ariaSelected ?? selected}
       className={cx(
-        "wire-node-card wire-node-card--styled",
-        "group/node flex flex-col gap-1 rounded-lg border px-3 pb-[10px] pt-[9px] transition-shadow duration-150",
-        hasAuxContent ? null : "justify-center",
-        selected ? "border-wire-focus" : "border-wire",
+        "wire-node-card",
+        !unstyled && "wire-node-card--styled",
+        !unstyled && "group/node flex flex-col gap-1 rounded-lg border px-3 pb-[10px] pt-[9px] transition-shadow duration-150",
+        !unstyled && (hasAuxContent ? null : "justify-center"),
+        !unstyled && (selected ? "border-wire-focus" : "border-wire"),
+        classNames?.root,
         className
       )}
       style={cardStyle}
     >
       {showKindChip || refLabel ? (
-        <div className="flex items-center justify-between gap-1.5">
+        <div className={cx("wire-node-card__header", !unstyled && "flex items-center justify-between gap-1.5", classNames?.header)}>
           {showKindChip ? <KindChip kind={kind} /> : <span />}
           {refLabel ? <Ref>{refLabel}</Ref> : null}
         </div>
       ) : null}
-      <div className={cx(hasAuxContent ? "mt-0.5" : null, "text-[13px] font-semibold leading-snug tracking-[-0.005em] text-wire-primary")}>
+      <div
+        className={cx(
+          "wire-node-card__title",
+          !unstyled && hasAuxContent ? "mt-0.5" : null,
+          !unstyled && "text-[13px] font-semibold leading-snug tracking-normal text-wire-primary",
+          classNames?.title
+        )}
+      >
         {title}
       </div>
       {meta ? (
-        <div className="font-mono text-[10.5px] leading-[1.45] text-wire-tertiary">
+        <div className={cx("wire-node-card__meta", !unstyled && "font-mono text-[10.5px] leading-[1.45] text-wire-tertiary", classNames?.meta)}>
           {meta}
         </div>
       ) : null}
-      {children}
-      {footer ? <div className="text-[11px] leading-snug text-wire-tertiary">{footer}</div> : null}
+      {children ? (
+        <div className={cx("wire-node-card__content", classNames?.content)}>
+          {children}
+        </div>
+      ) : null}
+      {footer ? (
+        <div className={cx("wire-node-card__footer", !unstyled && "text-[11px] leading-snug text-wire-tertiary", classNames?.footer)}>
+          {footer}
+        </div>
+      ) : null}
     </div>
   );
 }

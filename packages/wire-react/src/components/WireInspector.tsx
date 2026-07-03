@@ -11,7 +11,7 @@ import { useWireActions, useWireDiagram, useWireSelection, useWireValidation } f
 import { wireOptionSpecsForNode, type WireOptionCatalog } from "../options.js";
 import { Eyebrow } from "../primitives/Eyebrow.js";
 import { StatusPill } from "../primitives/StatusPill.js";
-import { cx } from "./classes.js";
+import { cx, themeClass, type WireColorMode } from "./classes.js";
 import { resolveWireInspectionTarget, type WireInspectedTarget } from "./inspectionState.js";
 import { WireOptionFieldList, type WireOptionFieldListProps } from "./optionFields.js";
 
@@ -37,7 +37,7 @@ export interface WireInspectorProps {
     optionField?: (option: Parameters<NonNullable<WireOptionFieldListProps["renderField"]>>[0]["option"]) => string;
     section?: (section: string) => string;
   };
-  colorMode?: "light" | "dark" | "system";
+  colorMode?: WireColorMode;
   unstyled?: boolean;
   classNames?: {
     root?: string;
@@ -129,6 +129,7 @@ export function WireInspector({
   const rootClass = cx(
     "wire-inspector",
     !unstyled && "wire-inspector--styled grid gap-3 rounded-md bg-wire-surface p-3",
+    themeClass(colorMode),
     classNames?.root,
     className
   );
@@ -150,7 +151,7 @@ export function WireInspector({
     <aside className={rootClass} style={style} data-wire-theme={colorMode}>
       <Eyebrow muted>Options</Eyebrow>
       <div
-        className={cx("wire-inspector__tabs flex gap-1 border-b border-wire", classNames?.tabs)}
+        className={cx("wire-inspector__tabs", !unstyled && "flex gap-1 border-b border-wire", classNames?.tabs)}
         role="tablist"
         aria-label="Inspector panels"
         onKeyDown={(event) => handleTabKeyDown(event, applicableTabs, activePanel, setActiveTab)}
@@ -165,7 +166,8 @@ export function WireInspector({
             aria-controls={panelId(tab)}
             tabIndex={activePanel === tab ? 0 : -1}
             className={cx(
-              "wire-inspector__tab rounded-t-md px-2 py-1.5 text-[12px] font-bold text-wire-tertiary aria-selected:bg-wire-page aria-selected:text-wire-primary",
+              "wire-inspector__tab",
+              !unstyled && "rounded-t-md px-2 py-1.5 text-[12px] font-bold text-wire-tertiary aria-selected:bg-wire-page aria-selected:text-wire-primary",
               classNames?.tab
             )}
             onClick={() => setActiveTab(tab)}
@@ -178,7 +180,7 @@ export function WireInspector({
         role="tabpanel"
         id={panelId(activePanel)}
         aria-labelledby={tabId(activePanel)}
-        className={cx("wire-inspector__panel grid gap-3", classNames?.panel)}
+        className={cx("wire-inspector__panel", !unstyled && "grid gap-3", classNames?.panel)}
         tabIndex={-1}
       >
         {activePanel === "configure" && target.type === "node" ? (

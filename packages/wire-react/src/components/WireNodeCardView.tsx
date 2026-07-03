@@ -9,6 +9,15 @@ import { NodeCard } from "../primitives/NodeCard.js";
 import { cx } from "./classes.js";
 
 export interface WireNodeCardViewProps extends WireNodeRenderContext {
+  unstyled?: boolean;
+  classNames?: {
+    root?: string;
+    content?: string;
+    badge?: string;
+    meta?: string;
+    progress?: string;
+    footer?: string;
+  };
   className?: string;
   content?: ReactNode;
   footer?: ReactNode;
@@ -17,6 +26,13 @@ export interface WireNodeCardViewProps extends WireNodeRenderContext {
 }
 
 export interface WireGroupFrameProps extends WireNodeRenderContext {
+  unstyled?: boolean;
+  classNames?: {
+    root?: string;
+    header?: string;
+    title?: string;
+    count?: string;
+  };
   className?: string;
 }
 
@@ -90,20 +106,31 @@ export function WireNodeCardView(ctx: WireNodeCardViewProps): ReactElement {
       meta={subtitle}
       selected={ctx.selected}
       ariaSelected={ctx.selected}
-      className={cx("box-border h-full w-full min-w-0", ctx.className)}
+      unstyled={ctx.unstyled}
+      classNames={{
+        root: ctx.classNames?.root,
+        content: ctx.classNames?.content,
+        meta: ctx.classNames?.meta,
+        footer: ctx.classNames?.footer
+      }}
+      className={cx(!ctx.unstyled && "box-border h-full w-full min-w-0", ctx.className)}
       style={cardStyleForNode(ctx.node)}
       showKindChip={false}
     >
       {description ? (
-        <span className="text-[12px] leading-snug text-wire-secondary">{description}</span>
+        <span className={cx("wire-node-card-view__description", !ctx.unstyled && "text-[12px] leading-snug text-wire-secondary", ctx.classNames?.content)}>
+          {description}
+        </span>
       ) : null}
       {customContent}
-      {shouldRenderStructuredContent ? <StructuredCardContent content={cardContent} /> : null}
+      {shouldRenderStructuredContent ? (
+        <StructuredCardContent content={cardContent} unstyled={Boolean(ctx.unstyled)} classNames={ctx.classNames} />
+      ) : null}
       {showDefaultSummary && optionLine ? (
-        <span className="text-[11px] leading-snug text-wire-tertiary">{optionLine}</span>
+        <span className={cx("wire-node-card-view__summary", !ctx.unstyled && "text-[11px] leading-snug text-wire-tertiary", ctx.classNames?.meta)}>{optionLine}</span>
       ) : null}
       {ctx.footer ? (
-        <div className="text-[11px] leading-snug text-wire-tertiary">{ctx.footer}</div>
+        <div className={cx("wire-node-card-view__footer", !ctx.unstyled && "text-[11px] leading-snug text-wire-tertiary", ctx.classNames?.footer)}>{ctx.footer}</div>
       ) : null}
     </NodeCard>
   );
@@ -171,14 +198,22 @@ export function WireGroupFrame(ctx: WireGroupFrameProps): ReactElement {
       aria-selected={ctx.selected}
       data-selected={ctx.selected ? "true" : undefined}
       className={cx(
-        "relative box-border h-full w-full rounded-lg border-[1.5px] bg-wire-canvas pb-3.5 pl-3.5 pr-3.5 pt-7",
-        ctx.selected ? "border-wire-focus" : "border-wire-strong",
+        "wire-group-frame",
+        !ctx.unstyled && "wire-group-frame--styled relative box-border h-full w-full rounded-lg border-[1.5px] bg-wire-canvas pb-3.5 pl-3.5 pr-3.5 pt-7",
+        !ctx.unstyled && (ctx.selected ? "border-wire-focus" : "border-wire-strong"),
+        ctx.classNames?.root,
         ctx.className
       )}
     >
-      <div className="absolute left-3.5 right-3.5 top-2 flex items-center justify-between text-[10.5px] font-bold uppercase tracking-[0.08em] text-wire-primary">
-        <span>{ctx.node.title}</span>
-        <span className="font-mono text-[11px] text-wire-tertiary">
+      <div
+        className={cx(
+          "wire-group-frame__header",
+          !ctx.unstyled && "absolute left-3.5 right-3.5 top-2 flex items-center justify-between text-[10.5px] font-bold uppercase tracking-normal text-wire-primary",
+          ctx.classNames?.header
+        )}
+      >
+        <span className={cx("wire-group-frame__title", ctx.classNames?.title)}>{ctx.node.title}</span>
+        <span className={cx("wire-group-frame__count", !ctx.unstyled && "font-mono text-[11px] text-wire-tertiary", ctx.classNames?.count)}>
           {ctx.node.kind === "group" ? ctx.node.children?.length ?? 0 : 0}
         </span>
       </div>
@@ -198,21 +233,31 @@ function optionSummary(node: WireNode, specs: WireOptionSpec[]): string | undefi
   return line || undefined;
 }
 
-function StructuredCardContent({ content }: { content: WireCardContent | undefined }): ReactElement {
+function StructuredCardContent({
+  content,
+  unstyled,
+  classNames
+}: {
+  content: WireCardContent | undefined;
+  unstyled: boolean;
+  classNames?: WireNodeCardViewProps["classNames"];
+}): ReactElement {
   const progress = normalizeProgress(content?.progress);
 
   return (
-    <div className="grid gap-2">
+    <div className={cx("wire-node-card-view__content", !unstyled && "grid gap-2", classNames?.content)}>
       {content?.badges?.length ? (
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className={cx("wire-node-card-view__badges", !unstyled && "flex flex-wrap items-center gap-1.5")}>
           {content.badges.map((badge, index) => {
             const parsed = parseBadge(badge);
             return (
               <span
                 key={`${parsed.label}-${index}`}
                 className={cx(
-                  "rounded-sm px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em]",
-                  cardBadgeClass(parsed.tone)
+                  "wire-node-card-view__badge",
+                  !unstyled && "rounded-sm px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-normal",
+                  !unstyled && cardBadgeClass(parsed.tone),
+                  classNames?.badge
                 )}
               >
                 {parsed.label}
@@ -223,7 +268,7 @@ function StructuredCardContent({ content }: { content: WireCardContent | undefin
       ) : null}
 
       {content?.meta?.length ? (
-        <div className="grid gap-0.5 text-[11px] leading-snug text-wire-tertiary">
+        <div className={cx("wire-node-card-view__meta", !unstyled && "grid gap-0.5 text-[11px] leading-snug text-wire-tertiary", classNames?.meta)}>
           {content.meta.map((item, index) => (
             <span key={`${metaItemText(item)}-${index}`}>{metaItemText(item)}</span>
           ))}
@@ -231,29 +276,30 @@ function StructuredCardContent({ content }: { content: WireCardContent | undefin
       ) : null}
 
       {progress ? (
-        <div className="grid gap-1.5">
+        <div className={cx("wire-node-card-view__progress", !unstyled && "grid gap-1.5", classNames?.progress)}>
           {(progress.label || progress.showPercent) ? (
-            <div className="flex items-center justify-between gap-2 text-[11px] font-bold text-wire-tertiary">
+            <div className={cx("wire-node-card-view__progress-label", !unstyled && "flex items-center justify-between gap-2 text-[11px] font-bold text-wire-tertiary")}>
               <span>{progress.label}</span>
               {progress.showPercent ? <span>{Math.round(progress.percent * 100)}%</span> : null}
             </div>
           ) : null}
           {progress.steps ? (
-            <div className="flex items-center gap-1">
+            <div className={cx("wire-node-card-view__steps", !unstyled && "flex items-center gap-1")}>
               {Array.from({ length: progress.steps }, (_, index) => (
                 <span
                   key={index}
                   className={cx(
-                    "h-2 w-2 rounded-sm",
-                    index < progress.filledSteps ? "bg-wire-fg-secondary" : "bg-wire-sunken"
+                    "wire-node-card-view__step",
+                    !unstyled && "h-2 w-2 rounded-sm",
+                    !unstyled && (index < progress.filledSteps ? "bg-wire-fg-secondary" : "bg-wire-sunken")
                   )}
                 />
               ))}
             </div>
           ) : null}
-          <div className="h-1.5 overflow-hidden rounded-sm bg-wire-sunken">
+          <div className={cx("wire-node-card-view__progress-track", !unstyled && "h-1.5 overflow-hidden rounded-sm bg-wire-sunken")}>
             <div
-              className="h-full rounded-sm bg-wire-fg-secondary"
+              className={cx("wire-node-card-view__progress-bar", !unstyled && "h-full rounded-sm bg-wire-fg-secondary")}
               style={{ width: `${Math.round(progress.percent * 100)}%` }}
             />
           </div>
@@ -261,7 +307,7 @@ function StructuredCardContent({ content }: { content: WireCardContent | undefin
       ) : null}
 
       {content?.footer ? (
-        <span className="text-[11px] leading-snug text-wire-tertiary">{content.footer}</span>
+        <span className={cx("wire-node-card-view__footer", !unstyled && "text-[11px] leading-snug text-wire-tertiary", classNames?.footer)}>{content.footer}</span>
       ) : null}
     </div>
   );

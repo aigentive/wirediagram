@@ -51,7 +51,7 @@ import {
   type WireNodeRenderer
 } from "./nodeTypes.js";
 import type { WireOptionCatalog } from "../options.js";
-import { cx } from "../components/classes.js";
+import { cx, themeClass, type WireColorMode } from "../components/classes.js";
 import { dispatchWireInspectorFocusRequest } from "../components/workspaceFocusEvents.js";
 
 export interface WireEdgeRenderContext {
@@ -88,6 +88,22 @@ export interface WireCanvasProps {
   showControls?: boolean;
   showMiniMap?: boolean;
   readOnly?: boolean;
+  colorMode?: WireColorMode;
+  unstyled?: boolean;
+  classNames?: {
+    root?: string;
+    viewport?: string;
+    background?: string;
+    node?: string;
+    group?: string;
+    edge?: string;
+    handle?: string;
+    controls?: string;
+    minimap?: string;
+    status?: string;
+    search?: string;
+    connectionPicker?: string;
+  };
   keyboardA11y?: boolean;
   nodesFocusable?: boolean;
   edgesFocusable?: boolean;
@@ -247,6 +263,9 @@ function WireCanvasInner({
   showControls = true,
   showMiniMap = false,
   readOnly = false,
+  colorMode,
+  unstyled = false,
+  classNames,
   keyboardA11y,
   nodesFocusable,
   edgesFocusable,
@@ -1266,11 +1285,11 @@ function WireCanvasInner({
       touchAction: "none",
       userSelect: dragPositions || connection ? "none" : undefined,
       cursor: panStateRef.current ? "grabbing" : canPan ? "grab" : "default",
-      ...gridBackground(showBackground),
+      ...gridBackground(showBackground && !unstyled),
       ...style,
       visibility: fitReady ? style?.visibility : "hidden"
     }),
-    [canPan, connection, ctx.viewport, dragPositions, fitReady, showBackground, style]
+    [canPan, connection, ctx.viewport, dragPositions, fitReady, showBackground, style, unstyled]
   );
 
   return (
@@ -1281,7 +1300,8 @@ function WireCanvasInner({
       aria-label={nonEmptyString(ariaLabelConfig?.canvas, "Wire diagram canvas")}
       aria-describedby={statusId}
       tabIndex={keyboardEnabled ? 0 : undefined}
-      className={cx("wire-canvas wire-canvas--styled", className)}
+      className={cx("wire-canvas", !unstyled && "wire-canvas--styled", themeClass(colorMode), classNames?.root, className)}
+      data-wire-theme={colorMode}
       style={rootStyle}
       onKeyDown={handleCanvasKeyDown}
       onFocus={(event) => {
@@ -1299,8 +1319,20 @@ function WireCanvasInner({
       onPointerCancel={handlePanePointerCancel}
       onClick={handlePaneClick}
     >
+      {showBackground ? (
+        <div
+          aria-hidden
+          data-wire-background
+          className={cx("wire-canvas__background", classNames?.background)}
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none"
+          }}
+        />
+      ) : null}
       <div
-        className="wire-canvas__viewport"
+        className={cx("wire-canvas__viewport", classNames?.viewport)}
         style={{
           position: "absolute",
           left: 0,
@@ -1332,6 +1364,8 @@ function WireCanvasInner({
                 focusable={edgeFocusEnabled}
                 statusId={statusId}
                 ariaLabel={ariaLabelForEdge(edge.edge, ariaLabelConfig)}
+                className={classNames?.edge}
+                unstyled={unstyled}
                 renderEdge={renderEdge}
                 onFocus={() => setActiveItem({ type: "edge", id: edge.edge.id })}
                 onClick={handleEdgeClick}
@@ -1357,6 +1391,13 @@ function WireCanvasInner({
             renderNodeCard,
             renderGroup
           });
+          const rendererContext = {
+            ...renderContext,
+            unstyled,
+            classNames: {
+              root: frame.node.kind === "group" ? classNames?.group : classNames?.node
+            }
+          };
 
           return (
             <div
@@ -1369,7 +1410,7 @@ function WireCanvasInner({
               aria-label={ariaLabelForNode(frame.node, ariaLabelConfig)}
               aria-describedby={keyboardEnabled ? statusId : undefined}
               tabIndex={nodeFocusEnabled ? (activeItem?.type === "node" && activeItem.id === frame.id ? 0 : -1) : undefined}
-              className="wire-node wire-node--styled"
+              className={cx("wire-node", !unstyled && "wire-node--styled", frame.node.kind === "group" ? classNames?.group : classNames?.node)}
               onFocus={() => {
                 setActiveItem({ type: "node", id: frame.id });
                 if (autoPanOnNodeFocus) ensureFrameVisible(frame, viewportRef.current, canvasSize, setWireViewport);
@@ -1396,7 +1437,7 @@ function WireCanvasInner({
                   ...(frame.node.kind === "group" ? { height: frame.height } : null)
                 }}
               >
-                {renderer(renderContext)}
+                {renderer(rendererContext)}
               </div>
               {isConnectionCandidate ? (
                 <div
@@ -1415,6 +1456,8 @@ function WireCanvasInner({
                 frame={frame}
                 direction={model.direction}
                 editable={editable}
+                unstyled={unstyled}
+                className={classNames?.handle}
                 slots={handleSlotsByFrame.get(frame.id)}
                 connecting={Boolean(connection)}
                 connectionSourceSide={isConnectionSource ? connection?.sourceSide ?? null : null}
@@ -1434,6 +1477,8 @@ function WireCanvasInner({
           inputId={searchInputId}
           listId={searchListId}
           label={nonEmptyString(ariaLabelConfig?.search, "Search diagram items")}
+          className={classNames?.search}
+          unstyled={unstyled}
           query={search.query}
           results={searchResults}
           activeResult={activeSearchResult}
@@ -1458,6 +1503,8 @@ function WireCanvasInner({
           listId={connectionPickerListId}
           feedbackId={connectionFeedbackId}
           label={nonEmptyString(ariaLabelConfig?.connectionTarget, "Choose connection target")}
+          className={classNames?.connectionPicker}
+          unstyled={unstyled}
           query={connectionPicker.query}
           sourceSides={connectionSourceSides(model, connectionPicker)}
           sourceSide={connectionPicker.sourceSide}
@@ -1509,7 +1556,7 @@ function WireCanvasInner({
       <div
         key={status?.key ?? 0}
         id={statusId}
-        className="wire-canvas__status"
+        className={cx("wire-canvas__status", classNames?.status)}
         role="status"
         aria-live="polite"
         style={{
@@ -1524,9 +1571,11 @@ function WireCanvasInner({
         {status?.message ?? ""}
       </div>
 
-      {showMiniMap ? <WireMiniMap model={model} viewport={ctx.viewport} canvasSize={canvasSize} ariaLabel={nonEmptyString(ariaLabelConfig?.minimap, "Canvas minimap")} /> : null}
+      {showMiniMap ? <WireMiniMap model={model} viewport={ctx.viewport} canvasSize={canvasSize} ariaLabel={nonEmptyString(ariaLabelConfig?.minimap, "Canvas minimap")} className={classNames?.minimap} unstyled={unstyled} /> : null}
       {showControls ? (
         <WireControls
+          className={classNames?.controls}
+          unstyled={unstyled}
           labels={{
             zoomIn: nonEmptyString(ariaLabelConfig?.controls?.zoomIn, "Zoom in"),
             zoomOut: nonEmptyString(ariaLabelConfig?.controls?.zoomOut, "Zoom out"),
@@ -1548,6 +1597,8 @@ function WireEdge({
   focusable,
   statusId,
   ariaLabel,
+  className,
+  unstyled,
   renderEdge,
   onFocus,
   onClick
@@ -1558,6 +1609,8 @@ function WireEdge({
   focusable: boolean;
   statusId: string;
   ariaLabel: string;
+  className?: string;
+  unstyled: boolean;
   renderEdge?: WireEdgeRenderer;
   onFocus: () => void;
   onClick: (event: ReactMouseEvent, edgeId: string) => void;
@@ -1586,7 +1639,7 @@ function WireEdge({
 
   return (
     <g
-      className="wire-edge wire-edge--styled"
+      className={cx("wire-edge", !unstyled && "wire-edge--styled", className)}
       data-wire-interactive
       data-wire-edge
       data-wire-edge-id={geometry.edge.id}
@@ -1658,6 +1711,8 @@ function WireHandles({
   frame,
   direction,
   editable,
+  unstyled,
+  className,
   slots,
   connecting,
   connectionSourceSide,
@@ -1669,6 +1724,8 @@ function WireHandles({
   frame: WireCanvasFrame;
   direction: LayoutDirection;
   editable: boolean;
+  unstyled: boolean;
+  className?: string;
   slots: Map<Side, { source: number; target: number }> | undefined;
   connecting: boolean;
   connectionSourceSide: Side | null;
@@ -1701,7 +1758,7 @@ function WireHandles({
             data-wire-side={side}
             data-wire-source-handle={isSource ? "true" : undefined}
             data-wire-target-handle={isTarget ? "true" : undefined}
-            className="wire-handle wire-handle--styled"
+            className={cx("wire-handle", !unstyled && "wire-handle--styled", className)}
             disabled={!editable || !isSource}
             onPointerDown={isSource ? (event) => onSourcePointerDown(event, frame, side) : undefined}
             onPointerMove={isSource ? onSourcePointerMove : undefined}
@@ -1711,20 +1768,22 @@ function WireHandles({
               ...handleSlotStyle(side, slotIndex, slotCount, frame.width, frame.height, highlight),
               width: highlight ? HANDLE_SIZE + 4 : HANDLE_SIZE,
               height: highlight ? HANDLE_SIZE + 4 : HANDLE_SIZE,
-              borderRadius: 999,
-              border: highlight ? "2px solid #2563eb" : "1.5px solid #94a3b8",
-              background: highlight
-                ? "#ffffff"
-                : isSource && isTarget
-                  ? "#2563eb"
-                  : "#ffffff",
-              boxShadow: highlight ? "0 0 0 3px rgba(37,99,235,0.18)" : "none",
               padding: 0,
               opacity: editable ? 1 : 0.68,
               cursor: editable && isSource ? "crosshair" : "default",
               pointerEvents: editable || isTarget ? "auto" : "none",
-              transition: "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
-              zIndex: highlight ? 4 : connecting ? 2 : 1
+              zIndex: highlight ? 4 : connecting ? 2 : 1,
+              ...(!unstyled ? {
+                borderRadius: 999,
+                border: highlight ? "2px solid #2563eb" : "1.5px solid #94a3b8",
+                background: highlight
+                  ? "#ffffff"
+                  : isSource && isTarget
+                    ? "#2563eb"
+                    : "#ffffff",
+                boxShadow: highlight ? "0 0 0 3px rgba(37,99,235,0.18)" : "none",
+                transition: "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease"
+              } : null)
             }}
           />
         ));
@@ -1734,11 +1793,15 @@ function WireHandles({
 }
 
 function WireControls({
+  className,
+  unstyled,
   labels,
   onFit,
   onZoomIn,
   onZoomOut
 }: {
+  className?: string;
+  unstyled: boolean;
   labels: { zoomIn: string; zoomOut: string; fitView: string };
   onFit: () => void;
   onZoomIn: () => void;
@@ -1747,32 +1810,34 @@ function WireControls({
   return (
     <div
       data-wire-interactive
-      className="wire-controls wire-controls--styled"
+      className={cx("wire-controls", !unstyled && "wire-controls--styled", className)}
       style={{
         position: "absolute",
         left: 12,
         bottom: 12,
         display: "inline-flex",
         alignItems: "center",
-        overflow: "hidden",
-        borderRadius: 10,
-        border: "1px solid var(--wire-canvas-control-border, rgba(15,23,42,0.08))",
-        background: "var(--wire-canvas-control-bg, rgba(255,255,255,0.88))",
-        backdropFilter: "blur(14px) saturate(1.2)",
-        WebkitBackdropFilter: "blur(14px) saturate(1.2)",
-        boxShadow:
-          "var(--wire-canvas-control-shadow, 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px -8px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.04))"
+        ...(!unstyled ? {
+          overflow: "hidden",
+          borderRadius: 10,
+          border: "1px solid var(--wire-canvas-control-border, rgba(15,23,42,0.08))",
+          background: "var(--wire-canvas-control-bg, rgba(255,255,255,0.88))",
+          backdropFilter: "blur(14px) saturate(1.2)",
+          WebkitBackdropFilter: "blur(14px) saturate(1.2)",
+          boxShadow:
+            "var(--wire-canvas-control-shadow, 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px -8px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.04))"
+        } : null)
       }}
     >
-      <ControlButton label={labels.zoomIn} onClick={onZoomIn}>
+      <ControlButton label={labels.zoomIn} unstyled={unstyled} onClick={onZoomIn}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
       </ControlButton>
-      <ControlButton label={labels.zoomOut} onClick={onZoomOut} divider>
+      <ControlButton label={labels.zoomOut} unstyled={unstyled} onClick={onZoomOut} divider>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14"/></svg>
       </ControlButton>
-      <ControlButton label={labels.fitView} onClick={onFit} divider wide>
+      <ControlButton label={labels.fitView} unstyled={unstyled} onClick={onFit} divider wide>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-        <span style={{ marginLeft: 5, fontSize: 11.5, fontWeight: 600, color: "var(--wire-fg-secondary)" }}>Fit</span>
+        <span style={unstyled ? undefined : { marginLeft: 5, fontSize: 11.5, fontWeight: 600, color: "var(--wire-fg-secondary)" }}>Fit</span>
       </ControlButton>
     </div>
   );
@@ -1780,12 +1845,14 @@ function WireControls({
 
 function ControlButton({
   label,
+  unstyled,
   onClick,
   divider = false,
   wide = false,
   children
 }: {
   label: string;
+  unstyled: boolean;
   onClick: () => void;
   divider?: boolean;
   wide?: boolean;
@@ -1806,11 +1873,13 @@ function ControlButton({
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        border: 0,
-        borderLeft: divider ? "1px solid var(--wire-canvas-control-divider, rgba(15,23,42,0.08))" : "0",
-        background: "transparent",
-        color: "var(--wire-fg-secondary)",
-        cursor: "pointer"
+        cursor: "pointer",
+        ...(!unstyled ? {
+          border: 0,
+          borderLeft: divider ? "1px solid var(--wire-canvas-control-divider, rgba(15,23,42,0.08))" : "0",
+          background: "transparent",
+          color: "var(--wire-fg-secondary)"
+        } : null)
       }}
     >
       {children}
@@ -1823,6 +1892,8 @@ function WireCanvasSearch({
   inputId,
   listId,
   label,
+  className,
+  unstyled,
   query,
   results,
   activeResult,
@@ -1835,6 +1906,8 @@ function WireCanvasSearch({
   inputId: string;
   listId: string;
   label: string;
+  className?: string;
+  unstyled: boolean;
   query: string;
   results: WireCanvasSearchResult[];
   activeResult: WireCanvasSearchResult | null;
@@ -1846,20 +1919,22 @@ function WireCanvasSearch({
   return (
     <div
       data-wire-interactive
-      className="wire-canvas-search wire-canvas-search--styled"
+      className={cx("wire-canvas-search", !unstyled && "wire-canvas-search--styled", className)}
       onBlur={onBlur}
       style={{
         position: "absolute",
         left: 16,
         top: 16,
         width: "min(360px, calc(100% - 32px))",
-        borderRadius: 8,
-        border: "1px solid var(--wire-border)",
-        background: "var(--wire-bg-surface)",
-        color: "var(--wire-fg-primary)",
-        boxShadow: "var(--wire-card-shadow)",
-        padding: 10,
-        zIndex: 8
+        zIndex: 8,
+        ...(!unstyled ? {
+          borderRadius: 8,
+          border: "1px solid var(--wire-border)",
+          background: "var(--wire-bg-surface)",
+          color: "var(--wire-fg-primary)",
+          boxShadow: "var(--wire-card-shadow)",
+          padding: 10
+        } : null)
       }}
     >
       <label htmlFor={inputId} style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--wire-fg-secondary)", marginBottom: 6 }}>
@@ -1932,6 +2007,8 @@ function WireCanvasConnectionPicker({
   listId,
   feedbackId,
   label,
+  className,
+  unstyled,
   query,
   sourceSides,
   sourceSide,
@@ -1953,6 +2030,8 @@ function WireCanvasConnectionPicker({
   listId: string;
   feedbackId: string;
   label: string;
+  className?: string;
+  unstyled: boolean;
   query: string;
   sourceSides: Side[];
   sourceSide: Side;
@@ -1972,20 +2051,22 @@ function WireCanvasConnectionPicker({
   return (
     <div
       data-wire-interactive
-      className="wire-canvas-connection-picker wire-canvas-connection-picker--styled"
+      className={cx("wire-canvas-connection-picker", !unstyled && "wire-canvas-connection-picker--styled", className)}
       onBlur={onBlur}
       style={{
         position: "absolute",
         right: 16,
         top: 16,
         width: "min(390px, calc(100% - 32px))",
-        borderRadius: 8,
-        border: `1px solid ${message ? "var(--wire-status-invalid, #b91c1c)" : "var(--wire-border)"}`,
-        background: "var(--wire-bg-surface)",
-        color: "var(--wire-fg-primary)",
-        boxShadow: "var(--wire-card-shadow)",
-        padding: 10,
-        zIndex: 9
+        zIndex: 9,
+        ...(!unstyled ? {
+          borderRadius: 8,
+          border: `1px solid ${message ? "var(--wire-status-invalid, #b91c1c)" : "var(--wire-border)"}`,
+          background: "var(--wire-bg-surface)",
+          color: "var(--wire-fg-primary)",
+          boxShadow: "var(--wire-card-shadow)",
+          padding: 10
+        } : null)
       }}
     >
       <label htmlFor={inputId} style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--wire-fg-secondary)", marginBottom: 6 }}>
@@ -2084,12 +2165,16 @@ function WireMiniMap({
   model,
   viewport,
   canvasSize,
-  ariaLabel
+  ariaLabel,
+  className,
+  unstyled
 }: {
   model: ReturnType<typeof buildWireCanvasModel>;
   viewport: WireViewport;
   canvasSize?: CanvasSize;
   ariaLabel: string;
+  className?: string;
+  unstyled: boolean;
 }): ReactElement {
   const width = 184;
   const height = 104;
@@ -2111,7 +2196,7 @@ function WireMiniMap({
   return (
     <svg
       data-wire-interactive
-      className="wire-minimap wire-minimap--styled"
+      className={cx("wire-minimap", !unstyled && "wire-minimap--styled", className)}
       aria-label={ariaLabel}
       width={width}
       height={height}
@@ -2119,13 +2204,15 @@ function WireMiniMap({
         position: "absolute",
         right: 12,
         bottom: 12,
-        borderRadius: 10,
-        border: "1px solid var(--wire-canvas-control-border, rgba(15,23,42,0.08))",
-        background: "var(--wire-canvas-control-bg, rgba(255,255,255,0.88))",
-        backdropFilter: "blur(14px) saturate(1.2)",
-        WebkitBackdropFilter: "blur(14px) saturate(1.2)",
-        boxShadow:
-          "var(--wire-canvas-control-shadow, 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px -8px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.04))"
+        ...(!unstyled ? {
+          borderRadius: 10,
+          border: "1px solid var(--wire-canvas-control-border, rgba(15,23,42,0.08))",
+          background: "var(--wire-canvas-control-bg, rgba(255,255,255,0.88))",
+          backdropFilter: "blur(14px) saturate(1.2)",
+          WebkitBackdropFilter: "blur(14px) saturate(1.2)",
+          boxShadow:
+            "var(--wire-canvas-control-shadow, 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px -8px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.04))"
+        } : null)
       }}
     >
       {model.edges.map((edge) => (

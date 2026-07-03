@@ -55,8 +55,15 @@
   --wire-radius-lg: 8px;
 }
 
+.wire-theme-light,
+[data-wire-theme="light"] {
+  color-scheme: light;
+}
+
 .wire-theme-dark,
+[data-wire-theme="dark"],
 .dark {
+  color-scheme: dark;
   --wire-bg-page: #0f172a;
   --wire-bg-surface: #1e293b;
   --wire-bg-sunken: #0b1426;
@@ -304,6 +311,7 @@
 .text-wire-secondary { color: var(--wire-fg-secondary); }
 .text-wire-tertiary { color: var(--wire-fg-tertiary); }
 .text-wire-muted { color: var(--wire-fg-muted); }
+.bg-wire-fg-secondary { background-color: var(--wire-fg-secondary); }
 .border-wire { border-color: var(--wire-border); }
 .border-wire-strong { border-color: var(--wire-border-strong); }
 .border-wire-focus { border-color: var(--wire-border-focus); }
@@ -336,7 +344,9 @@
 .text-wire-status-invalid { color: var(--wire-status-invalid); }
 
 @media (prefers-color-scheme: dark) {
-  .wire-theme-system {
+  .wire-theme-system,
+  [data-wire-theme="system"] {
+    color-scheme: dark;
     --wire-bg-page: #0f172a;
     --wire-bg-surface: #1e293b;
     --wire-bg-sunken: #0b1426;
