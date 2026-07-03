@@ -233,6 +233,7 @@ interface WireCanvasConnectionPickerState {
 interface WireCanvasConnectionTarget {
   nodeId: string;
   label: string;
+  searchText: string;
   side: Side;
   distance: number;
   diagramIndex: number;
@@ -350,16 +351,24 @@ function WireCanvasInner({
     () => canvasFocusItems(model, nodeFocusEnabled, edgeFocusEnabled),
     [edgeFocusEnabled, model, nodeFocusEnabled]
   );
+  const searchIndex = useMemo(
+    () => search ? canvasSearchIndex(focusItems, model) : [],
+    [focusItems, model, Boolean(search)]
+  );
   const searchResults = useMemo(
-    () => search ? canvasSearchResults(focusItems, model, search.query) : [],
-    [focusItems, model, search]
+    () => search ? filterCanvasSearchResults(searchIndex, search.query) : [],
+    [searchIndex, search?.query]
   );
   const activeSearchResult = searchResults.length > 0
     ? searchResults[Math.min(search?.activeIndex ?? 0, searchResults.length - 1)] ?? null
     : null;
+  const connectionTargetIndex = useMemo(
+    () => connectionPicker ? canvasConnectionTargetIndex(model, connectionPicker) : [],
+    [connectionPicker?.sourceId, connectionPicker?.sourceSide, connectionPicker?.targetSide, model]
+  );
   const connectionTargets = useMemo(
-    () => connectionPicker ? canvasConnectionTargets(model, connectionPicker) : [],
-    [connectionPicker, model]
+    () => connectionPicker ? filterCanvasConnectionTargets(connectionTargetIndex, connectionPicker.query) : [],
+    [connectionPicker?.query, connectionTargetIndex]
   );
   const activeConnectionTarget = connectionTargets.length > 0
     ? connectionTargets[Math.min(connectionPicker?.activeIndex ?? 0, connectionTargets.length - 1)] ?? null
@@ -2924,44 +2933,54 @@ function boundsForFrames(frames: WireCanvasFrame[]): WireCanvasBounds | null {
   };
 }
 
-function canvasSearchResults(
+function canvasSearchIndex(
   items: WireCanvasFocusItem[],
-  model: WireCanvasModel,
-  query: string
+  model: WireCanvasModel
 ): WireCanvasSearchResult[] {
-  const normalizedQuery = normalizeSearchText(query);
+  const edgeGeometryById = new Map(model.edges.map((edge) => [edge.edge.id, edge] as const));
   return items
     .map((item) => {
-      const label = canvasFocusItemLabel(item, model);
+      const label = canvasFocusItemLabel(item, model, edgeGeometryById);
       return {
         ...item,
         label,
         searchText: normalizeSearchText(`${label} ${item.id}`)
       };
-    })
-    .filter((item) => !normalizedQuery || item.searchText.includes(normalizedQuery));
+    });
 }
 
-function canvasFocusItemLabel(item: WireCanvasFocusItem, model: WireCanvasModel): string {
+function filterCanvasSearchResults(
+  items: WireCanvasSearchResult[],
+  query: string
+): WireCanvasSearchResult[] {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return items;
+  return items.filter((item) => item.searchText.includes(normalizedQuery));
+}
+
+function canvasFocusItemLabel(
+  item: WireCanvasFocusItem,
+  model: WireCanvasModel,
+  edgeGeometryById: ReadonlyMap<string, WireCanvasEdgeGeometry>
+): string {
   if (item.type === "node") {
     const node = model.nodeById.get(item.id);
     return node ? `${node.title || node.id} ${node.kind} node` : `${item.id} node`;
   }
-  const geometry = model.edges.find((edge) => edge.edge.id === item.id);
+  const geometry = edgeGeometryById.get(item.id);
   if (!geometry) return `${item.id} edge`;
   return geometry.edge.label
     ? `${geometry.edge.label} edge`
     : `Edge from ${geometry.edge.from} to ${geometry.edge.to}`;
 }
 
-function canvasConnectionTargets(
+function canvasConnectionTargetIndex(
   model: WireCanvasModel,
   picker: WireCanvasConnectionPickerState
 ): WireCanvasConnectionTarget[] {
   const sourceFrame = model.framesById.get(picker.sourceId);
   if (!sourceFrame) return [];
   const sourcePoint = handlePoint(sourceFrame, picker.sourceSide);
-  const query = normalizeSearchText(picker.query);
   return model.frames
     .map((frame, diagramIndex): WireCanvasConnectionTarget | null => {
       if (frame.id === picker.sourceId || frame.node.kind === "group") return null;
@@ -2971,13 +2990,26 @@ function canvasConnectionTargets(
       const targetPoint = handlePoint(frame, side);
       const label = frame.node.title || frame.id;
       const distance = squaredDistance(sourcePoint, targetPoint);
-      return { nodeId: frame.id, label, side, distance, diagramIndex };
+      return {
+        nodeId: frame.id,
+        label,
+        searchText: normalizeSearchText(`${label} ${frame.id}`),
+        side,
+        distance,
+        diagramIndex
+      };
     })
-    .filter((target): target is WireCanvasConnectionTarget => {
-      if (!target) return false;
-      return !query || normalizeSearchText(`${target.label} ${target.nodeId}`).includes(query);
-    })
+    .filter((target): target is WireCanvasConnectionTarget => Boolean(target))
     .sort((left, right) => left.distance - right.distance || left.diagramIndex - right.diagramIndex);
+}
+
+function filterCanvasConnectionTargets(
+  targets: WireCanvasConnectionTarget[],
+  query: string
+): WireCanvasConnectionTarget[] {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return targets;
+  return targets.filter((target) => target.searchText.includes(normalizedQuery));
 }
 
 function visibleComboboxOptions<T>(

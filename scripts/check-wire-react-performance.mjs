@@ -137,6 +137,7 @@ if (failures.length > 0) {
 function browserEntrySource() {
   return `
 import React from "react";
+import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { WireCanvas, WireProvider } from "../../packages/wire-react/dist/index.js";
 
@@ -200,10 +201,10 @@ async function runInteraction(fixtureName, interaction) {
     const canvas = assertElement("[data-wire-canvas]");
     canvas.focus();
     fireKey(canvas, "/");
-    await nextFrame();
+    await flushMicrotasks();
     const input = assertElement("input[role='combobox']");
     setInputValue(input, searchNeedle(diagram));
-    await nextFrame();
+    await flushMicrotasks();
     assertElement("[role='listbox']");
     return;
   }
@@ -212,10 +213,10 @@ async function runInteraction(fixtureName, interaction) {
     const firstNode = assertElement("[data-wire-node][data-wire-node-id='node-0']");
     firstNode.focus();
     fireKey(assertElement("[data-wire-canvas]"), "c");
-    await nextFrame();
+    await flushMicrotasks();
     const input = assertElement("input[role='combobox']");
     setInputValue(input, searchNeedle(diagram));
-    await nextFrame();
+    await flushMicrotasks();
     assertElement("[role='listbox']");
     return;
   }
@@ -226,7 +227,7 @@ async function runInteraction(fixtureName, interaction) {
       selection: { nodeIds: [middleNodeId(diagram)], edgeIds: [] }
     });
     click(assertElement("button[aria-label='Fit selection']"));
-    await nextFrame();
+    await flushMicrotasks();
     assertCanvasReady();
     return;
   }
@@ -242,9 +243,9 @@ async function runInteraction(fixtureName, interaction) {
     const canvas = assertElement("[data-wire-canvas]");
     canvas.focus();
     fireKey(canvas, "/");
-    await nextFrame();
+    await flushMicrotasks();
     setInputValue(assertElement("input[role='combobox']"), searchNeedle(diagram));
-    await nextFrame();
+    await flushMicrotasks();
     assertElement("[role='listbox']");
     return;
   }
@@ -259,14 +260,18 @@ async function mount(diagram, options = {}) {
     showControls: options.showControls ?? true,
     showMiniMap: options.showMiniMap ?? false
   };
-  root.render(React.createElement(PerformanceApp, { state: appState }));
-  await nextFrame();
+  flushSync(() => {
+    root.render(React.createElement(PerformanceApp, { state: appState }));
+  });
+  await flushMicrotasks();
 }
 
 async function updateApp(patch) {
   appState = { ...appState, ...patch };
-  root.render(React.createElement(PerformanceApp, { state: appState }));
-  await nextFrame();
+  flushSync(() => {
+    root.render(React.createElement(PerformanceApp, { state: appState }));
+  });
+  await flushMicrotasks();
 }
 
 function PerformanceApp({ state }) {
@@ -316,19 +321,23 @@ function searchNeedle(diagram) {
 }
 
 function fireKey(element, key) {
-  element.dispatchEvent(new KeyboardEvent("keydown", {
-    key,
-    bubbles: true,
-    cancelable: true
-  }));
+  flushSync(() => {
+    element.dispatchEvent(new KeyboardEvent("keydown", {
+      key,
+      bubbles: true,
+      cancelable: true
+    }));
+  });
 }
 
 function click(element) {
-  element.dispatchEvent(new MouseEvent("click", {
-    bubbles: true,
-    cancelable: true,
-    view: window
-  }));
+  flushSync(() => {
+    element.dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      view: window
+    }));
+  });
 }
 
 function setInputValue(element, value) {
@@ -336,12 +345,14 @@ function setInputValue(element, value) {
     ? HTMLTextAreaElement.prototype
     : HTMLInputElement.prototype;
   const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
-  descriptor?.set?.call(element, value);
-  element.dispatchEvent(new Event("input", { bubbles: true }));
+  flushSync(() => {
+    descriptor?.set?.call(element, value);
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 }
 
-async function nextFrame() {
-  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+async function flushMicrotasks() {
+  await Promise.resolve();
 }
 
 function percentile(samples, percentileValue) {
