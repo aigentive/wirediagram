@@ -237,6 +237,91 @@ describe("wire component interactions", () => {
     expect(actions[7]).toMatchObject({ patch: { tone: null, style: null } });
   });
 
+  it("renders inspector configure fields for explicit node ids without selection", () => {
+    const actions: WireAction[] = [];
+    const commits: string[] = [];
+    const diagram = optionDiagram();
+    const { container } = renderWithContext(
+      <WireInspector
+        nodeId="task"
+        optionCatalog={{ action: [{ key: "owner", label: "Owner" }] }}
+        onOptionCommit={({ option }) => commits.push(option.key)}
+      />,
+      contextFor(diagram, {
+        dispatch: (action) => {
+          actions.push(action);
+          return applyResult(diagram, action);
+        }
+      })
+    );
+
+    expect(buttonByText(container, "Configure").getAttribute("aria-selected")).toBe("true");
+    input(container.querySelector<HTMLInputElement>("input:not([type])")!, "Grace");
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toMatchObject({ type: "node.patch", id: "task", patch: { data: { options: expect.objectContaining({ owner: "Grace" }) } } });
+    expect(commits).toEqual(["owner"]);
+  });
+
+  it("renders inspector JSON and honors node-over-edge precedence", () => {
+    const diagram = edgeDiagram();
+    const { container } = renderWithContext(
+      <WireInspector nodeId="a" edgeId="approval" />,
+      contextFor(diagram)
+    );
+
+    expect(container.textContent).toContain("Style");
+    expect(container.textContent).not.toContain("Edge");
+    click(buttonByText(container, "JSON"));
+    expect(container.textContent).toContain("\"id\": \"a\"");
+  });
+
+  it("edits explicit edge fields and renders stale edge ids as empty state", () => {
+    const actions: WireAction[] = [];
+    const diagram = edgeDiagram();
+    const { container } = renderWithContext(
+      <WireInspector edgeId="approval" />,
+      contextFor(diagram, {
+        dispatch: (action) => {
+          actions.push(action);
+          return applyResult(diagram, action);
+        }
+      })
+    );
+
+    expect(buttonByText(container, "Edge").getAttribute("aria-selected")).toBe("true");
+    input(container.querySelector<HTMLInputElement>("input:not([type])")!, "new label");
+    change(container.querySelector<HTMLSelectElement>("select")!, "success");
+    change([...container.querySelectorAll<HTMLSelectElement>("select")].at(1)!, "straight");
+
+    expect(actions).toEqual([
+      expect.objectContaining({ type: "edge.patch", id: "approval", patch: { label: "new label" } }),
+      expect.objectContaining({ type: "edge.patch", id: "approval", patch: { tone: "success" } }),
+      expect.objectContaining({ type: "edge.patch", id: "approval", patch: { routing: "straight" } })
+    ]);
+
+    const stale = renderWithContext(<WireInspector edgeId="missing" />, contextFor(diagram));
+    expect(stale.container.textContent).toContain("No node selected");
+  });
+
+  it("keeps inspector read-only mode non-mutating", () => {
+    const actions: WireAction[] = [];
+    const diagram = optionDiagram();
+    const { container } = renderWithContext(
+      <WireInspector nodeId="task" readOnly />,
+      contextFor(diagram, {
+        dispatch: (action) => {
+          actions.push(action);
+          return applyResult(diagram, action);
+        }
+      })
+    );
+
+    input(container.querySelector<HTMLInputElement>("input:not([type])")!, "Blocked");
+    change(container.querySelector<HTMLSelectElement>("select")!, "success");
+    expect(actions).toHaveLength(0);
+  });
+
   it("wires toolbar mode, history, and layout actions", () => {
     const undo = vi.fn();
     const redo = vi.fn();
@@ -285,6 +370,17 @@ function optionDiagram(): WireDiagram {
         data: { options: { owner: "Ada", notes: "Old", retries: 2, enabled: true, mode: "fast" } }
       }
     ]
+  };
+}
+
+function edgeDiagram(): WireDiagram {
+  return {
+    ...emptyDiagram({ id: "edges", title: "Edges" }),
+    nodes: [
+      { id: "a", kind: "trigger", title: "A" },
+      { id: "b", kind: "action", title: "B" }
+    ],
+    edges: [{ id: "approval", from: "a", to: "b", label: "old" }]
   };
 }
 
