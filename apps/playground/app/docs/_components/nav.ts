@@ -53,6 +53,15 @@ export const NAV: NavSection[] = [
   {
     title: "Examples",
     items: [
+      { href: "/docs/examples/package-css", label: "Package CSS", badge: "new" },
+      { href: "/docs/examples/custom-shell", label: "Custom shell", badge: "new" },
+      { href: "/docs/examples/options", label: "Options", badge: "new" },
+      { href: "/docs/examples/controlled-state", label: "Controlled state", badge: "new" },
+      { href: "/docs/examples/edge-inspection", label: "Edge inspection", badge: "new" },
+      { href: "/docs/examples/accessibility", label: "Accessibility", badge: "new" },
+      { href: "/docs/examples/theming", label: "Theming", badge: "new" },
+      { href: "/docs/examples/wrappers", label: "Wrappers", badge: "new" },
+      { href: "/docs/examples/read-only-inspector", label: "Read-only inspector", badge: "new" },
       { href: "/docs/examples/layouts", label: "Layouts" },
       { href: "/docs/examples/click-modal", label: "Click → modal" },
       { href: "/docs/examples/click-sidebar", label: "Click → sidebar" }

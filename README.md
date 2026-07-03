@@ -82,6 +82,7 @@ Controlled editor:
 ```tsx
 import type { WireDiagram } from "@aigentive/wire-core";
 import { WireEditor, WireViewer } from "@aigentive/wire-react";
+import "@aigentive/wire-react/styles.css";
 
 export function WorkflowEditor({
   diagram,
@@ -101,6 +102,7 @@ export function WorkflowPreview({ diagram }: { diagram: WireDiagram }) {
 Custom editor surface:
 
 ```tsx
+import "@aigentive/wire-react/styles.css";
 import {
   WireCanvas,
   WireInspector,
@@ -126,6 +128,7 @@ export function ProductEditor({ diagram, onChange }) {
 LLM-friendly custom cards and options:
 
 ```tsx
+import "@aigentive/wire-react/styles.css";
 import {
   WireWorkspace,
   type WireOptionCatalog
@@ -154,6 +157,8 @@ export function AgentEditor({ diagram, onChange }) {
 `WireWorkspace` uses a decoupled event model: card/list clicks emit
 `node.inspect` and update selection; option panels can follow selection by
 default or receive an explicit `inspectNodeId` for fully controlled sidebars.
+The package stylesheet is the supported npm-consumer styling path; no utility
+source scan is required for the React package.
 
 See [`docs/REACT_COMPONENTS.md`](docs/REACT_COMPONENTS.md), the playground
 route `/docs`, and the playground route `/samples/agent-chain`.

@@ -27,7 +27,7 @@ For design examples, run the playground and open `/docs` or
 | Capability | How |
 |---|---|
 | Package styling | Import `@aigentive/wire-react/styles.css`; no consumer utility-class scan is required |
-| Light & dark theme | Override package CSS variables or use `data-wire-theme` on host surfaces |
+| Light, dark, and system theme | Use `colorMode="light" | "dark" | "system"` or override package CSS variables |
 | Custom node card | `renderNodeCard={fn}` — receives `WireNodeRenderContext` |
 | Custom group frame | `renderGroup={fn}` |
 | Structured card content | `node.data.card` — badges, meta, progress, footer |
@@ -102,6 +102,9 @@ export function AgentEditor({ diagram, onChange }) {
 | `onDirtyChange` | `(dirty, event) => void` | - | Fires after durable edits or clean resets. |
 | `optionCatalog` | `WireOptionCatalog` | - | Defines editable node options. |
 | `readOnly` | `boolean` | `false` | Locks built-in inspector mutations. |
+| `colorMode` | `"light" | "dark" | "system"` | - | Applies `data-wire-theme` and `wire-theme-*` classes to owned surfaces. |
+| `unstyled` | `boolean` | `false` | Preserves structure, ARIA, and data attributes while omitting package visual classes on owned surfaces. |
+| `classNames` | object | - | Slot classes for root, header, sidebar, canvas region, canvas, inspector, node list, option panel, and validation panel. |
 | `inspectNodeId` | `string` | - | Controlled node shown in the inspector. |
 | `defaultInspectNodeId` | `string` | - | Initial uncontrolled inspected node. |
 | `onInspectNodeChange` | `(nodeId, event) => void` | - | Called on `node.inspect` and optional pane clear. |
@@ -152,7 +155,7 @@ Use `WireCanvas` when building a custom screen around `WireProvider`.
 | `inspectOnEdgeClick` | `boolean` | `true` | Emits `edge.click` with `intent: "inspect"`. |
 | `clearSelectionOnPaneClick` | `boolean` | `true` in edit, `false` in view | Clears canvas selection on pane click. |
 | `fitView` | `boolean` | `true` | Fits diagram in viewport. |
-| `fitViewPadding` | `number` | `0.08` | Fit-view padding. |
+| `fitViewPadding` | `number` | `0.2` | Shared Fit view and Fit selection padding. |
 | `panOnDrag` | `boolean` | `true` | Enables canvas drag panning in view and edit mode. |
 | `zoomOnScroll` | `boolean` | `true` | Enables wheel/trackpad zoom in view and edit mode. |
 | `zoomStep` | `number` | `1.1` | Zoom multiplier used by wheel gestures and controls. |
@@ -162,6 +165,9 @@ Use `WireCanvas` when building a custom screen around `WireProvider`.
 | `showControls` | `boolean` | `true` | Shows zoom controls. |
 | `showMiniMap` | `boolean` | `false` | Shows minimap. |
 | `readOnly` | `boolean` | `false` | Disables canvas-originated durable mutations while preserving focus, selection, pan, and zoom. |
+| `colorMode` | `"light" | "dark" | "system"` | - | Applies theme attributes/classes to the canvas root. |
+| `unstyled` | `boolean` | `false` | Omits package visual classes while keeping geometry, ARIA, focus, and `data-wire-*` hooks. |
+| `classNames` | object | - | Slot classes for root, viewport, background, node, group, edge, handle, controls, minimap, status, search, and connection picker. |
 | `keyboardA11y` | `boolean` | `true` | Enables managed root-scoped keyboard behavior. |
 | `nodesFocusable` | `boolean` | `true` | Includes node shells in roving focus. |
 | `edgesFocusable` | `boolean` | `true` | Includes edge shells in roving focus. |
@@ -177,11 +183,24 @@ Use `WireCanvas` when building a custom screen around `WireProvider`.
 | `className` | `string` | - | Root classes. |
 | `style` | `CSSProperties` | - | Root inline styles. |
 
+When selection is non-empty, the built-in controls add `Fit selection`. It uses
+the current `fitViewPadding`, emits viewport metadata with
+`intent: "fit-selection"`, keeps focus on a selected item when possible, and
+announces the fitted item count through the canvas status region.
+
+Large-diagram mode activates when the rendered diagram exceeds 1,000 nodes or
+1,200 edges. It keeps nodes, edges, selection, search, keyboard connection,
+skip-to-inspector, and Fit selection available; it marks the root with
+`data-wire-large-diagram="true"`, disables nonessential package motion, defers
+nonessential measurement work, and simplifies the minimap to viewport and
+selection bounds.
+
 Keyboard behavior is scoped to the focused canvas root or managed node/edge
 shells. `Enter`/`Space` select and inspect the focused item, `Escape` clears
 selection, Delete/Backspace remove the selected item in edit mode, arrow keys
 nudge selected/focused nodes in edit mode, and `n`/`p`/`e` traverse managed
-node/edge focus.
+node/edge focus. The first tab stop after the canvas root is a skip control with
+the label `Skip to inspector and controls`.
 
 ## `WireInspector`
 
@@ -211,6 +230,7 @@ Explicit `nodeId` wins when both ids are supplied.
 | `renderSection` | function | - | Custom option section wrapper. |
 | `onOptionCommit` | function | - | Called after option fields dispatch a `node.patch`. |
 | `ariaLabelConfig` | object | defaults | Optional tab/field/section label overrides. |
+| `colorMode` | `"light" | "dark" | "system"` | - | Applies theme attributes/classes to the inspector root. |
 | `unstyled` | `boolean` | `false` | Keeps structure/ARIA while omitting package visual classes. |
 | `classNames` | object | - | Slot classes for root, tabs, tab, panel, field, section, validation, JSON, and edge. |
 
@@ -290,6 +310,10 @@ function AgentCard(ctx: WireNodeRenderContext) {
 | `options` | `Record<string, unknown>` | `node.data.options`. |
 | `optionSpecs` | `WireOptionSpec[]` | Specs matching the node kind. |
 
+`WireNodeCardView` accepts `unstyled` and `classNames` slots for `root`,
+`content`, `badge`, `meta`, `progress`, and `footer`. `WireGroupFrame` accepts
+`unstyled` and `classNames` slots for `root`, `header`, `title`, and `count`.
+
 ## `WireOptionPanel`
 
 `WireOptionPanel` renders typed controls from a `WireOptionCatalog` and patches
@@ -348,8 +372,30 @@ const options: WireOptionCatalog = {
 | `inspectOnClick` | `boolean` | `true` | Emits `node.inspect`. |
 | `selectOnClick` | `boolean` | `true` | Updates provider selection. |
 | `renderItem` | `(context) => ReactNode` | built-in row | Custom row renderer. |
+| `unstyled` | `boolean` | `false` | Preserves structure and omits package visual classes. |
+| `classNames` | object | - | Slot classes for root, item, and empty state. |
 | `className` | `string` | - | Root classes. |
 | `style` | `CSSProperties` | - | Root inline styles. |
+
+## `WireValidationPanel`
+
+`WireValidationPanel` renders the provider validation result.
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `unstyled` | `boolean` | `false` | Preserves structure and omits package visual classes. |
+| `classNames` | object | - | Slot classes for root, header, list, issue, and empty state. |
+| `className` | `string` | - | Root classes. |
+| `style` | `CSSProperties` | - | Root inline styles. |
+
+## `WireToolbar` And `WirePalette`
+
+Standalone tools can be mounted inside any `WireProvider`.
+
+| Component | Styling props |
+|---|---|
+| `WireToolbar` | `unstyled`, `classNames.root`, `classNames.group`, `classNames.button`, `className`, `style` |
+| `WirePalette` | `unstyled`, `classNames.root`, `classNames.item`, `className`, `style` |
 
 ## Events
 

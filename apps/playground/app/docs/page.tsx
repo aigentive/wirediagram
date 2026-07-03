@@ -15,7 +15,7 @@ const PATHS: Array<{ href: string; eyebrow: string; title: string; detail: strin
     href: "/docs/install",
     eyebrow: "Get started",
     title: "Install & setup",
-    detail: "Add the package, point Tailwind at the source, render your first canvas.",
+    detail: "Add the package, import the stylesheet, render your first canvas.",
     icon: Rocket
   },
   {
@@ -120,8 +120,8 @@ export default function DocsLanding() {
             as a self-contained SVG string or a Mermaid <InlineCode>flowchart</InlineCode>.
           </li>
           <li>
-            <strong>Theme.</strong> Class-based dark mode (<InlineCode>{`<html class="dark">`}</InlineCode>); no
-            provider, no context, just a Tailwind variant.
+            <strong>Theme.</strong> Package CSS variables, <InlineCode>colorMode</InlineCode>,{" "}
+            <InlineCode>unstyled</InlineCode>, and slot classes let product shells match their own design system.
           </li>
         </ul>
 

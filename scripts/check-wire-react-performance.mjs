@@ -202,7 +202,7 @@ async function runInteraction(fixtureName, interaction) {
     fireKey(canvas, "/");
     await nextFrame();
     const input = assertElement("input[role='combobox']");
-    setInputValue(input, "node 4");
+    setInputValue(input, searchNeedle(diagram));
     await nextFrame();
     assertElement("[role='listbox']");
     return;
@@ -214,7 +214,7 @@ async function runInteraction(fixtureName, interaction) {
     fireKey(assertElement("[data-wire-canvas]"), "c");
     await nextFrame();
     const input = assertElement("input[role='combobox']");
-    setInputValue(input, "node 19");
+    setInputValue(input, searchNeedle(diagram));
     await nextFrame();
     assertElement("[role='listbox']");
     return;
@@ -243,7 +243,7 @@ async function runInteraction(fixtureName, interaction) {
     canvas.focus();
     fireKey(canvas, "/");
     await nextFrame();
-    setInputValue(assertElement("input[role='combobox']"), "node 19");
+    setInputValue(assertElement("input[role='combobox']"), searchNeedle(diagram));
     await nextFrame();
     assertElement("[role='listbox']");
     return;
@@ -309,6 +309,10 @@ function assertElement(selector) {
 
 function middleNodeId(diagram) {
   return diagram.nodes[Math.floor(diagram.nodes.length / 2)]?.id ?? diagram.nodes[0]?.id ?? "node-0";
+}
+
+function searchNeedle(diagram) {
+  return "node " + Math.max(1, diagram.nodes.length - 1);
 }
 
 function fireKey(element, key) {

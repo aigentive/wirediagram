@@ -72,9 +72,7 @@ jobs:
       - if: steps.release.outputs.should_release == 'true'
         run: npm ci
       - if: steps.release.outputs.should_release == 'true'
-        run: npm run build
-      - if: steps.release.outputs.should_release == 'true'
-        run: npm test
+        run: npm run release:wire-react:dry-run
 
       - name: Pack workspace packages
         if: steps.release.outputs.should_release == 'true'

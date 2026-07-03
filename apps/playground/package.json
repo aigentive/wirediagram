@@ -12,7 +12,7 @@
   "dependencies": {
     "@aigentive/wire-core": "^1.0.4",
     "@aigentive/wire-mcp": "^1.0.7",
-    "@aigentive/wire-react": "^1.0.4",
+    "@aigentive/wire-react": "^1.1.0",
     "@aigentive/wire-renderers": "^1.0.2",
     "@libsql/client": "^0.17.3",
     "@resvg/resvg-js": "^2.6.2",
