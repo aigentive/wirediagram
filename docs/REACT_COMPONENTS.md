@@ -3,8 +3,8 @@
 This is the props reference for the reusable `@aigentive/wire-react` component
 surface. These components are intended for product apps and LLM-authored React
 screens. App code should pass Wire diagrams, option catalogs, render callbacks,
-and event handlers. It should not need third-party graph-canvas nodes, hooks,
-or state.
+and event handlers. It should not use generic graph node/edge objects as the
+application contract.
 
 For design examples, run the playground and open `/docs` or
 `/samples/agent-chain`.
@@ -15,6 +15,7 @@ For design examples, run the playground and open `/docs` or
 |---|---|---|
 | [`WireWorkspace`](#wireworkspace) | Shell | Editor shell — provider, sidebar, canvas, inspector |
 | [`WireCanvas`](#wirecanvas) | Canvas | Canvas primitive — used inside `WireWorkspace` or directly |
+| [`WireInspector`](#wireinspector) | Panel | Tabbed node/edge inspector — configure, style, validation, JSON, edge |
 | [`WireNodeCardView`](#cards-and-groups) | Renderer | Default node card — kind chip, title, options summary |
 | [`WireGroupFrame`](#cards-and-groups) | Renderer | Default group frame — child count and selection ring |
 | [`WireOptionPanel`](#wireoptionpanel) | Panel | Typed option form generated from `WireOptionCatalog` |
@@ -25,35 +26,36 @@ For design examples, run the playground and open `/docs` or
 
 | Capability | How |
 |---|---|
-| Light & dark theme | Add `@custom-variant dark` and toggle `<html class="dark">` (Tailwind v4) |
+| Package styling | Import `@aigentive/wire-react/styles.css`; no consumer utility-class scan is required |
+| Light & dark theme | Override package CSS variables or use `data-wire-theme` on host surfaces |
 | Custom node card | `renderNodeCard={fn}` — receives `WireNodeRenderContext` |
 | Custom group frame | `renderGroup={fn}` |
 | Structured card content | `node.data.card` — badges, meta, progress, footer |
 | Custom list rows | `<WireNodeList renderItem={({ node, selected }) => …} />` |
-| Read-only canvas | `<WireCanvas mode="view" />` |
-| Controlled inspector | `inspectNodeId` + `onInspectNodeChange` |
-| Click behavior | `inspectOnClick`, `selectOnClick`, `selectOnEdgeClick`, `clearSelectionOnPaneClick` |
+| Read-only canvas | `<WireCanvas readOnly />` or `<WireCanvas mode="view" />` |
+| Controlled runtime state | `selection`, `viewport`, `mode`, and `dirty` props on provider-backed surfaces |
+| Controlled inspector | `inspectNodeId`, `inspectEdgeId`, `onInspectNodeChange`, `onInspectEdgeChange` |
+| Click behavior | `inspectOnNodeClick`, `inspectOnEdgeClick`, `selectOnNodeClick`, `selectOnEdgeClick`, `clearSelectionOnPaneClick` |
 | Validation observer | `<WireValidationPanel />` (or read `useWireValidation()`) |
-| Decoupled events | `onEvent={fn}` — five event types listed in [Events](#events) |
+| Decoupled events | `onEvent={fn}` — node, edge, pane, and selection events listed in [Events](#events) |
 
-## Tailwind CSS v4
+## Package CSS
 
-The playground uses Tailwind CSS v4 with `tailwindcss@^4.1.18` and
-`@tailwindcss/postcss`. If a consuming app uses Tailwind and imports the
-prebuilt Wire React components, include the package in Tailwind's source scan:
+Product apps should import the package stylesheet once near their app root:
 
-```css
-@import "tailwindcss";
-
-@source "../node_modules/@aigentive/wire-react";
+```ts
+import "@aigentive/wire-react/styles.css";
 ```
 
-In a monorepo workspace, point `@source` at the package source path instead.
+The stylesheet includes package-owned structure, visual styling, focus rings,
+handles, controls, minimap styles, panel styles, and CSS variables. Consumers
+can still add `className`, slot `classNames`, `unstyled`, and CSS variable
+overrides. npm consumers do not need utility-class source scanning.
 
 ## `WireWorkspace`
 
 `WireWorkspace` is the easiest reusable app shell. It composes a provider, node
-list, canvas, option panel, and validation panel.
+list, canvas, and tabbed inspector.
 
 ```tsx
 import {
@@ -90,22 +92,35 @@ export function AgentEditor({ diagram, onChange }) {
 | `onEvent` | `(event) => void` | - | Receives decoupled UI events. |
 | `validateOnChange` | `boolean` | provider default | Revalidates after changes. |
 | `history` | `boolean` | provider default | Enables undo/redo state. |
+| `selection` / `defaultSelection` | `WireSelection` | provider state | Controlled or initial selected node/edge ids. |
+| `onSelectionChange` | `(selection, event) => void` | - | Receives normalized selection plus `selection.change` metadata. |
+| `viewport` / `defaultViewport` | `WireViewport` | provider state | Controlled or initial pan/zoom. |
+| `onViewportChange` | `(viewport, event) => void` | - | Receives source, cause, previous viewport, and intent metadata. |
+| `mode` / `defaultMode` | `WireMode` | `"edit"` | Controlled or initial runtime mode. |
+| `onModeChange` | `(mode, event) => void` | - | Receives source and cause metadata. |
+| `dirty` / `defaultDirty` | `boolean` | `false` | Controlled or initial dirty state. |
+| `onDirtyChange` | `(dirty, event) => void` | - | Fires after durable edits or clean resets. |
 | `optionCatalog` | `WireOptionCatalog` | - | Defines editable node options. |
-| `inspectNodeId` | `string` | - | Controlled node shown in the option panel. |
+| `readOnly` | `boolean` | `false` | Locks built-in inspector mutations. |
+| `inspectNodeId` | `string` | - | Controlled node shown in the inspector. |
 | `defaultInspectNodeId` | `string` | - | Initial uncontrolled inspected node. |
 | `onInspectNodeChange` | `(nodeId, event) => void` | - | Called on `node.inspect` and optional pane clear. |
+| `inspectEdgeId` | `string` | - | Controlled edge shown in the inspector. |
+| `defaultInspectEdgeId` | `string` | - | Initial uncontrolled inspected edge. |
+| `onInspectEdgeChange` | `(edgeId, event) => void` | - | Called on edge inspection and optional pane clear. |
 | `clearInspectOnPaneClick` | `boolean` | `false` | Clears inspected node when the canvas pane is clicked. |
 | `title` | `ReactNode` | `"Wire"` | Sidebar title. |
 | `subtitle` | `ReactNode` | - | Sidebar subtitle. |
 | `sidebar` | `ReactNode` | - | Replaces the default node list area. |
-| `inspector` | `ReactNode` | - | Replaces default options and validation panels. |
+| `inspector` | `ReactNode` | - | Replaces the default inspector. |
 | `showNodeList` | `boolean` | `true` | Hides default node list when false. |
-| `showOptions` | `boolean` | `true` | Hides default option panel when false. |
-| `showValidation` | `boolean` | `true` | Hides default validation panel when false. |
+| `showOptions` | `boolean` | `true` | Hides default configure/style/edge/JSON inspector tabs when false. |
+| `showValidation` | `boolean` | `true` | Hides default validation inspector tab when false. |
 | `layout` | `"fixed" | "embedded"` | `"fixed"` | Use `embedded` inside docs/product pages. |
 | `renderNodeCard` | `WireNodeRenderer` | `WireNodeCardView` | Custom non-group node renderer. |
 | `renderGroup` | `WireNodeRenderer` | `WireGroupFrame` | Custom group renderer. |
 | `canvasProps` | `WireCanvasProps` subset | - | Passed to `WireCanvas`. |
+| `inspectorProps` | `WireInspectorProps` subset | - | Passed to the owned `WireInspector`. |
 | `className` | `string` | - | Root classes. |
 | `sidebarClassName` | `string` | - | Sidebar classes. |
 | `canvasClassName` | `string` | - | Canvas section classes. |
@@ -134,6 +149,7 @@ Use `WireCanvas` when building a custom screen around `WireProvider`.
 | `selectOnNodeClick` | `boolean` | `true` in edit, `false` in view | Selects clicked nodes. |
 | `selectOnEdgeClick` | `boolean` | `true` in edit, `false` in view | Selects clicked edges. |
 | `inspectOnNodeClick` | `boolean` | `true` | Emits `node.inspect` from node clicks. |
+| `inspectOnEdgeClick` | `boolean` | `true` | Emits `edge.click` with `intent: "inspect"`. |
 | `clearSelectionOnPaneClick` | `boolean` | `true` in edit, `false` in view | Clears canvas selection on pane click. |
 | `fitView` | `boolean` | `true` | Fits diagram in viewport. |
 | `fitViewPadding` | `number` | `0.08` | Fit-view padding. |
@@ -145,14 +161,63 @@ Use `WireCanvas` when building a custom screen around `WireProvider`.
 | `showBackground` | `boolean` | `true` | Shows the dotted background. |
 | `showControls` | `boolean` | `true` | Shows zoom controls. |
 | `showMiniMap` | `boolean` | `false` | Shows minimap. |
+| `readOnly` | `boolean` | `false` | Disables canvas-originated durable mutations while preserving focus, selection, pan, and zoom. |
+| `keyboardA11y` | `boolean` | `true` | Enables managed root-scoped keyboard behavior. |
+| `nodesFocusable` | `boolean` | `true` | Includes node shells in roving focus. |
+| `edgesFocusable` | `boolean` | `true` | Includes edge shells in roving focus. |
+| `autoPanOnNodeFocus` | `boolean` | `true` | Pans focused nodes into view when measured canvas size is available. |
 | `optionCatalog` | `WireOptionCatalog` | - | Passed into render context. |
 | `renderNodeCard` | `WireNodeRenderer` | default card | Runtime card renderer. |
 | `renderGroup` | `WireNodeRenderer` | default group | Runtime group renderer. |
 | `renderEdge` | `WireEdgeRenderer` | default edge | Runtime edge renderer. |
 | `edgeStyle` | `EdgeStyle` | default stroke | Diagram-level edge style override. |
 | `edgeRouting` | `EdgeRouting` | `bezier` | Diagram-level edge routing override. |
+| `ariaLabelConfig` | object | package defaults | Localizes canvas, node, edge, minimap, handle, status, and control labels. |
+| `isValidConnection` | `(context) => boolean | string` | - | Rejects pointer connections before dispatch and announces the reason. |
 | `className` | `string` | - | Root classes. |
 | `style` | `CSSProperties` | - | Root inline styles. |
+
+Keyboard behavior is scoped to the focused canvas root or managed node/edge
+shells. `Enter`/`Space` select and inspect the focused item, `Escape` clears
+selection, Delete/Backspace remove the selected item in edit mode, arrow keys
+nudge selected/focused nodes in edit mode, and `n`/`p`/`e` traverse managed
+node/edge focus.
+
+## `WireInspector`
+
+`WireInspector` is the built-in production inspector. It follows the current
+single selection by default, or accepts explicit `nodeId` and `edgeId`.
+Explicit `nodeId` wins when both ids are supplied.
+
+```tsx
+<WireInspector
+  nodeId={activeNodeId}
+  edgeId={activeEdgeId}
+  optionCatalog={options}
+  tabs={["configure", "style", "validation", "json", "edge"]}
+  onOptionCommit={({ option, action }) => audit(option.key, action)}
+/>
+```
+
+| Prop | Type | Default | Notes |
+|---|---|---|---|
+| `nodeId` | `string` | selected node | Explicit node to inspect. |
+| `edgeId` | `string` | selected edge | Explicit edge to inspect when no node is active. |
+| `optionCatalog` | `WireOptionCatalog` | - | Drives Configure tab fields. |
+| `tabs` | array | applicable defaults | Any of `configure`, `style`, `validation`, `json`, `edge`. |
+| `defaultTab` | tab name | first applicable | Initial tab when applicable. |
+| `readOnly` | `boolean` | `false` | Prevents title, style, option, JSON, and edge mutations. |
+| `renderField` | function | - | Custom option field inside the package field wrapper. |
+| `renderSection` | function | - | Custom option section wrapper. |
+| `onOptionCommit` | function | - | Called after option fields dispatch a `node.patch`. |
+| `ariaLabelConfig` | object | defaults | Optional tab/field/section label overrides. |
+| `unstyled` | `boolean` | `false` | Keeps structure/ARIA while omitting package visual classes. |
+| `classNames` | object | - | Slot classes for root, tabs, tab, panel, field, section, validation, JSON, and edge. |
+
+Edge inspection edits only explicit persisted edges with ids. Derived edges from
+node relationships are shown read-only. Phase 3A editable edge fields are
+`label`, `tone`, and `routing`; style, label style, data, endpoint, branch, and
+handle facts are read-only summaries.
 
 ## Cards And Groups
 
@@ -235,6 +300,12 @@ nodes through `node.patch`.
 | `catalog` | `WireOptionCatalog` | required | Option specs by node kind. |
 | `nodeId` | `string` | selected node | Explicit node to edit. |
 | `title` | `string` | `"Options"` | Panel heading. |
+| `readOnly` | `boolean` | `false` | Prevents option mutations. |
+| `renderField` | function | - | Custom option field inside the package field wrapper. |
+| `renderSection` | function | - | Custom option section wrapper. |
+| `onOptionCommit` | function | - | Called after an option field dispatches. |
+| `unstyled` | `boolean` | `false` | Preserves structure/ARIA and omits package visual classes. |
+| `classNames` | object | - | Slot classes for root, field, section, and validation. |
 | `className` | `string` | - | Root classes. |
 | `style` | `CSSProperties` | - | Root inline styles. |
 
@@ -261,6 +332,11 @@ const options: WireOptionCatalog = {
 | `defaultValue` | `string | number | boolean` | Display default. |
 | `min` / `max` / `step` | `number` | Number input constraints. |
 | `storage` | `"data.options" | "data" | "node"` | Write target. Defaults to `data.options`. |
+| `group`, `section`, `order`, `width` | metadata | Ordering and grouped layout hints. |
+| `required`, `readOnly`, `disabled`, `hidden` | boolean or predicate | Runtime field state. |
+| `validate`, `parse`, `format` | functions | Runtime-only validation and value conversion. |
+| `commitMode` | `"change" | "blur" | "submit"` | Controls when `node.patch` dispatches. |
+| `debounceMs` | `number` | Debounces change-mode commits. |
 
 ## `WireNodeList`
 
@@ -291,11 +367,11 @@ Events are small and app-level. They decouple card/list clicks from sidebars.
 
 | Event | Shape |
 |---|---|
-| `node.click` | `{ type, source, nodeId }` |
-| `node.inspect` | `{ type, source, nodeId }` |
-| `edge.click` | `{ type, source, edgeId }` |
+| `node.click` | `{ type, source, nodeId, input? }` |
+| `node.inspect` | `{ type, source, nodeId, input? }` |
+| `edge.click` | `{ type, source, edgeId, input?, intent? }` |
 | `pane.click` | `{ type, source }` |
-| `selection.change` | `{ type, source, selection }` |
+| `selection.change` | `{ type, source, selection, previousSelection?, cause? }` |
 
 Source labels are `"canvas"`, `"node-card"`, `"node-list"`, `"option-panel"`,
 `"validation-panel"`, `"workspace"`, or `"api"`. Built-in components currently
@@ -310,4 +386,4 @@ handlers, or programmatic integrations.
 - The playground `/docs/listen` route shows event recipes and source labels.
 - The playground `/samples/agent-chain` route shows a full app screen.
 - The package README (`packages/wire-react/README.md`) covers the JSX facade
-  (`<Flow>`, node components) and Tailwind setup.
+  (`<Flow>`, node components) and package CSS import.

@@ -107,8 +107,8 @@ export function MyDiagram() {
 
 ## LLM-friendly editor extensions
 
-Most apps should extend the built-in canvas with Wire-level props instead of
-importing a third-party graph canvas directly:
+Most apps should extend the built-in canvas with Wire-level props and keep
+`WireDiagram` plus reducer actions as the app contract:
 
 ```tsx
 import {

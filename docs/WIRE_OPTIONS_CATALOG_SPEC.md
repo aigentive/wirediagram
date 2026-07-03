@@ -14,9 +14,9 @@ This spec covers:
 
 - `packages/wire-react/src/options.ts` — `WireOptionSpec`, `WireOptionCatalog`, helpers (`readWireOption`, `patchWireOption`, `wireNodeOptions`, `wireOptionSpecsForNode`, `inferOptionType`).
 - `packages/wire-react/src/components/WireOptionPanel.tsx` — renderer for a list of option specs.
-- `WireProvider` accepts a diagram and dispatches actions. It does **not** accept `optionCatalog` today.
-- `WireWorkspace` and `WireCanvas` accept `optionCatalog` as the implemented catalog entry points; `WireWorkspace` passes it to `WireCanvas` and `WireOptionPanel`.
-- `WireInspector` (the right rail in the demo apps) currently shows Title / Description / Appearance only. **It does not render `WireOptionPanel`** — this is the primary gap.
+- `WireProvider` accepts a diagram and dispatches actions. It intentionally does **not** accept `optionCatalog`.
+- `WireWorkspace`, `WireCanvas`, `WireInspector`, and `WireOptionPanel` are the implemented catalog entry points.
+- `WireInspector` renders Configure, Style, Validation, JSON, and Edge tabs. Configure uses `WireOptionCatalog`; Style preserves title, description, and appearance controls.
 
 ## Out of scope
 
@@ -26,20 +26,24 @@ This spec covers:
 
 ## Work items
 
-### 1. Library — split `WireInspector` into Configure / Style tabs
+### 1. Library — tabbed `WireInspector`
 
 **File**: `packages/wire-react/src/components/WireInspector.tsx`
 
-Restructure the inspector into a tabbed surface. Title and Description stay above the tabs (they apply regardless of tab). Below the title block, a 2-segment control switches between:
+The inspector is a tabbed surface. The implemented tabs are:
 
-- **Configure** *(default)* — kind-specific options driven by the `WireOptionCatalog` prop supplied to `WireWorkspace` or `WireCanvas`. Renders specs from `wireOptionSpecsForNode(optionCatalog, node)` using `WireOptionPanel` (or inline equivalent reusing the existing recessed input style). Each row patches via `patchWireOption(node, spec, value)` and dispatches `node.patch`. When the catalog has zero specs for the active kind, render an empty state hint (`"No configuration for ${kind} nodes yet — pass an optionCatalog to enable them."`).
-- **Style** — everything currently in the Appearance section: Card style preset (Neutral / Success / …), Fill / Border / Text colors, Border width, Radius, Shadow, Reset.
+- **Configure** — kind-specific options driven by the `WireOptionCatalog` prop supplied to `WireWorkspace`, `WireInspector`, or `WireOptionPanel`. Each row patches via `patchWireOption(node, spec, value)` and dispatches `node.patch`.
+- **Style** — title, description, and appearance controls.
+- **Validation** — target-specific validation issues.
+- **JSON** — read-only node or edge JSON.
+- **Edge** — explicit persisted edge fields (`label`, `tone`, `routing`) plus read-only connection facts.
 
-Tab segment styling matches the existing wire-design segmented controls (slate-900 active fill, white text). Tab state is component-local (`useState`); selection-change resets to "Configure" when switching nodes.
+The implemented catalog path is prop-based. Do not document or add
+`<WireProvider optionCatalog={...}>`; the provider remains catalog-free.
 
-The implemented catalog path is prop-based: consumers pass `optionCatalog` to `WireWorkspace` or `WireCanvas`. A future provider-context API can be added later, but this spec must not document `<WireProvider optionCatalog={...}>` as current behavior until that prop exists.
-
-**Acceptance**: passing an `optionCatalog` to `<WireWorkspace>` or `<WireCanvas>` is enough to make the Configure surface populate. The Style tab keeps every existing control, just relocated.
+**Acceptance**: passing an `optionCatalog` to `<WireWorkspace>`, `<WireInspector>`,
+or `<WireOptionPanel>` is enough to make Configure fields populate. The Style
+tab keeps every existing appearance control.
 
 ### 2. Demo — example catalogs
 
@@ -151,5 +155,5 @@ The page is fully static (renders the specimen with the existing canvas) — no 
 ## Risks / decisions deferred
 
 - **Catalog layering** (project-defined options + global defaults): not implementing now. If consumers ask, the right shape is `optionCatalog: WireOptionCatalog | WireOptionCatalog[]` and merge per-kind on read.
-- **Validation**: option specs don't carry validators today (no `pattern`, no `required`). If a consumer wants validation, they do it on save, not in the spec. Adding validators is a future spec.
-- **Conditional fields** (e.g. show `schedule` only when `source === "cron"`): not in this pass. The current inspector shows everything in the catalog. Adding `visibleWhen` is a clean extension if needed.
+- **Validation**: `required`, `validate`, `parse`, and `format` are supported as runtime catalog functions. Persisted diagrams must not serialize those functions.
+- **Conditional fields**: `hidden`, `disabled`, and `readOnly` predicates are supported as runtime catalog functions. Persisted diagrams must not serialize those functions.

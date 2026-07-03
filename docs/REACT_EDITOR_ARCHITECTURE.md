@@ -1,8 +1,9 @@
 # React Editor Architecture
 
 `@aigentive/wire-react` is a controlled React editor for canonical
-`WireDiagram` JSON. React Flow, DOM layout, custom cards, and inspector widgets
-are runtime concerns; persistence remains the Wire schema plus reducer actions.
+`WireDiagram` JSON. DOM layout, custom cards, canvas viewport state, and
+inspector widgets are runtime concerns; persistence remains the Wire schema plus
+reducer actions.
 
 ## State Ownership
 
@@ -14,10 +15,12 @@ are runtime concerns; persistence remains the Wire schema plus reducer actions.
 - `viewport`: pan and zoom state.
 - `history`: undo and redo stacks.
 - `mode`: edit or view.
+- `dirty`: runtime dirty flag compared against a provider clean baseline.
 
 Apps can control the diagram with `diagram`/`onChange` or provide
-`defaultDiagram` for local state. In both cases, changes are emitted as
-`WireEvent` records so hosts can observe the reducer action behind each edit.
+`defaultDiagram` for local state. Selection, viewport, mode, and dirty state can
+also be controlled through the same provider-backed surfaces. Runtime callbacks
+carry source/cause metadata; durable edits still flow through reducer actions.
 
 ## Reducer Contract
 
@@ -45,6 +48,8 @@ Canvas responsibilities:
 - convert pointer gestures into world coordinates;
 - snap new node positions to the configured grid;
 - emit reducer actions for move, resize, connect, disconnect, and selection;
+- keep keyboard commands scoped to the active canvas root;
+- expose focusable node and edge shells with configurable ARIA labels;
 - keep runtime geometry out of persisted node data.
 
 Layout commands are explicit. `layout.apply` can reposition nodes through the
@@ -68,9 +73,11 @@ to persist and remain serializable.
 ## Option Catalogs
 
 Wire does not define a universal set of AI/tool/action options. Consumers pass a
-`WireOptionCatalog` to `WireWorkspace` or `WireCanvas`.
+`WireOptionCatalog` to `WireWorkspace`, `WireInspector`, `WireOptionPanel`, or
+`WireCanvas`.
 
-`WireOptionPanel` reads specs for the selected node and emits `node.patch`:
+`WireInspector` and `WireOptionPanel` read specs for the selected or explicit
+node and emit `node.patch`:
 
 - `storage: "node"` updates canonical top-level node fields such as `model`,
   `ref`, or `branches`.
@@ -83,12 +90,18 @@ contract used by canvas and inspector components.
 
 ## Inspector Model
 
-The inspector is selected-node oriented:
+The inspector resolves one runtime target:
 
-- title and description edit common node fields;
-- configure controls come from the option catalog;
-- style controls patch node appearance;
-- validation is shown separately through `WireValidationPanel`.
+- explicit `nodeId`;
+- explicit `edgeId`;
+- single selected node;
+- single selected edge;
+- empty or mixed selection summary.
+
+For nodes, title, description, Configure, Style, Validation, and read-only JSON
+tabs operate on canonical node fields and option catalog fields. For edges,
+explicit persisted edges with ids can edit `label`, `tone`, and `routing`
+through `edge.patch`; derived relationship edges are inspectable but read-only.
 
 Apps that need a domain-specific inspector can replace the default panel and
 still use `useWireDiagram`, `useWireSelection`, and `useWireDispatch` to emit the
@@ -99,7 +112,7 @@ same reducer actions.
 Persist only canonical `WireDiagram` JSON. Do not persist:
 
 - React component instances;
-- React Flow node/edge objects;
+- generic graph node/edge objects;
 - viewport pan/zoom;
 - transient hover, drag, or selection state;
 - non-serializable callbacks or runtime objects.
@@ -119,4 +132,3 @@ Product apps usually choose one of two integration levels:
 
 Both paths keep the same reducer protocol, validation behavior, and history
 semantics. That is the contract shared with MCP tools and cloud APIs.
-

@@ -20,6 +20,8 @@
     "test": "npm run build && vitest run",
     "test:react": "npm run build:core && npm run test --workspace @aigentive/wire-react",
     "test:react:coverage": "npm run build:core && npm run test:coverage --workspace @aigentive/wire-react",
+    "test:docs-source-names": "node scripts/check-react-docs-source-names.mjs",
+    "test:react:release": "npm run build --workspace @aigentive/wire-react && npm run test --workspace @aigentive/wire-react && npm run test:docs-source-names && npm pack --workspace @aigentive/wire-react --dry-run",
     "test:e2e": "playwright test",
     "test:watch": "npm run build:core && vitest",
     "dev:mcp": "npm run dev --workspace @aigentive/wire-mcp",
