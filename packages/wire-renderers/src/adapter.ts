@@ -13,9 +13,9 @@ import {
 import { DEFAULT_TONE_CLASSES } from "./tone.js";
 
 /**
- * Minimal subset of the React Flow node/edge shape so we don't
+ * Minimal subset of the legacy graph node/edge shape so we don't
  * pull a third-party graph canvas into the type signature when consumers
- * only want the JSON. Compatible with React Flow-style node and edge objects.
+ * only want the JSON.
  */
 export interface ReactFlowNode {
   id: string;
@@ -79,7 +79,7 @@ export interface ToReactFlowResult {
 
 export interface ToReactFlowOptions {
   toneClasses?: Partial<Record<NonNullable<Tone>, string>>;
-  /** Override the React Flow `type` per kind. Defaults to the wire kind. */
+  /** Override the adapter `type` per kind. Defaults to the wire kind. */
   nodeTypeFor?: (kind: WireNode["kind"]) => string;
   /** Animate AI/condition outgoing edges. Default true. */
   animate?: boolean;
@@ -164,10 +164,9 @@ const ROUTING_TO_RF_TYPE: Record<EdgeRouting, string> = {
 };
 
 /**
- * Convert a Wire diagram into React Flow `nodes` and `edges`. Layout is
+ * Convert a Wire diagram into adapter-shaped `nodes` and `edges`. Layout is
  * performed by `wire-core`'s dagre engine. Notes and groups are passed
- * through as React Flow nodes too — the consuming app decides how to
- * render them.
+ * through too; the consuming app decides how to render them.
  */
 export function toReactFlow(
   diagram: WireDiagram,
