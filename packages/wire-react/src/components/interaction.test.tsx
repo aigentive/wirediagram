@@ -123,6 +123,63 @@ describe("wire component interactions", () => {
     expect(actions[4]).toMatchObject({ type: "node.patch", id: "task", patch: { data: { options: { mode: "careful" } } } });
   });
 
+  it("supports option sections, predicates, validation, and commit modes", () => {
+    const actions: WireAction[] = [];
+    const commits: string[] = [];
+    const diagram = optionDiagram();
+    const { container } = renderWithContext(
+      <WireOptionPanel
+        nodeId="task"
+        catalog={{
+          action: [
+            { key: "hidden", label: "Hidden", hidden: true },
+            { key: "blurred", label: "Blurred", placeholder: "Blur value", section: "Timing", order: 1, commitMode: "blur", required: true },
+            { key: "submitted", label: "Submitted", placeholder: "Submit value", section: "Timing", order: 2, commitMode: "submit" },
+            { key: "locked", label: "Locked", placeholder: "Locked value", readOnly: true },
+            { key: "disabled", label: "Disabled", placeholder: "Disabled value", disabled: () => true }
+          ]
+        }}
+        onOptionCommit={({ option }) => commits.push(option.key)}
+      />,
+      contextFor(diagram, {
+        selection: { nodeIds: ["task"], edgeIds: [] },
+        dispatch: (action) => {
+          actions.push(action);
+          return applyResult(diagram, action);
+        }
+      })
+    );
+
+    expect(container.textContent).not.toContain("Hidden");
+    expect(container.textContent).toContain("Timing");
+
+    const blurred = inputByPlaceholder(container, "Blur value");
+    input(blurred, "Draft");
+    input(blurred, "");
+    expect(actions).toHaveLength(0);
+    blur(blurred);
+    expect(actions).toHaveLength(0);
+    expect(container.textContent).toContain("Blurred is required.");
+
+    input(blurred, "Ready");
+    blur(blurred);
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).toMatchObject({ type: "node.patch", id: "task", patch: { data: { options: expect.objectContaining({ blurred: "Ready" }) } } });
+    expect(commits).toEqual(["blurred"]);
+
+    const submitted = inputByPlaceholder(container, "Submit value");
+    input(submitted, "Queued");
+    expect(actions).toHaveLength(1);
+    click(buttonByText(container, "Apply"));
+    expect(actions).toHaveLength(2);
+    expect(actions[1]).toMatchObject({ type: "node.patch", id: "task", patch: { data: { options: expect.objectContaining({ submitted: "Queued" }) } } });
+    expect(commits).toEqual(["blurred", "submitted"]);
+
+    input(inputByPlaceholder(container, "Locked value"), "Ignored");
+    input(inputByPlaceholder(container, "Disabled value"), "Ignored");
+    expect(actions).toHaveLength(2);
+  });
+
   it("dispatches inspector title, description, preset, custom style, clear, and reset patches", () => {
     const actions: WireAction[] = [];
     const diagram: WireDiagram = {
@@ -317,6 +374,14 @@ function input(element: HTMLInputElement | HTMLTextAreaElement, value: string): 
   });
 }
 
+function blur(element: HTMLElement): void {
+  act(() => {
+    element.focus();
+    element.blur();
+    element.dispatchEvent(new FocusEvent("blur"));
+  });
+}
+
 function change(element: HTMLSelectElement, value: string): void {
   act(() => {
     setNativeValue(element, value);
@@ -327,4 +392,10 @@ function change(element: HTMLSelectElement, value: string): void {
 function setNativeValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string): void {
   const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), "value");
   descriptor?.set?.call(element, value);
+}
+
+function inputByPlaceholder(container: ParentNode, placeholder: string): HTMLInputElement {
+  const input = container.querySelector<HTMLInputElement>(`input[placeholder="${placeholder}"]`);
+  if (!input) throw new Error(`Input not found: ${placeholder}`);
+  return input;
 }
