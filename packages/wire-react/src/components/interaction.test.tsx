@@ -99,6 +99,50 @@ describe("wire component interactions", () => {
     expect(selections).toEqual([{ nodeIds: [], edgeIds: ["approval"] }]);
   });
 
+  it("handles canvas keyboard selection, deletion, and read-only movement from the root", () => {
+    const events: WireEvent[] = [];
+    const selections: WireSelection[] = [];
+    const actions: WireAction[] = [];
+    const { container } = renderWithContext(
+      <WireCanvas fitView={false} showControls={false} showMiniMap={false} />,
+      contextFor(edgeDiagram(), {
+        selection: { nodeIds: [], edgeIds: ["approval"] },
+        setSelection: (selection) => selections.push(selection),
+        emit: (event) => events.push(event),
+        dispatch: (action) => {
+          actions.push(action);
+          return applyResult(edgeDiagram(), action);
+        }
+      })
+    );
+
+    const root = container.querySelector<HTMLElement>("[data-wire-canvas]")!;
+    const node = container.querySelector<HTMLElement>("[data-wire-node-id='a']")!;
+    keyDown(root, "Delete");
+    expect(actions).toContainEqual({ type: "edge.remove", id: "approval" });
+
+    focus(node);
+    keyDown(root, "Enter");
+    expect(events).toContainEqual({ type: "node.click", source: "canvas", nodeId: "a", input: "keyboard" });
+    expect(events).toContainEqual({ type: "node.inspect", source: "canvas", nodeId: "a", input: "keyboard" });
+    expect(selections).toContainEqual({ nodeIds: ["a"], edgeIds: [] });
+
+    const readOnlyActions: WireAction[] = [];
+    const readOnly = renderWithContext(
+      <WireCanvas fitView={false} showControls={false} showMiniMap={false} readOnly />,
+      contextFor(edgeDiagram(), {
+        selection: { nodeIds: ["a"], edgeIds: [] },
+        dispatch: (action) => {
+          readOnlyActions.push(action);
+          return applyResult(edgeDiagram(), action);
+        }
+      })
+    );
+    focus(readOnly.container.querySelector<HTMLElement>("[data-wire-node-id='a']")!);
+    keyDown(readOnly.container.querySelector<HTMLElement>("[data-wire-canvas]")!, "ArrowRight");
+    expect(readOnlyActions).toHaveLength(0);
+  });
+
   it("dispatches option patches for text, textarea, number, boolean, and select fields", () => {
     const actions: WireAction[] = [];
     const diagram = optionDiagram();
@@ -480,6 +524,19 @@ function buttonByLabel(container: ParentNode, label: string): HTMLButtonElement 
 function click(element: HTMLElement): void {
   act(() => {
     element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
+function focus(element: HTMLElement): void {
+  act(() => {
+    element.focus();
+    element.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+  });
+}
+
+function keyDown(element: HTMLElement, key: string): void {
+  act(() => {
+    element.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
   });
 }
 

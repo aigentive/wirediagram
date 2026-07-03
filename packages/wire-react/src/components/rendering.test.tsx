@@ -36,6 +36,34 @@ describe("wire component rendering surfaces", () => {
     expect(editor).toContain("wire-canvas-circle-start");
   });
 
+  it("server-renders canvas accessibility labels and live status region", () => {
+    const markup = renderToStaticMarkup(
+      <WireProvider diagram={sampleDiagram()}>
+        <WireCanvas
+          fitView={false}
+          showMiniMap
+          showControls
+          ariaLabelConfig={{
+            canvas: "Workflow diagram",
+            node: (node) => `Node ${node.title}`,
+            edge: (edge) => `Edge ${edge.id}`,
+            minimap: "Workflow map",
+            controls: { zoomIn: "Increase zoom", zoomOut: "Decrease zoom", fitView: "Fit workflow" }
+          }}
+        />
+      </WireProvider>
+    );
+
+    expect(markup).toContain("role=\"region\"");
+    expect(markup).toContain("aria-label=\"Workflow diagram\"");
+    expect(markup).toContain("aria-label=\"Node Write Code\"");
+    expect(markup).toContain("aria-label=\"Edge code-review\"");
+    expect(markup).toContain("aria-label=\"Workflow map\"");
+    expect(markup).toContain("aria-label=\"Increase zoom\"");
+    expect(markup).toContain("role=\"status\"");
+  });
+
+
   it("server-renders workspace sidebars and custom inspector slots", () => {
     const markup = renderToStaticMarkup(
       <WireWorkspace

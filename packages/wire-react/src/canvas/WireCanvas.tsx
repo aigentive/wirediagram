@@ -3,11 +3,13 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
@@ -21,10 +23,11 @@ import type {
   LayoutDirection,
   Side,
   WireAction,
+  WireDiagram,
   WireNode
 } from "@aigentive/wire-core";
 import { useWireActions, useWireContext } from "../hooks.js";
-import type { WireMode, WireSelection, WireViewport } from "../provider/types.js";
+import type { WireMode, WireSelection, WireViewport, WireViewportActions } from "../provider/types.js";
 import { normalizeWireSelection, sameWireSelection } from "../provider/runtimeState.js";
 import { wireActionsFromSelectionDelete } from "./changeActions.js";
 import {
@@ -37,7 +40,8 @@ import {
   type Point,
   type WireCanvasBounds,
   type WireCanvasEdgeGeometry,
-  type WireCanvasFrame
+  type WireCanvasFrame,
+  type WireCanvasModel
 } from "./geometry.js";
 import {
   createWireNodeRenderContext,
@@ -80,12 +84,38 @@ export interface WireCanvasProps {
   showBackground?: boolean;
   showControls?: boolean;
   showMiniMap?: boolean;
+  readOnly?: boolean;
+  keyboardA11y?: boolean;
+  nodesFocusable?: boolean;
+  edgesFocusable?: boolean;
+  autoPanOnNodeFocus?: boolean;
   optionCatalog?: WireOptionCatalog;
   renderNodeCard?: WireNodeRenderer;
   renderGroup?: WireNodeRenderer;
   renderEdge?: WireEdgeRenderer;
   edgeStyle?: EdgeStyle;
   edgeRouting?: EdgeRouting;
+  ariaLabelConfig?: {
+    canvas?: string;
+    node?: (node: WireNode) => string;
+    edge?: (edge: WireEdgeRenderContext["edge"]) => string;
+    handle?: (context: { node: WireNode; side: Side; role: "source" | "target" }) => string;
+    minimap?: string;
+    validationStatus?: string;
+    controls?: {
+      zoomIn?: string;
+      zoomOut?: string;
+      fitView?: string;
+      fitSelection?: string;
+    };
+  };
+  isValidConnection?: (context: {
+    sourceNode: WireNode;
+    targetNode: WireNode;
+    sourceSide: Side;
+    targetSide: Side;
+    diagram: WireDiagram;
+  }) => boolean | string;
   className?: string;
   style?: CSSProperties;
 }
@@ -144,6 +174,16 @@ interface MiniMapRect {
   height: number;
 }
 
+interface WireCanvasFocusItem {
+  type: "node" | "edge";
+  id: string;
+}
+
+interface WireCanvasStatus {
+  message: string;
+  key: number;
+}
+
 export function WireCanvas(props: WireCanvasProps): ReactElement {
   return <WireCanvasInner {...props} />;
 }
@@ -165,17 +205,25 @@ function WireCanvasInner({
   showBackground = true,
   showControls = true,
   showMiniMap = false,
+  readOnly = false,
+  keyboardA11y,
+  nodesFocusable,
+  edgesFocusable,
+  autoPanOnNodeFocus = true,
   optionCatalog,
   renderNodeCard,
   renderGroup,
   renderEdge,
   edgeStyle,
   edgeRouting,
+  ariaLabelConfig,
+  isValidConnection,
   className,
   style
 }: WireCanvasProps): ReactElement {
   const ctx = useWireContext();
   const actions = useWireActions();
+  const reactId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewportRef = useRef<WireViewport>(ctx.viewport);
   const selectionRef = useRef<WireSelection>(ctx.selection);
@@ -197,15 +245,21 @@ function WireCanvasInner({
   const [fitReady, setFitReady] = useState(!fitView);
   const [canvasSize, setCanvasSize] = useState<CanvasSize | undefined>();
   const [measuredSizes, setMeasuredSizes] = useState<Map<string, { width: number; height: number }> | undefined>();
+  const [activeItem, setActiveItem] = useState<WireCanvasFocusItem | null>(null);
+  const [status, setStatus] = useState<WireCanvasStatus | null>(null);
 
   const effectiveMode = mode ?? ctx.mode;
+  const keyboardEnabled = keyboardA11y ?? true;
+  const nodeFocusEnabled = keyboardEnabled && (nodesFocusable ?? true);
+  const edgeFocusEnabled = keyboardEnabled && (edgesFocusable ?? true);
+  const statusId = `wire-canvas-status-${reactId.replace(/:/g, "")}`;
   const interaction = resolveWireCanvasInteraction({
     mode: effectiveMode,
     selectOnNodeClick,
     selectOnEdgeClick,
     clearSelectionOnPaneClick
   });
-  const editable = interaction.editable;
+  const editable = interaction.editable && !readOnly;
   const canPan = panOnDrag;
   const canZoom = zoomOnScroll;
 
@@ -214,6 +268,34 @@ function WireCanvasInner({
     [ctx.diagram, dragPositions, edgeRouting, edgeStyle, measuredSizes]
   );
   modelBoundsRef.current = model.bounds;
+  const focusItems = useMemo(
+    () => canvasFocusItems(model, nodeFocusEnabled, edgeFocusEnabled),
+    [edgeFocusEnabled, model, nodeFocusEnabled]
+  );
+
+  const announce = useCallback((message: string) => {
+    setStatus((current) => ({ message, key: (current?.key ?? 0) + 1 }));
+  }, []);
+
+  const focusCanvasItem = useCallback((item: WireCanvasFocusItem | null) => {
+    setActiveItem(item);
+    if (!item || typeof requestAnimationFrame === "undefined") return;
+    requestAnimationFrame(() => {
+      focusElementForCanvasItem(containerRef.current, item);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!keyboardEnabled) {
+      setActiveItem(null);
+      return;
+    }
+    if (focusItems.length === 0) {
+      setActiveItem(null);
+      return;
+    }
+    setActiveItem((current) => current && focusItems.some((item) => sameFocusItem(item, current)) ? current : focusItems[0]!);
+  }, [focusItems, keyboardEnabled]);
 
   const handleSlotsByFrame = useMemo(() => {
     const map = new Map<string, Map<Side, { source: number; target: number }>>();
@@ -400,25 +482,88 @@ function WireCanvasInner({
     return () => observer.disconnect();
   }, [fitToView, fitView]);
 
-  useEffect(() => {
-    if (!editable) return undefined;
+  const handleCanvasKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (!keyboardEnabled || event.defaultPrevented || shouldIgnoreCanvasKeyboardEvent(event.target, event.currentTarget)) return;
+      const eventItem = focusItemFromElement(event.target);
+      const item = eventItem ?? activeItem;
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.key !== "Backspace" && event.key !== "Delete") return;
-      if (isTextEntryTarget(event.target)) return;
+      if (event.key === "Escape") {
+        if (selectionRef.current.nodeIds.length > 0 || selectionRef.current.edgeIds.length > 0) {
+          event.preventDefault();
+          clearWireSelection("keyboard");
+          announce("Selection cleared.");
+        }
+        return;
+      }
 
-      const nextActions = wireActionsFromSelectionDelete(selectionRef.current, model.edgeById, model.explicitEdgeIds);
-      if (nextActions.length === 0) return;
+      if ((event.key === "Backspace" || event.key === "Delete") && editable) {
+        const keyboardSelection = selectionForKeyboardCommand(selectionRef.current, item);
+        const nextActions = wireActionsFromSelectionDelete(keyboardSelection, model.edgeById, model.explicitEdgeIds);
+        if (nextActions.length === 0) return;
+        event.preventDefault();
+        dispatchMany(nextActions);
+        clearWireSelection("keyboard");
+        announce("Selection deleted.");
+        return;
+      }
 
-      event.preventDefault();
-      dispatchMany(nextActions);
-      clearWireSelection("keyboard");
-    };
+      if ((event.key === "Enter" || event.key === " ") && item) {
+        event.preventDefault();
+        if (item.type === "node") {
+          setWireSelection({ nodeIds: [item.id], edgeIds: [] }, "canvas", "keyboard");
+          ctx.eventActions.emit({ type: "node.click", source: "canvas", nodeId: item.id, input: "keyboard" });
+          if (inspectOnNodeClick) ctx.eventActions.emit({ type: "node.inspect", source: "canvas", nodeId: item.id, input: "keyboard" });
+        } else {
+          setWireSelection({ nodeIds: [], edgeIds: [item.id] }, "canvas", "keyboard");
+          ctx.eventActions.emit({ type: "edge.click", source: "canvas", edgeId: item.id, input: "keyboard", intent: inspectOnEdgeClick ? "inspect" : "select" });
+        }
+        return;
+      }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [clearWireSelection, dispatchMany, editable, model.edgeById, model.explicitEdgeIds]);
+      if (event.key.startsWith("Arrow") && editable && item?.type === "node") {
+        const delta = keyboardNudgeDelta(event);
+        if (!delta) return;
+        event.preventDefault();
+        const keyboardSelection = selectionForKeyboardCommand(selectionRef.current, item);
+        if (keyboardSelection.nodeIds.length === 0) return;
+        if (selectionRef.current.nodeIds.length === 0) {
+          setWireSelection({ nodeIds: [item.id], edgeIds: [] }, "canvas", "keyboard");
+        }
+        const nextActions: WireAction[] = [];
+        for (const id of keyboardSelection.nodeIds) {
+          const frame = model.framesById.get(id);
+          if (!frame) continue;
+          nextActions.push({ type: "node.move", id, position: { x: frame.x + delta.x, y: frame.y + delta.y } });
+        }
+        dispatchMany(nextActions);
+        return;
+      }
+
+      const nextFocus = nextFocusItemForKey(event, focusItems, item);
+      if (nextFocus) {
+        event.preventDefault();
+        focusCanvasItem(nextFocus);
+      }
+    },
+    [
+      activeItem,
+      announce,
+      clearWireSelection,
+      ctx.eventActions,
+      dispatchMany,
+      editable,
+      focusCanvasItem,
+      focusItems,
+      inspectOnEdgeClick,
+      inspectOnNodeClick,
+      keyboardEnabled,
+      model.edgeById,
+      model.explicitEdgeIds,
+      model.framesById,
+      setWireSelection
+    ]
+  );
 
   const handleWheelEvent = useCallback(
     (event: WheelEvent) => {
@@ -456,6 +601,7 @@ function WireCanvasInner({
 
   const handlePanePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (keyboardEnabled) event.currentTarget.focus();
       if (!canPan || event.button !== 0) return;
       if (isInteractiveTarget(event.target)) return;
       panStateRef.current = {
@@ -466,7 +612,7 @@ function WireCanvasInner({
       };
       event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [canPan]
+    [canPan, keyboardEnabled]
   );
 
   const updatePan = useCallback(
@@ -526,6 +672,10 @@ function WireCanvasInner({
       if (event.button !== 0) return;
       if (isHandleTarget(event.target)) return;
       event.stopPropagation();
+      if (nodeFocusEnabled) {
+        setActiveItem({ type: "node", id: frame.id });
+        event.currentTarget.focus();
+      }
       if (!editable) {
         if (!canPan) return;
         panStateRef.current = {
@@ -561,7 +711,7 @@ function WireCanvasInner({
       };
       event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [canPan, ctx.diagram.nodes, ctx.eventActions, editable, inspectOnNodeClick, interaction.selectOnNodeClick, model.frames, model.framesById, setWireSelection]
+    [canPan, ctx.diagram.nodes, ctx.eventActions, editable, inspectOnNodeClick, interaction.selectOnNodeClick, model.frames, model.framesById, nodeFocusEnabled, setWireSelection]
   );
 
   const handleNodePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -727,6 +877,22 @@ function WireCanvasInner({
           model.direction
         );
       if (!target || target.nodeId === current.sourceId) return;
+      const sourceNode = model.nodeById.get(current.sourceId);
+      const targetNode = model.nodeById.get(target.nodeId);
+      if (!sourceNode || !targetNode) return;
+      if (isValidConnection) {
+        const validationResult = isValidConnection({
+          sourceNode,
+          targetNode,
+          sourceSide: current.sourceSide,
+          targetSide: target.side,
+          diagram: ctx.diagram
+        });
+        if (validationResult !== true) {
+          announce(typeof validationResult === "string" ? validationResult : "Connection not allowed.");
+          return;
+        }
+      }
       actions.dispatch({
         type: "edge.connect",
         edge: {
@@ -736,8 +902,9 @@ function WireCanvasInner({
           toHandle: target.side
         }
       });
+      announce(`Connected ${sourceNode.title} to ${targetNode.title}.`);
     },
-    [actions, model.direction, model.framesById]
+    [actions, announce, ctx.diagram, isValidConnection, model.direction, model.framesById, model.nodeById]
   );
 
   const handleNodeClick = useCallback(
@@ -760,11 +927,15 @@ function WireCanvasInner({
   const handleEdgeClick = useCallback(
     (event: ReactMouseEvent, edgeId: string) => {
       event.stopPropagation();
+      if (edgeFocusEnabled) {
+        setActiveItem({ type: "edge", id: edgeId });
+        focusElementForCanvasItem(containerRef.current, { type: "edge", id: edgeId });
+      }
       ctx.eventActions.emit({ type: "edge.click", source: "canvas", edgeId, intent: inspectOnEdgeClick ? "inspect" : "select" });
       if (!interaction.selectOnEdgeClick) return;
       setWireSelection({ nodeIds: [], edgeIds: [edgeId] }, "canvas", "edge");
     },
-    [ctx.eventActions, inspectOnEdgeClick, interaction.selectOnEdgeClick, setWireSelection]
+    [ctx.eventActions, edgeFocusEnabled, inspectOnEdgeClick, interaction.selectOnEdgeClick, setWireSelection]
   );
 
   const selectedNodeIds = new Set(ctx.selection.nodeIds);
@@ -791,8 +962,18 @@ function WireCanvasInner({
     <div
       ref={containerRef}
       data-wire-canvas
+      role="region"
+      aria-label={nonEmptyString(ariaLabelConfig?.canvas, "Wire diagram canvas")}
+      aria-describedby={statusId}
+      tabIndex={keyboardEnabled ? 0 : undefined}
       className={cx("wire-canvas wire-canvas--styled", className)}
       style={rootStyle}
+      onKeyDown={handleCanvasKeyDown}
+      onFocus={(event) => {
+        if (event.target === event.currentTarget && !activeItem && focusItems[0]) {
+          setActiveItem(focusItems[0]);
+        }
+      }}
       onPointerDown={handlePanePointerDown}
       onPointerMove={handlePanePointerMove}
       onPointerUp={handlePanePointerUp}
@@ -828,7 +1009,12 @@ function WireCanvasInner({
                 key={edge.edge.id}
                 geometry={edge}
                 selected={selectedEdgeIds.has(edge.edge.id)}
+                focused={activeItem?.type === "edge" && activeItem.id === edge.edge.id}
+                focusable={edgeFocusEnabled}
+                statusId={statusId}
+                ariaLabel={ariaLabelForEdge(edge.edge, ariaLabelConfig)}
                 renderEdge={renderEdge}
+                onFocus={() => setActiveItem({ type: "edge", id: edge.edge.id })}
                 onClick={handleEdgeClick}
               />
             ))}
@@ -859,7 +1045,16 @@ function WireCanvasInner({
               data-wire-interactive
               data-wire-node
               data-wire-node-id={frame.id}
+              data-wire-state-focused={activeItem?.type === "node" && activeItem.id === frame.id ? "true" : undefined}
+              role={nodeFocusEnabled ? "button" : undefined}
+              aria-label={ariaLabelForNode(frame.node, ariaLabelConfig)}
+              aria-describedby={keyboardEnabled ? statusId : undefined}
+              tabIndex={nodeFocusEnabled ? (activeItem?.type === "node" && activeItem.id === frame.id ? 0 : -1) : undefined}
               className="wire-node wire-node--styled"
+              onFocus={() => {
+                setActiveItem({ type: "node", id: frame.id });
+                if (autoPanOnNodeFocus) ensureFrameVisible(frame, viewportRef.current, canvasSize, setWireViewport);
+              }}
               onPointerDown={(event) => handleNodePointerDown(event, frame)}
               onPointerMove={handleNodePointerMove}
               onPointerUp={handleNodePointerUp}
@@ -914,9 +1109,32 @@ function WireCanvasInner({
         })}
       </div>
 
-      {showMiniMap ? <WireMiniMap model={model} viewport={ctx.viewport} canvasSize={canvasSize} /> : null}
+      <div
+        key={status?.key ?? 0}
+        id={statusId}
+        className="wire-canvas__status"
+        role="status"
+        aria-live="polite"
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          overflow: "hidden",
+          clip: "rect(0 0 0 0)",
+          whiteSpace: "nowrap"
+        }}
+      >
+        {status?.message ?? ""}
+      </div>
+
+      {showMiniMap ? <WireMiniMap model={model} viewport={ctx.viewport} canvasSize={canvasSize} ariaLabel={nonEmptyString(ariaLabelConfig?.minimap, "Canvas minimap")} /> : null}
       {showControls ? (
         <WireControls
+          labels={{
+            zoomIn: nonEmptyString(ariaLabelConfig?.controls?.zoomIn, "Zoom in"),
+            zoomOut: nonEmptyString(ariaLabelConfig?.controls?.zoomOut, "Zoom out"),
+            fitView: nonEmptyString(ariaLabelConfig?.controls?.fitView, "Fit view")
+          }}
           onFit={fitToView}
           onZoomIn={() => setWireViewport(zoomViewport(ctx.viewport, zoomStep, minZoom, maxZoom), { source: "canvas", cause: "zoom" })}
           onZoomOut={() => setWireViewport(zoomViewport(ctx.viewport, 1 / zoomStep, minZoom, maxZoom), { source: "canvas", cause: "zoom" })}
@@ -929,12 +1147,22 @@ function WireCanvasInner({
 function WireEdge({
   geometry,
   selected,
+  focused,
+  focusable,
+  statusId,
+  ariaLabel,
   renderEdge,
+  onFocus,
   onClick
 }: {
   geometry: WireCanvasEdgeGeometry;
   selected: boolean;
+  focused: boolean;
+  focusable: boolean;
+  statusId: string;
+  ariaLabel: string;
   renderEdge?: WireEdgeRenderer;
+  onFocus: () => void;
   onClick: (event: ReactMouseEvent, edgeId: string) => void;
 }): ReactElement {
   const stroke = selected ? "#2563eb" : geometry.style.stroke;
@@ -960,7 +1188,18 @@ function WireEdge({
   };
 
   return (
-    <g className="wire-edge wire-edge--styled" data-wire-interactive data-wire-edge data-wire-edge-id={geometry.edge.id}>
+    <g
+      className="wire-edge wire-edge--styled"
+      data-wire-interactive
+      data-wire-edge
+      data-wire-edge-id={geometry.edge.id}
+      data-wire-state-focused={focused ? "true" : undefined}
+      role={focusable ? "button" : undefined}
+      aria-label={ariaLabel}
+      aria-describedby={focusable ? statusId : undefined}
+      tabIndex={focusable ? (focused ? 0 : -1) : undefined}
+      onFocus={onFocus}
+    >
       {renderEdge ? renderEdge(context) : (
         <path
           d={geometry.path}
@@ -1098,10 +1337,12 @@ function WireHandles({
 }
 
 function WireControls({
+  labels,
   onFit,
   onZoomIn,
   onZoomOut
 }: {
+  labels: { zoomIn: string; zoomOut: string; fitView: string };
   onFit: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
@@ -1126,13 +1367,13 @@ function WireControls({
           "var(--wire-canvas-control-shadow, 0 1px 0 rgba(255,255,255,0.6) inset, 0 8px 24px -8px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.04))"
       }}
     >
-      <ControlButton label="Zoom in" onClick={onZoomIn}>
+      <ControlButton label={labels.zoomIn} onClick={onZoomIn}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
       </ControlButton>
-      <ControlButton label="Zoom out" onClick={onZoomOut} divider>
+      <ControlButton label={labels.zoomOut} onClick={onZoomOut} divider>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14"/></svg>
       </ControlButton>
-      <ControlButton label="Fit view" onClick={onFit} divider wide>
+      <ControlButton label={labels.fitView} onClick={onFit} divider wide>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
         <span style={{ marginLeft: 5, fontSize: 11.5, fontWeight: 600, color: "var(--wire-fg-secondary)" }}>Fit</span>
       </ControlButton>
@@ -1183,11 +1424,13 @@ function ControlButton({
 function WireMiniMap({
   model,
   viewport,
-  canvasSize
+  canvasSize,
+  ariaLabel
 }: {
   model: ReturnType<typeof buildWireCanvasModel>;
   viewport: WireViewport;
   canvasSize?: CanvasSize;
+  ariaLabel: string;
 }): ReactElement {
   const width = 184;
   const height = 104;
@@ -1210,7 +1453,7 @@ function WireMiniMap({
     <svg
       data-wire-interactive
       className="wire-minimap wire-minimap--styled"
-      aria-label="Canvas minimap"
+      aria-label={ariaLabel}
       width={width}
       height={height}
       style={{
@@ -1637,6 +1880,129 @@ function isTextEntryTarget(target: EventTarget | null): boolean {
   if (target.isContentEditable) return true;
   const tagName = target.tagName.toLowerCase();
   return tagName === "input" || tagName === "textarea" || tagName === "select";
+}
+
+function canvasFocusItems(model: WireCanvasModel, nodesFocusable: boolean, edgesFocusable: boolean): WireCanvasFocusItem[] {
+  return [
+    ...(nodesFocusable ? model.frames.filter((frame) => frame.node.kind !== "group").map((frame) => ({ type: "node" as const, id: frame.id })) : []),
+    ...(edgesFocusable ? model.edges.map((edge) => ({ type: "edge" as const, id: edge.edge.id })) : [])
+  ];
+}
+
+function sameFocusItem(left: WireCanvasFocusItem, right: WireCanvasFocusItem): boolean {
+  return left.type === right.type && left.id === right.id;
+}
+
+function focusElementForCanvasItem(root: HTMLElement | null, item: WireCanvasFocusItem): void {
+  const elements = root?.querySelectorAll<HTMLElement | SVGGElement>(
+    item.type === "node" ? "[data-wire-node-id]" : "[data-wire-edge-id]"
+  );
+  const element = [...(elements ?? [])].find((candidate) =>
+    item.type === "node"
+      ? candidate.dataset.wireNodeId === item.id
+      : candidate.dataset.wireEdgeId === item.id
+  );
+  element?.focus();
+}
+
+function focusItemFromElement(target: EventTarget): WireCanvasFocusItem | null {
+  if (!(target instanceof Element)) return null;
+  const edge = target.closest<HTMLElement | SVGGElement>("[data-wire-edge-id]");
+  if (edge?.dataset.wireEdgeId) return { type: "edge", id: edge.dataset.wireEdgeId };
+  const node = target.closest<HTMLElement>("[data-wire-node-id]");
+  if (node?.dataset.wireNodeId) return { type: "node", id: node.dataset.wireNodeId };
+  return null;
+}
+
+function shouldIgnoreCanvasKeyboardEvent(target: EventTarget, root: HTMLElement): boolean {
+  if (target === root) return false;
+  if (isTextEntryTarget(target)) return true;
+  if (!(target instanceof Element)) return false;
+  if (target.closest("[data-wire-keyboard='ignore']")) return true;
+  const managedItem = target.closest("[data-wire-node-id], [data-wire-edge-id]");
+  if (managedItem) return false;
+  return Boolean(target.closest("button,a[href],summary,[contenteditable='true'],[role='button'],[role='link'],[role='menuitem'],[role='checkbox'],[role='radio'],[role='switch'],[role='slider'],[role='spinbutton'],[role='combobox'],[role='listbox'],[role='textbox'],[role='searchbox'],[role='tab'],[role='option'],[role='treeitem'],[role='gridcell'],[role='menu'],[role='menubar'],[role='tablist'],[role='grid'],[role='tree'],[role='dialog']"));
+}
+
+function keyboardNudgeDelta(event: ReactKeyboardEvent): Point | null {
+  const amount = event.altKey ? 1 : event.shiftKey ? 32 : 8;
+  if (event.key === "ArrowLeft") return { x: -amount, y: 0 };
+  if (event.key === "ArrowRight") return { x: amount, y: 0 };
+  if (event.key === "ArrowUp") return { x: 0, y: -amount };
+  if (event.key === "ArrowDown") return { x: 0, y: amount };
+  return null;
+}
+
+function selectionForKeyboardCommand(selection: WireSelection, item: WireCanvasFocusItem | null): WireSelection {
+  if (selection.nodeIds.length > 0 || selection.edgeIds.length > 0 || !item) return selection;
+  return item.type === "node"
+    ? { nodeIds: [item.id], edgeIds: [] }
+    : { nodeIds: [], edgeIds: [item.id] };
+}
+
+function nextFocusItemForKey(
+  event: ReactKeyboardEvent,
+  items: WireCanvasFocusItem[],
+  current: WireCanvasFocusItem | null
+): WireCanvasFocusItem | null {
+  if (items.length === 0) return null;
+  const currentIndex = Math.max(0, current ? items.findIndex((item) => sameFocusItem(item, current)) : 0);
+  if (event.key === "Home") return items[0]!;
+  if (event.key === "End") return items[items.length - 1]!;
+  if (event.key === "n") return nextItemOfType(items, currentIndex, "node", 1);
+  if (event.key === "p") return nextItemOfType(items, currentIndex, "node", -1);
+  if (event.key === "e") return nextItemOfType(items, currentIndex, "edge", event.shiftKey ? -1 : 1);
+  return null;
+}
+
+function nextItemOfType(items: WireCanvasFocusItem[], currentIndex: number, type: WireCanvasFocusItem["type"], direction: 1 | -1): WireCanvasFocusItem | null {
+  if (!items.some((item) => item.type === type)) return null;
+  for (let offset = 1; offset <= items.length; offset += 1) {
+    const index = (currentIndex + offset * direction + items.length) % items.length;
+    const item = items[index]!;
+    if (item.type === type) return item;
+  }
+  return null;
+}
+
+function ariaLabelForNode(node: WireNode, config: WireCanvasProps["ariaLabelConfig"]): string {
+  const override = config?.node?.(node)?.trim();
+  if (override) return override;
+  return `${node.title || node.id} ${node.kind} node`;
+}
+
+function ariaLabelForEdge(edge: WireEdgeRenderContext["edge"], config: WireCanvasProps["ariaLabelConfig"]): string {
+  const override = config?.edge?.(edge)?.trim();
+  if (override) return override;
+  return edge.label ? `${edge.label} edge` : `Edge from ${edge.from} to ${edge.to}`;
+}
+
+function nonEmptyString(value: string | undefined, fallback: string): string {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : fallback;
+}
+
+function ensureFrameVisible(
+  frame: WireCanvasFrame,
+  viewport: WireViewport,
+  canvasSize: CanvasSize | undefined,
+  setViewport: (viewport: WireViewport, event?: Parameters<WireViewportActions["setViewport"]>[1]) => void
+): void {
+  if (!canvasSize) return;
+  const margin = 24;
+  const left = frame.x * viewport.zoom + viewport.x;
+  const right = (frame.x + frame.width) * viewport.zoom + viewport.x;
+  const top = frame.y * viewport.zoom + viewport.y;
+  const bottom = (frame.y + frame.height) * viewport.zoom + viewport.y;
+  let dx = 0;
+  let dy = 0;
+  if (left < margin) dx = margin - left;
+  else if (right > canvasSize.width - margin) dx = canvasSize.width - margin - right;
+  if (top < margin) dy = margin - top;
+  else if (bottom > canvasSize.height - margin) dy = canvasSize.height - margin - bottom;
+  if (dx !== 0 || dy !== 0) {
+    setViewport({ ...viewport, x: viewport.x + dx, y: viewport.y + dy }, { source: "canvas", cause: "keyboard" });
+  }
 }
 
 function normalizeWheelDelta(event: { deltaY: number; deltaMode: number }): number {
