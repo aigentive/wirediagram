@@ -173,6 +173,22 @@ describe("wire component interactions", () => {
     expect(actions).toHaveLength(0);
   });
 
+  it("keeps large search result popups bounded while reporting the full result count", () => {
+    const { container } = renderWithContext(
+      <WireCanvas fitView={false} showControls={false} showMiniMap={false} />,
+      contextFor(manyNodeDiagram(80))
+    );
+
+    const root = container.querySelector<HTMLElement>("[data-wire-canvas]")!;
+    focus(container.querySelector<HTMLElement>("[data-wire-node-id='node-0']")!);
+    keyDown(root, "/");
+
+    const options = container.querySelectorAll("[role='option']");
+    expect(options).toHaveLength(60);
+    expect(options[0]?.getAttribute("aria-setsize")).toBe("80");
+    expect(container.textContent).toContain("80 results");
+  });
+
   it("creates and rejects keyboard connections through the target picker", () => {
     const actions: WireAction[] = [];
     const { container } = renderWithContext(
@@ -224,6 +240,22 @@ describe("wire component interactions", () => {
     expect(rejectedActions).toHaveLength(0);
     expect(rejectedPicker.getAttribute("aria-invalid")).toBe("true");
     expect(rejected.container.textContent).toContain("Blocked by policy.");
+  });
+
+  it("keeps large connection target popups bounded while reporting all targets", () => {
+    const { container } = renderWithContext(
+      <WireCanvas fitView={false} showControls={false} showMiniMap={false} />,
+      contextFor(manyNodeDiagram(80))
+    );
+
+    const root = container.querySelector<HTMLElement>("[data-wire-canvas]")!;
+    focus(container.querySelector<HTMLElement>("[data-wire-node-id='node-0']")!);
+    keyDown(root, "c");
+
+    const options = container.querySelectorAll("[role='option']");
+    expect(options).toHaveLength(60);
+    expect(options[0]?.getAttribute("aria-setsize")).toBe("79");
+    expect(container.textContent).toContain("79 targets");
   });
 
   it("moves focus between owned workspace canvas and inspector", async () => {
@@ -628,6 +660,21 @@ function edgeDiagram(): WireDiagram {
       { id: "b", kind: "action", title: "B" }
     ],
     edges: [{ id: "approval", from: "a", to: "b", label: "old" }]
+  };
+}
+
+function manyNodeDiagram(count: number): WireDiagram {
+  return {
+    ...emptyDiagram({ id: "many-nodes", title: "Many nodes" }),
+    nodes: Array.from({ length: count }, (_, index) => ({
+      id: `node-${index}`,
+      kind: index === 0 ? "trigger" : "action",
+      title: `Node ${index}`,
+      position: {
+        x: (index % 10) * 260,
+        y: Math.floor(index / 10) * 140
+      }
+    }))
   };
 }
 

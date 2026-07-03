@@ -147,6 +147,7 @@ const DEFAULT_ZOOM_STEP = 1.1;
 const DEFAULT_FIT_VIEW_PADDING = 0.2;
 const LARGE_DIAGRAM_NODE_THRESHOLD = 1000;
 const LARGE_DIAGRAM_EDGE_THRESHOLD = 1200;
+const MAX_COMBOBOX_VISIBLE_OPTIONS = 60;
 const WHEEL_ZOOM_DELTA = 120;
 const GRID_SIZE = 24;
 const HANDLE_SIZE = 9;
@@ -2070,6 +2071,11 @@ function WireCanvasSearch({
   onBlur: (event: ReactFocusEvent<HTMLDivElement>) => void;
   onResultPointerDown: (result: WireCanvasSearchResult) => void;
 }): ReactElement {
+  const visibleResults = visibleComboboxOptions(
+    results,
+    activeResult,
+    (left, right) => left.type === right.type && left.id === right.id
+  );
   return (
     <div
       data-wire-interactive
@@ -2118,7 +2124,7 @@ function WireCanvasSearch({
         }}
       />
       <div id={listId} role="listbox" aria-label={`${label} results`} style={{ display: "grid", gap: 2, marginTop: 8, maxHeight: 220, overflow: "auto" }}>
-        {results.length > 0 ? results.map((result) => {
+        {results.length > 0 ? visibleResults.map(({ item: result, index }) => {
           const active = activeResult?.type === result.type && activeResult.id === result.id;
           return (
             <div
@@ -2126,6 +2132,8 @@ function WireCanvasSearch({
               id={`${listId}-${result.type}-${result.id}`}
               role="option"
               aria-selected={active}
+              aria-posinset={index + 1}
+              aria-setsize={results.length}
               onPointerDown={(event) => {
                 event.preventDefault();
                 onResultPointerDown(result);
@@ -2202,6 +2210,11 @@ function WireCanvasConnectionPicker({
   onKeyDown: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
   onBlur: (event: ReactFocusEvent<HTMLDivElement>) => void;
 }): ReactElement {
+  const visibleResults = visibleComboboxOptions(
+    results,
+    activeResult,
+    (left, right) => left.nodeId === right.nodeId
+  );
   return (
     <div
       data-wire-interactive
@@ -2266,7 +2279,7 @@ function WireCanvasConnectionPicker({
         </label>
       </div>
       <div id={listId} role="listbox" aria-label={`${label} results`} style={{ display: "grid", gap: 2, marginTop: 8, maxHeight: 220, overflow: "auto" }}>
-        {results.length > 0 ? results.map((result, index) => {
+        {results.length > 0 ? visibleResults.map(({ item: result, index }) => {
           const active = activeResult?.nodeId === result.nodeId;
           return (
             <div
@@ -2274,6 +2287,8 @@ function WireCanvasConnectionPicker({
               id={`${listId}-${result.nodeId}`}
               role="option"
               aria-selected={active}
+              aria-posinset={index + 1}
+              aria-setsize={results.length}
               onPointerDown={(event) => {
                 event.preventDefault();
                 onActiveIndexChange(index);
@@ -2963,6 +2978,28 @@ function canvasConnectionTargets(
       return !query || normalizeSearchText(`${target.label} ${target.nodeId}`).includes(query);
     })
     .sort((left, right) => left.distance - right.distance || left.diagramIndex - right.diagramIndex);
+}
+
+function visibleComboboxOptions<T>(
+  items: T[],
+  activeItem: T | null,
+  sameItem: (left: T, right: T) => boolean
+): Array<{ item: T; index: number }> {
+  if (items.length <= MAX_COMBOBOX_VISIBLE_OPTIONS) {
+    return items.map((item, index) => ({ item, index }));
+  }
+  const activeIndex = activeItem ? items.findIndex((item) => sameItem(item, activeItem)) : -1;
+  if (activeIndex < MAX_COMBOBOX_VISIBLE_OPTIONS || activeIndex < 0) {
+    return items.slice(0, MAX_COMBOBOX_VISIBLE_OPTIONS).map((item, index) => ({ item, index }));
+  }
+  const halfWindow = Math.floor(MAX_COMBOBOX_VISIBLE_OPTIONS / 2);
+  const start = Math.max(
+    0,
+    Math.min(activeIndex - halfWindow, items.length - MAX_COMBOBOX_VISIBLE_OPTIONS)
+  );
+  return items
+    .slice(start, start + MAX_COMBOBOX_VISIBLE_OPTIONS)
+    .map((item, offset) => ({ item, index: start + offset }));
 }
 
 function connectionSourceSides(model: WireCanvasModel, picker: WireCanvasConnectionPickerState): Side[] {
