@@ -134,6 +134,23 @@
   background-color: var(--wire-bg-canvas);
 }
 
+.wire-canvas--large *,
+.wire-canvas[data-wire-large-diagram="true"] * {
+  animation-duration: 0ms !important;
+  transition-duration: 0ms !important;
+}
+
+.wire-canvas__skip-control--styled:not(:focus):not(:focus-visible) {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+}
+
+.wire-canvas__skip-control--styled:focus-visible {
+  outline: none;
+  box-shadow: var(--wire-ring-focus);
+}
+
 .wire-canvas__viewport {
   will-change: transform;
 }

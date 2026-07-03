@@ -272,6 +272,7 @@ export function WireWorkspace({
 
         <aside
           ref={inspectorRef}
+          tabIndex={-1}
           className={cx("wire-workspace__inspector", !unstyled && "grid content-start gap-3 lg:p-4", classNames?.inspector, inspectorClassName)}
           onKeyDown={(event) => {
             if (event.key !== "Enter" || !event.altKey || !event.shiftKey) return;

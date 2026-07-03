@@ -231,6 +231,7 @@ describe("wire component interactions", () => {
       <WireWorkspace
         diagram={edgeDiagram()}
         layout="embedded"
+        defaultInspectNodeId="a"
         canvasProps={{ fitView: false, showControls: false, showMiniMap: false }}
       />
     );
@@ -247,6 +248,78 @@ describe("wire component interactions", () => {
     await flush();
 
     expect(document.activeElement).toBe(node);
+  });
+
+  it("exposes skip-to-inspector as the next canvas tab stop", async () => {
+    const { container } = render(
+      <WireWorkspace
+        diagram={edgeDiagram()}
+        layout="embedded"
+        canvasProps={{ fitView: false, showControls: false, showMiniMap: false }}
+      />
+    );
+
+    const root = container.querySelector<HTMLElement>("[data-wire-canvas]")!;
+    const skip = buttonByLabel(container, "Skip to inspector and controls");
+    let focusRequests = 0;
+    root.closest("main")?.addEventListener("wire:inspector-focus-request", () => {
+      focusRequests += 1;
+    });
+    expect(root.querySelector("button")).toBe(skip);
+
+    focus(root);
+    click(skip);
+    await flush();
+
+    expect(focusRequests).toBe(1);
+    expect([
+      container.querySelector("[role='tab'][aria-selected='true']"),
+      container.querySelector(".wire-workspace__inspector")
+    ]).toContain(document.activeElement);
+  });
+
+  it("fits selected items with shared default padding, explicit padding overrides, and focus recovery", async () => {
+    const viewportEvents: Array<{ viewport: WireContextValue["viewport"]; event?: Parameters<WireContextValue["viewportActions"]["setViewport"]>[1] }> = [];
+    const diagram = edgeDiagram();
+    const selection: WireSelection = { nodeIds: ["a", "b"], edgeIds: ["approval"] };
+    const { container } = renderWithContext(
+      <WireCanvas fitView={false} showMiniMap={false} />,
+      contextFor(diagram, {
+        selection,
+        setViewport: (viewport, event) => viewportEvents.push({ viewport, event })
+      })
+    );
+
+    const root = container.querySelector<HTMLElement>("[data-wire-canvas]")!;
+    setCanvasRect(root, 800, 420);
+    const selectedNode = container.querySelector<HTMLElement>("[data-wire-node-id='a']")!;
+    focus(selectedNode);
+    click(buttonByLabel(container, "Fit view"));
+    await flush();
+    click(buttonByLabel(container, "Fit selection"));
+    await flush();
+
+    expect(viewportEvents).toHaveLength(2);
+    expect(viewportEvents[0]?.event).toMatchObject({ source: "canvas", cause: "fit-view", intent: "fit-view" });
+    expect(viewportEvents[1]?.event).toMatchObject({ source: "canvas", cause: "fit-view", intent: "fit-selection" });
+    expect(viewportEvents[1]?.viewport).toEqual(viewportEvents[0]?.viewport);
+    expect(document.activeElement).toBe(selectedNode);
+    expect(container.textContent).toContain("Fitted 3 selected items.");
+
+    const explicitEvents: Array<{ viewport: WireContextValue["viewport"]; event?: Parameters<WireContextValue["viewportActions"]["setViewport"]>[1] }> = [];
+    const explicit = renderWithContext(
+      <WireCanvas fitView={false} fitViewPadding={0.05} showMiniMap={false} />,
+      contextFor(diagram, {
+        selection,
+        setViewport: (viewport, event) => explicitEvents.push({ viewport, event })
+      })
+    );
+    setCanvasRect(explicit.container.querySelector<HTMLElement>("[data-wire-canvas]")!, 800, 420);
+    click(buttonByLabel(explicit.container, "Fit selection"));
+    await flush();
+
+    expect(explicitEvents[0]?.event).toMatchObject({ intent: "fit-selection" });
+    expect(explicitEvents[0]?.viewport.zoom).not.toBe(viewportEvents[1]?.viewport.zoom);
   });
 
   it("dispatches option patches for text, textarea, number, boolean, and select fields", () => {
@@ -571,6 +644,7 @@ function contextFor(
     undo?: () => ApplyWireActionResult | undefined;
     redo?: () => ApplyWireActionResult | undefined;
     setMode?: (mode: "view" | "edit" | "connect" | "comment", event?: Parameters<WireContextValue["setMode"]>[1]) => void;
+    setViewport?: (viewport: WireContextValue["viewport"], event?: Parameters<WireContextValue["viewportActions"]["setViewport"]>[1]) => void;
   } = {}
 ): WireContextValue {
   const validation = overrides.validation ?? validate(diagram);
@@ -598,7 +672,7 @@ function contextFor(
       clearSelection: () => undefined
     },
     viewportActions: {
-      setViewport: () => undefined
+      setViewport: overrides.setViewport ?? (() => undefined)
     },
     eventActions: {
       emit: overrides.emit ?? (() => undefined)
@@ -650,6 +724,20 @@ function keyDown(element: HTMLElement, key: string, init: KeyboardEventInit = {}
   });
 }
 
+function setCanvasRect(element: HTMLElement, width: number, height: number): void {
+  element.getBoundingClientRect = () => ({
+    x: 0,
+    y: 0,
+    left: 0,
+    top: 0,
+    right: width,
+    bottom: height,
+    width,
+    height,
+    toJSON: () => ({})
+  });
+}
+
 function input(element: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   act(() => {
     setNativeValue(element, value);
@@ -685,6 +773,12 @@ function inputByPlaceholder(container: ParentNode, placeholder: string): HTMLInp
 
 async function flush(): Promise<void> {
   await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => {
+      if (typeof requestAnimationFrame === "undefined") {
+        setTimeout(resolve, 0);
+        return;
+      }
+      requestAnimationFrame(() => setTimeout(resolve, 0));
+    });
   });
 }

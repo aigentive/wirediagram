@@ -66,6 +66,21 @@ describe("wire component rendering surfaces", () => {
     expect(markup).toContain("role=\"status\"");
   });
 
+  it("server-renders large-diagram mode markup and simplified minimap", () => {
+    const markup = renderToStaticMarkup(
+      <WireProvider diagram={largeDiagram(1001)} defaultSelection={{ nodeIds: ["node-1"], edgeIds: [] }}>
+        <WireCanvas fitView={false} showMiniMap showControls={false} />
+      </WireProvider>
+    );
+
+    expect(markup).toContain("data-wire-large-diagram=\"true\"");
+    expect(markup).toContain("wire-canvas--large");
+    expect(markup).toContain("Skip to inspector and controls");
+    expect(markup).toContain("data-wire-minimap-mode=\"large\"");
+    expect(markup).toContain("data-wire-minimap-bounds=\"true\"");
+    expect(markup).toContain("data-wire-minimap-selection=\"true\"");
+  });
+
 
   it("server-renders workspace sidebars and custom inspector slots", () => {
     const markup = renderToStaticMarkup(
@@ -435,6 +450,25 @@ function sampleDiagram(): WireDiagram {
       },
       { id: "code-review", from: "code", to: "review", routing: "step" }
     ]
+  };
+}
+
+function largeDiagram(count: number): WireDiagram {
+  return {
+    version: 1,
+    id: "large",
+    title: "Large",
+    layout: "LR",
+    nodes: Array.from({ length: count }, (_, index) => ({
+      id: `node-${index + 1}`,
+      kind: index === 0 ? "trigger" as const : "action" as const,
+      title: `Node ${index + 1}`,
+      position: {
+        x: (index % 50) * 260,
+        y: Math.floor(index / 50) * 120
+      }
+    })),
+    edges: []
   };
 }
 

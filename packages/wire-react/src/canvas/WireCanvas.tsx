@@ -144,6 +144,9 @@ export interface WireCanvasProps {
 const DEFAULT_MIN_ZOOM = 0.15;
 const DEFAULT_MAX_ZOOM = 4;
 const DEFAULT_ZOOM_STEP = 1.1;
+const DEFAULT_FIT_VIEW_PADDING = 0.2;
+const LARGE_DIAGRAM_NODE_THRESHOLD = 1000;
+const LARGE_DIAGRAM_EDGE_THRESHOLD = 1200;
 const WHEEL_ZOOM_DELTA = 120;
 const GRID_SIZE = 24;
 const HANDLE_SIZE = 9;
@@ -253,7 +256,7 @@ function WireCanvasInner({
   inspectOnEdgeClick = true,
   clearSelectionOnPaneClick,
   fitView = true,
-  fitViewPadding = 0.08,
+  fitViewPadding = DEFAULT_FIT_VIEW_PADDING,
   panOnDrag = true,
   zoomOnScroll = true,
   zoomStep = DEFAULT_ZOOM_STEP,
@@ -303,10 +306,12 @@ function WireCanvasInner({
   const pendingConnectionFocusRef = useRef<PendingConnectionFocus | null>(null);
   const modelBoundsRef = useRef<WireCanvasBounds | null>(null);
   const initialFitDoneRef = useRef(!fitView);
+  const largeDiagramAnnouncementRef = useRef<{ active: boolean; key: string | null }>({ active: false, key: null });
   const [dragPositions, setDragPositions] = useState<Map<string, Point> | undefined>();
   const [connection, setConnection] = useState<ConnectionState | null>(null);
   const [search, setSearch] = useState<WireCanvasSearchState | null>(null);
   const [connectionPicker, setConnectionPicker] = useState<WireCanvasConnectionPickerState | null>(null);
+  const [slowRender, setSlowRender] = useState(false);
   const [fitReady, setFitReady] = useState(!fitView);
   const [canvasSize, setCanvasSize] = useState<CanvasSize | undefined>();
   const [measuredSizes, setMeasuredSizes] = useState<Map<string, { width: number; height: number }> | undefined>();
@@ -339,6 +344,7 @@ function WireCanvasInner({
     [ctx.diagram, dragPositions, edgeRouting, edgeStyle, measuredSizes]
   );
   modelBoundsRef.current = model.bounds;
+  const largeDiagram = model.frames.length > LARGE_DIAGRAM_NODE_THRESHOLD || model.edges.length > LARGE_DIAGRAM_EDGE_THRESHOLD;
   const focusItems = useMemo(
     () => canvasFocusItems(model, nodeFocusEnabled, edgeFocusEnabled),
     [edgeFocusEnabled, model, nodeFocusEnabled]
@@ -357,6 +363,8 @@ function WireCanvasInner({
   const activeConnectionTarget = connectionTargets.length > 0
     ? connectionTargets[Math.min(connectionPicker?.activeIndex ?? 0, connectionTargets.length - 1)] ?? null
     : null;
+  const selectedItemCount = ctx.selection.nodeIds.length + ctx.selection.edgeIds.length;
+  const hasSelection = selectedItemCount > 0;
 
   const announce = useCallback((message: string) => {
     setStatus((current) => ({ message, key: (current?.key ?? 0) + 1 }));
@@ -374,6 +382,55 @@ function WireCanvasInner({
       focusElementForCanvasItem(containerRef.current, item);
     });
   }, []);
+
+  useEffect(() => {
+    const key = `${ctx.diagram.id ?? "diagram"}:${model.frames.length}:${model.edges.length}`;
+    const previous = largeDiagramAnnouncementRef.current;
+    if (largeDiagram) {
+      if (!previous.active || previous.key !== key) {
+        announce(`Large diagram mode enabled for ${model.frames.length} nodes and ${model.edges.length} edges.`);
+      }
+      largeDiagramAnnouncementRef.current = { active: true, key };
+      return;
+    }
+    if (previous.active) {
+      announce("Large diagram mode disabled.");
+    }
+    largeDiagramAnnouncementRef.current = { active: false, key };
+  }, [announce, ctx.diagram.id, largeDiagram, model.edges.length, model.frames.length]);
+
+  useEffect(() => {
+    if (!largeDiagram) {
+      setSlowRender(false);
+      return undefined;
+    }
+
+    let complete = false;
+    const timeout = setTimeout(() => {
+      if (complete) return;
+      setSlowRender(true);
+      announce("Rendering large diagram.");
+    }, 250);
+    const finish = () => {
+      complete = true;
+      clearTimeout(timeout);
+      setSlowRender(false);
+    };
+    if (typeof requestAnimationFrame === "undefined") {
+      const handle = setTimeout(finish, 0);
+      return () => {
+        complete = true;
+        clearTimeout(timeout);
+        clearTimeout(handle);
+      };
+    }
+    const frame = requestAnimationFrame(finish);
+    return () => {
+      complete = true;
+      clearTimeout(timeout);
+      cancelAnimationFrame(frame);
+    };
+  }, [announce, largeDiagram, model.edges.length, model.frames.length]);
 
   useEffect(() => {
     if (!keyboardEnabled) {
@@ -471,23 +528,27 @@ function WireCanvasInner({
     const measure = () => {
       measureCanvas();
       const next = new Map<string, { width: number; height: number }>();
-      element.querySelectorAll<HTMLElement>("[data-wire-node]").forEach((nodeElement) => {
-        const id = nodeElement.dataset.wireNodeId;
-        if (!id) return;
-        const width = Math.ceil(nodeElement.offsetWidth);
-        const height = Math.ceil(nodeElement.offsetHeight);
-        if (width > 0 && height > 0) next.set(id, { width, height });
-      });
-      setMeasuredSizes((current) => (sameMeasuredSizes(current, next) ? current : next));
+      if (!largeDiagram) {
+        element.querySelectorAll<HTMLElement>("[data-wire-node]").forEach((nodeElement) => {
+          const id = nodeElement.dataset.wireNodeId;
+          if (!id) return;
+          const width = Math.ceil(nodeElement.offsetWidth);
+          const height = Math.ceil(nodeElement.offsetHeight);
+          if (width > 0 && height > 0) next.set(id, { width, height });
+        });
+      }
+      setMeasuredSizes((current) => (sameMeasuredSizes(current, next) ? current : next.size > 0 ? next : undefined));
     };
 
     measure();
     if (typeof ResizeObserver === "undefined") return undefined;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
-    element.querySelectorAll<HTMLElement>("[data-wire-node]").forEach((nodeElement) => observer.observe(nodeElement));
+    if (!largeDiagram) {
+      element.querySelectorAll<HTMLElement>("[data-wire-node]").forEach((nodeElement) => observer.observe(nodeElement));
+    }
     return () => observer.disconnect();
-  }, [ctx.diagram, model.frames]);
+  }, [ctx.diagram, largeDiagram, model.frames]);
 
   const dispatchMany = useCallback(
     (wireActions: WireAction[]) => {
@@ -577,6 +638,42 @@ function WireCanvasInner({
     setFitReady(true);
     return true;
   }, [fitViewPadding, maxZoom, minZoom, setWireViewport]);
+
+  const fitSelectionToView = useCallback((): boolean => {
+    const element = containerRef.current;
+    if (!element) return false;
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    const selectionBounds = boundsForSelection(ctx.selection, model);
+    if (!selectionBounds) {
+      announce("No selected items to fit.");
+      return false;
+    }
+    setWireViewport(
+      fitViewportForBounds(selectionBounds.bounds, rect.width, rect.height, fitViewPadding, minZoom, maxZoom),
+      { source: "canvas", cause: "fit-view", intent: "fit-selection" }
+    );
+    setFitReady(true);
+    const selectedFocusItems = selectedFocusItemsForSelection(ctx.selection, model, nodeFocusEnabled, edgeFocusEnabled);
+    const nextFocus = activeItem && selectedFocusItems.some((item) => sameFocusItem(item, activeItem))
+      ? activeItem
+      : selectedFocusItems[0] ?? null;
+    if (nextFocus) focusCanvasItem(nextFocus);
+    announce(`Fitted ${selectionBounds.count} selected ${selectionBounds.count === 1 ? "item" : "items"}.`);
+    return true;
+  }, [
+    activeItem,
+    announce,
+    ctx.selection,
+    edgeFocusEnabled,
+    fitViewPadding,
+    focusCanvasItem,
+    maxZoom,
+    minZoom,
+    model,
+    nodeFocusEnabled,
+    setWireViewport
+  ]);
 
   useIsomorphicLayoutEffect(() => {
     if (!fitView) {
@@ -1296,11 +1393,14 @@ function WireCanvasInner({
     <div
       ref={containerRef}
       data-wire-canvas
+      data-wire-large-diagram={largeDiagram ? "true" : undefined}
+      data-wire-render-mode={largeDiagram ? "large" : "normal"}
       role="region"
       aria-label={nonEmptyString(ariaLabelConfig?.canvas, "Wire diagram canvas")}
       aria-describedby={statusId}
+      aria-busy={slowRender ? true : undefined}
       tabIndex={keyboardEnabled ? 0 : undefined}
-      className={cx("wire-canvas", !unstyled && "wire-canvas--styled", themeClass(colorMode), classNames?.root, className)}
+      className={cx("wire-canvas", !unstyled && "wire-canvas--styled", largeDiagram && "wire-canvas--large", themeClass(colorMode), classNames?.root, className)}
       data-wire-theme={colorMode}
       style={rootStyle}
       onKeyDown={handleCanvasKeyDown}
@@ -1319,6 +1419,39 @@ function WireCanvasInner({
       onPointerCancel={handlePanePointerCancel}
       onClick={handlePaneClick}
     >
+      {keyboardEnabled ? (
+        <button
+          type="button"
+          data-wire-interactive
+          className={cx("wire-canvas__skip-control", !unstyled && "wire-canvas__skip-control--styled")}
+          aria-label="Skip to inspector and controls"
+          onClick={(event) => {
+            const selectedFocusItems = selectedFocusItemsForSelection(ctx.selection, model, nodeFocusEnabled, edgeFocusEnabled);
+            const item = activeItem ?? selectedFocusItems[0] ?? focusItems[0] ?? null;
+            dispatchWireInspectorFocusRequest(containerRef.current ?? event.currentTarget, { item });
+            announce("Skipped to inspector and controls.");
+          }}
+          style={{
+            position: "absolute",
+            left: 12,
+            top: 12,
+            zIndex: 10,
+            ...(!unstyled ? {
+              border: "1px solid var(--wire-border)",
+              borderRadius: 6,
+              background: "var(--wire-bg-surface)",
+              color: "var(--wire-fg-secondary)",
+              boxShadow: "var(--wire-card-shadow)",
+              font: "inherit",
+              fontSize: 12,
+              fontWeight: 650,
+              padding: "6px 8px"
+            } : null)
+          }}
+        >
+          Skip to inspector and controls
+        </button>
+      ) : null}
       {showBackground ? (
         <div
           aria-hidden
@@ -1571,7 +1704,18 @@ function WireCanvasInner({
         {status?.message ?? ""}
       </div>
 
-      {showMiniMap ? <WireMiniMap model={model} viewport={ctx.viewport} canvasSize={canvasSize} ariaLabel={nonEmptyString(ariaLabelConfig?.minimap, "Canvas minimap")} className={classNames?.minimap} unstyled={unstyled} /> : null}
+      {showMiniMap ? (
+        <WireMiniMap
+          model={model}
+          viewport={ctx.viewport}
+          selection={ctx.selection}
+          canvasSize={canvasSize}
+          largeDiagram={largeDiagram}
+          ariaLabel={nonEmptyString(ariaLabelConfig?.minimap, "Canvas minimap")}
+          className={classNames?.minimap}
+          unstyled={unstyled}
+        />
+      ) : null}
       {showControls ? (
         <WireControls
           className={classNames?.controls}
@@ -1579,9 +1723,11 @@ function WireCanvasInner({
           labels={{
             zoomIn: nonEmptyString(ariaLabelConfig?.controls?.zoomIn, "Zoom in"),
             zoomOut: nonEmptyString(ariaLabelConfig?.controls?.zoomOut, "Zoom out"),
-            fitView: nonEmptyString(ariaLabelConfig?.controls?.fitView, "Fit view")
+            fitView: nonEmptyString(ariaLabelConfig?.controls?.fitView, "Fit view"),
+            fitSelection: nonEmptyString(ariaLabelConfig?.controls?.fitSelection, "Fit selection")
           }}
           onFit={fitToView}
+          onFitSelection={hasSelection ? fitSelectionToView : undefined}
           onZoomIn={() => setWireViewport(zoomViewport(ctx.viewport, zoomStep, minZoom, maxZoom), { source: "canvas", cause: "zoom" })}
           onZoomOut={() => setWireViewport(zoomViewport(ctx.viewport, 1 / zoomStep, minZoom, maxZoom), { source: "canvas", cause: "zoom" })}
         />
@@ -1797,13 +1943,15 @@ function WireControls({
   unstyled,
   labels,
   onFit,
+  onFitSelection,
   onZoomIn,
   onZoomOut
 }: {
   className?: string;
   unstyled: boolean;
-  labels: { zoomIn: string; zoomOut: string; fitView: string };
+  labels: { zoomIn: string; zoomOut: string; fitView: string; fitSelection: string };
   onFit: () => void;
+  onFitSelection?: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
 }): ReactElement {
@@ -1839,6 +1987,12 @@ function WireControls({
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
         <span style={unstyled ? undefined : { marginLeft: 5, fontSize: 11.5, fontWeight: 600, color: "var(--wire-fg-secondary)" }}>Fit</span>
       </ControlButton>
+      {onFitSelection ? (
+        <ControlButton label={labels.fitSelection} unstyled={unstyled} onClick={onFitSelection} divider wide>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7V4h3"/><path d="M20 7V4h-3"/><path d="M4 17v3h3"/><path d="M20 17v3h-3"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
+          <span style={unstyled ? undefined : { marginLeft: 5, fontSize: 11.5, fontWeight: 600, color: "var(--wire-fg-secondary)" }}>Selection</span>
+        </ControlButton>
+      ) : null}
     </div>
   );
 }
@@ -2164,14 +2318,18 @@ function WireCanvasConnectionPicker({
 function WireMiniMap({
   model,
   viewport,
+  selection,
   canvasSize,
+  largeDiagram,
   ariaLabel,
   className,
   unstyled
 }: {
   model: ReturnType<typeof buildWireCanvasModel>;
   viewport: WireViewport;
+  selection: WireSelection;
   canvasSize?: CanvasSize;
+  largeDiagram: boolean;
   ariaLabel: string;
   className?: string;
   unstyled: boolean;
@@ -2192,10 +2350,21 @@ function WireMiniMap({
     pad,
     scale
   });
+  const contentRect: MiniMapRect = { x: pad, y: pad, width: width - pad * 2, height: height - pad * 2 };
+  const selectionBounds = largeDiagram ? boundsForSelection(selection, model)?.bounds : null;
+  const selectionRect = selectionBounds
+    ? clipMiniMapRect({
+      x: toX(selectionBounds.minX),
+      y: toY(selectionBounds.minY),
+      width: Math.max(2, selectionBounds.width * scale),
+      height: Math.max(2, selectionBounds.height * scale)
+    }, contentRect)
+    : null;
 
   return (
     <svg
       data-wire-interactive
+      data-wire-minimap-mode={largeDiagram ? "large" : "full"}
       className={cx("wire-minimap", !unstyled && "wire-minimap--styled", className)}
       aria-label={ariaLabel}
       width={width}
@@ -2215,30 +2384,60 @@ function WireMiniMap({
         } : null)
       }}
     >
-      {model.edges.map((edge) => (
-        <path
-          key={edge.edge.id}
-          d={edge.path}
-          transform={`translate(${pad - model.bounds.minX * scale} ${pad - model.bounds.minY * scale}) scale(${scale})`}
-          fill="none"
-          stroke="var(--wire-canvas-minimap-edge, #94a3b8)"
-          strokeWidth={1 / scale}
-          opacity={0.7}
-        />
-      ))}
-      {model.frames.map((frame) => (
+      {largeDiagram ? (
         <rect
-          key={frame.id}
-          x={toX(frame.x)}
-          y={toY(frame.y)}
-          width={Math.max(2, frame.width * scale)}
-          height={Math.max(2, frame.height * scale)}
-          rx={1}
-          fill={frame.node.kind === "group" ? "var(--wire-canvas-minimap-group, #f1f5f9)" : "var(--wire-canvas-minimap-node, #cbd5e1)"}
-          stroke="none"
-          opacity={frame.node.kind === "group" ? 0.75 : 1}
+          data-wire-minimap-bounds
+          x={contentRect.x}
+          y={contentRect.y}
+          width={contentRect.width}
+          height={contentRect.height}
+          rx={2}
+          fill="var(--wire-bg-sunken, #f1f5f9)"
+          stroke="var(--wire-canvas-minimap-edge, #94a3b8)"
+          strokeWidth={0.8}
+          opacity={0.85}
         />
-      ))}
+      ) : (
+        <>
+          {model.edges.map((edge) => (
+            <path
+              key={edge.edge.id}
+              d={edge.path}
+              transform={`translate(${pad - model.bounds.minX * scale} ${pad - model.bounds.minY * scale}) scale(${scale})`}
+              fill="none"
+              stroke="var(--wire-canvas-minimap-edge, #94a3b8)"
+              strokeWidth={1 / scale}
+              opacity={0.7}
+            />
+          ))}
+          {model.frames.map((frame) => (
+            <rect
+              key={frame.id}
+              x={toX(frame.x)}
+              y={toY(frame.y)}
+              width={Math.max(2, frame.width * scale)}
+              height={Math.max(2, frame.height * scale)}
+              rx={1}
+              fill={frame.node.kind === "group" ? "var(--wire-canvas-minimap-group, #f1f5f9)" : "var(--wire-canvas-minimap-node, #cbd5e1)"}
+              stroke="none"
+              opacity={frame.node.kind === "group" ? 0.75 : 1}
+            />
+          ))}
+        </>
+      )}
+      {selectionRect ? (
+        <rect
+          data-wire-minimap-selection
+          x={selectionRect.x}
+          y={selectionRect.y}
+          width={selectionRect.width}
+          height={selectionRect.height}
+          rx={3}
+          fill="rgba(37, 99, 235, 0.14)"
+          stroke="var(--wire-canvas-minimap-viewport, #2563eb)"
+          strokeWidth={1.1}
+        />
+      ) : null}
       {viewportRect ? (
         <rect
           x={viewportRect.x}
@@ -2637,6 +2836,77 @@ function canvasFocusItems(model: WireCanvasModel, nodesFocusable: boolean, edges
     ...(nodesFocusable ? model.frames.filter((frame) => frame.node.kind !== "group").map((frame) => ({ type: "node" as const, id: frame.id })) : []),
     ...(edgesFocusable ? model.edges.map((edge) => ({ type: "edge" as const, id: edge.edge.id })) : [])
   ];
+}
+
+function selectedFocusItemsForSelection(
+  selection: WireSelection,
+  model: WireCanvasModel,
+  nodesFocusable: boolean,
+  edgesFocusable: boolean
+): WireCanvasFocusItem[] {
+  return [
+    ...(nodesFocusable
+      ? selection.nodeIds
+        .map((id) => model.framesById.get(id))
+        .filter((frame): frame is WireCanvasFrame => Boolean(frame && frame.node.kind !== "group"))
+        .map((frame) => ({ type: "node" as const, id: frame.id }))
+      : []),
+    ...(edgesFocusable
+      ? selection.edgeIds
+        .filter((id) => model.edgeById.has(id))
+        .map((id) => ({ type: "edge" as const, id }))
+      : [])
+  ];
+}
+
+function boundsForSelection(
+  selection: WireSelection,
+  model: WireCanvasModel
+): { bounds: WireCanvasBounds; count: number } | null {
+  const frames = new Map<string, WireCanvasFrame>();
+  let count = 0;
+
+  for (const id of selection.nodeIds) {
+    const frame = model.framesById.get(id);
+    if (!frame) continue;
+    frames.set(frame.id, frame);
+    count += 1;
+  }
+
+  for (const id of selection.edgeIds) {
+    const edge = model.edges.find((candidate) => candidate.edge.id === id);
+    if (!edge) continue;
+    count += 1;
+    const sourceFrame = model.framesById.get(edge.sourceNode.id);
+    const targetFrame = model.framesById.get(edge.targetNode.id);
+    if (sourceFrame) frames.set(sourceFrame.id, sourceFrame);
+    if (targetFrame) frames.set(targetFrame.id, targetFrame);
+  }
+
+  const bounds = boundsForFrames([...frames.values()]);
+  return bounds && count > 0 ? { bounds, count } : null;
+}
+
+function boundsForFrames(frames: WireCanvasFrame[]): WireCanvasBounds | null {
+  if (frames.length === 0) return null;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const frame of frames) {
+    minX = Math.min(minX, frame.x);
+    minY = Math.min(minY, frame.y);
+    maxX = Math.max(maxX, frame.x + frame.width);
+    maxY = Math.max(maxY, frame.y + frame.height);
+  }
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY)
+  };
 }
 
 function canvasSearchResults(
