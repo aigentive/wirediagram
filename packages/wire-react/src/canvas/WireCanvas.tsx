@@ -9,11 +9,13 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
-  type ReactNode
+  type ReactNode,
+  type RefObject
 } from "react";
 import type {
   EdgeLabelStyle,
@@ -50,6 +52,7 @@ import {
 } from "./nodeTypes.js";
 import type { WireOptionCatalog } from "../options.js";
 import { cx } from "../components/classes.js";
+import { dispatchWireInspectorFocusRequest } from "../components/workspaceFocusEvents.js";
 
 export interface WireEdgeRenderContext {
   edge: WireCanvasEdgeGeometry["edge"];
@@ -102,6 +105,8 @@ export interface WireCanvasProps {
     handle?: (context: { node: WireNode; side: Side; role: "source" | "target" }) => string;
     minimap?: string;
     validationStatus?: string;
+    search?: string;
+    connectionTarget?: string;
     controls?: {
       zoomIn?: string;
       zoomOut?: string;
@@ -184,6 +189,42 @@ interface WireCanvasStatus {
   key: number;
 }
 
+interface WireCanvasSearchState {
+  query: string;
+  activeIndex: number;
+  previousItem: WireCanvasFocusItem | null;
+}
+
+interface WireCanvasSearchResult extends WireCanvasFocusItem {
+  label: string;
+  searchText: string;
+}
+
+interface WireCanvasConnectionPickerState {
+  sourceId: string;
+  sourceSide: Side;
+  targetSide: Side;
+  query: string;
+  activeIndex: number;
+  message: string | null;
+  messageKey: number;
+}
+
+interface WireCanvasConnectionTarget {
+  nodeId: string;
+  label: string;
+  side: Side;
+  distance: number;
+  diagramIndex: number;
+}
+
+interface PendingConnectionFocus {
+  sourceId: string;
+  targetId: string;
+  sourceSide: Side;
+  targetSide: Side;
+}
+
 export function WireCanvas(props: WireCanvasProps): ReactElement {
   return <WireCanvasInner {...props} />;
 }
@@ -238,21 +279,32 @@ function WireCanvasInner({
   const pendingViewportEventRef = useRef<Parameters<typeof ctx.viewportActions.setViewport>[1]>();
   const dragRafRef = useRef<number | null>(null);
   const pendingDragPositionsRef = useRef<Map<string, Point> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const connectionPickerInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingConnectionFocusRef = useRef<PendingConnectionFocus | null>(null);
   const modelBoundsRef = useRef<WireCanvasBounds | null>(null);
   const initialFitDoneRef = useRef(!fitView);
   const [dragPositions, setDragPositions] = useState<Map<string, Point> | undefined>();
   const [connection, setConnection] = useState<ConnectionState | null>(null);
+  const [search, setSearch] = useState<WireCanvasSearchState | null>(null);
+  const [connectionPicker, setConnectionPicker] = useState<WireCanvasConnectionPickerState | null>(null);
   const [fitReady, setFitReady] = useState(!fitView);
   const [canvasSize, setCanvasSize] = useState<CanvasSize | undefined>();
   const [measuredSizes, setMeasuredSizes] = useState<Map<string, { width: number; height: number }> | undefined>();
   const [activeItem, setActiveItem] = useState<WireCanvasFocusItem | null>(null);
   const [status, setStatus] = useState<WireCanvasStatus | null>(null);
+  const [connectionFeedback, setConnectionFeedback] = useState<WireCanvasStatus | null>(null);
 
-  const effectiveMode = mode ?? ctx.mode;
+  const effectiveMode = mode ?? canvasInteractionModeForWireMode(ctx.mode);
   const keyboardEnabled = keyboardA11y ?? true;
   const nodeFocusEnabled = keyboardEnabled && (nodesFocusable ?? true);
   const edgeFocusEnabled = keyboardEnabled && (edgesFocusable ?? true);
   const statusId = `wire-canvas-status-${reactId.replace(/:/g, "")}`;
+  const searchInputId = `wire-canvas-search-${reactId.replace(/:/g, "")}`;
+  const searchListId = `wire-canvas-search-results-${reactId.replace(/:/g, "")}`;
+  const connectionPickerInputId = `wire-canvas-connection-target-${reactId.replace(/:/g, "")}`;
+  const connectionPickerListId = `wire-canvas-connection-results-${reactId.replace(/:/g, "")}`;
+  const connectionFeedbackId = `wire-canvas-connection-feedback-${reactId.replace(/:/g, "")}`;
   const interaction = resolveWireCanvasInteraction({
     mode: effectiveMode,
     selectOnNodeClick,
@@ -272,15 +324,34 @@ function WireCanvasInner({
     () => canvasFocusItems(model, nodeFocusEnabled, edgeFocusEnabled),
     [edgeFocusEnabled, model, nodeFocusEnabled]
   );
+  const searchResults = useMemo(
+    () => search ? canvasSearchResults(focusItems, model, search.query) : [],
+    [focusItems, model, search]
+  );
+  const activeSearchResult = searchResults.length > 0
+    ? searchResults[Math.min(search?.activeIndex ?? 0, searchResults.length - 1)] ?? null
+    : null;
+  const connectionTargets = useMemo(
+    () => connectionPicker ? canvasConnectionTargets(model, connectionPicker) : [],
+    [connectionPicker, model]
+  );
+  const activeConnectionTarget = connectionTargets.length > 0
+    ? connectionTargets[Math.min(connectionPicker?.activeIndex ?? 0, connectionTargets.length - 1)] ?? null
+    : null;
 
   const announce = useCallback((message: string) => {
     setStatus((current) => ({ message, key: (current?.key ?? 0) + 1 }));
   }, []);
 
+  const announceConnectionFeedback = useCallback((message: string) => {
+    announce(message);
+    setConnectionFeedback((current) => ({ message, key: (current?.key ?? 0) + 1 }));
+  }, [announce]);
+
   const focusCanvasItem = useCallback((item: WireCanvasFocusItem | null) => {
     setActiveItem(item);
-    if (!item || typeof requestAnimationFrame === "undefined") return;
-    requestAnimationFrame(() => {
+    if (!item) return;
+    requestAnimationFrameOrTimeout(() => {
       focusElementForCanvasItem(containerRef.current, item);
     });
   }, []);
@@ -296,6 +367,46 @@ function WireCanvasInner({
     }
     setActiveItem((current) => current && focusItems.some((item) => sameFocusItem(item, current)) ? current : focusItems[0]!);
   }, [focusItems, keyboardEnabled]);
+
+  useEffect(() => {
+    if (!search) return;
+    setSearch((current) => current ? {
+      ...current,
+      activeIndex: clampIndex(current.activeIndex, searchResults.length)
+    } : current);
+  }, [search?.query, searchResults.length]);
+
+  useEffect(() => {
+    if (!connectionPicker) return;
+    setConnectionPicker((current) => current ? {
+      ...current,
+      activeIndex: clampIndex(current.activeIndex, connectionTargets.length)
+    } : current);
+  }, [connectionPicker?.query, connectionPicker?.sourceSide, connectionPicker?.targetSide, connectionTargets.length]);
+
+  useEffect(() => {
+    if (!search) return;
+    requestAnimationFrameOrTimeout(() => searchInputRef.current?.focus());
+  }, [Boolean(search)]);
+
+  useEffect(() => {
+    if (!connectionPicker) return;
+    requestAnimationFrameOrTimeout(() => connectionPickerInputRef.current?.focus());
+  }, [Boolean(connectionPicker)]);
+
+  useEffect(() => {
+    const pending = pendingConnectionFocusRef.current;
+    if (!pending || !edgeFocusEnabled) return;
+    const edge = model.edges.find((candidate) =>
+      candidate.edge.from === pending.sourceId
+      && candidate.edge.to === pending.targetId
+      && (candidate.edge.fromHandle ?? candidate.sourceSide) === pending.sourceSide
+      && (candidate.edge.toHandle ?? candidate.targetSide) === pending.targetSide
+    );
+    if (!edge) return;
+    pendingConnectionFocusRef.current = null;
+    focusCanvasItem({ type: "edge", id: edge.edge.id });
+  }, [edgeFocusEnabled, focusCanvasItem, model.edges]);
 
   const handleSlotsByFrame = useMemo(() => {
     const map = new Map<string, Map<Side, { source: number; target: number }>>();
@@ -482,6 +593,174 @@ function WireCanvasInner({
     return () => observer.disconnect();
   }, [fitToView, fitView]);
 
+  const closeSearch = useCallback((restoreFocus: boolean) => {
+    setSearch((current) => {
+      if (restoreFocus && current?.previousItem) {
+        focusCanvasItem(current.previousItem);
+      }
+      return null;
+    });
+  }, [focusCanvasItem]);
+
+  const openSearch = useCallback((previousItem: WireCanvasFocusItem | null) => {
+    setConnectionPicker(null);
+    setSearch({ query: "", activeIndex: 0, previousItem });
+    announce("Search opened.");
+  }, [announce]);
+
+  const closeConnectionPicker = useCallback((restoreSourceFocus: boolean) => {
+    setConnectionPicker((current) => {
+      if (restoreSourceFocus && current) focusCanvasItem({ type: "node", id: current.sourceId });
+      return null;
+    });
+  }, [focusCanvasItem]);
+
+  const openConnectionPicker = useCallback((item: WireCanvasFocusItem) => {
+    if (item.type !== "node") return;
+    const frame = model.framesById.get(item.id);
+    if (!frame) return;
+    const sourceSide = sourceSidesForNode(frame.node, model.direction)[0] ?? "right";
+    const targetSide = firstTargetSideForConnection(model, item.id) ?? "left";
+    setSearch(null);
+    setConnectionFeedback(null);
+    setConnectionPicker({
+      sourceId: item.id,
+      sourceSide,
+      targetSide,
+      query: "",
+      activeIndex: 0,
+      message: null,
+      messageKey: 0
+    });
+    announce(`Choose a connection target for ${frame.node.title || frame.id}.`);
+  }, [announce, model]);
+
+  const commitConnectionPicker = useCallback(() => {
+    if (!connectionPicker) return;
+    const target = activeConnectionTarget;
+    const reject = (message: string) => {
+      announceConnectionFeedback(message);
+      setConnectionPicker((current) => current ? {
+        ...current,
+        message,
+        messageKey: current.messageKey + 1
+      } : current);
+    };
+
+    if (!target) {
+      reject("No valid target is selected.");
+      return;
+    }
+
+    const sourceNode = model.nodeById.get(connectionPicker.sourceId);
+    const targetNode = model.nodeById.get(target.nodeId);
+    if (!sourceNode || !targetNode) {
+      reject("No valid target is selected.");
+      return;
+    }
+
+    const validationResult = isValidConnection?.({
+      sourceNode,
+      targetNode,
+      sourceSide: connectionPicker.sourceSide,
+      targetSide: target.side,
+      diagram: ctx.diagram
+    }) ?? true;
+
+    if (validationResult !== true) {
+      reject(typeof validationResult === "string" ? validationResult : "Connection not allowed.");
+      return;
+    }
+
+    actions.dispatch({
+      type: "edge.connect",
+      edge: {
+        from: connectionPicker.sourceId,
+        to: target.nodeId,
+        fromHandle: connectionPicker.sourceSide,
+        toHandle: target.side
+      }
+    });
+    pendingConnectionFocusRef.current = {
+      sourceId: connectionPicker.sourceId,
+      targetId: target.nodeId,
+      sourceSide: connectionPicker.sourceSide,
+      targetSide: target.side
+    };
+    setConnectionPicker(null);
+    setConnectionFeedback(null);
+    announce(`Connected ${sourceNode.title || sourceNode.id} to ${targetNode.title || targetNode.id}.`);
+    focusCanvasItem({ type: "node", id: connectionPicker.sourceId });
+  }, [actions, activeConnectionTarget, announce, announceConnectionFeedback, connectionPicker, ctx.diagram, focusCanvasItem, isValidConnection, model.nodeById]);
+
+  const handleSearchKeyDown = useCallback((event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (!search) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSearch(true);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setSearch((current) => current ? {
+        ...current,
+        activeIndex: nextCompositeIndex(current.activeIndex, searchResults.length, direction)
+      } : current);
+      return;
+    }
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      setSearch((current) => current ? {
+        ...current,
+        activeIndex: event.key === "Home" ? 0 : Math.max(0, searchResults.length - 1)
+      } : current);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (!activeSearchResult) {
+        announce("No diagram item is selected.");
+        return;
+      }
+      setSearch(null);
+      focusCanvasItem(activeSearchResult);
+      announce(`${activeSearchResult.label} focused.`);
+    }
+  }, [activeSearchResult, announce, closeSearch, focusCanvasItem, search, searchResults.length]);
+
+  const handleConnectionPickerKeyDown = useCallback((event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (!connectionPicker) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeConnectionPicker(true);
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      setConnectionPicker((current) => current ? {
+        ...current,
+        activeIndex: nextCompositeIndex(current.activeIndex, connectionTargets.length, direction),
+        message: null
+      } : current);
+      return;
+    }
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      setConnectionPicker((current) => current ? {
+        ...current,
+        activeIndex: event.key === "Home" ? 0 : Math.max(0, connectionTargets.length - 1),
+        message: null
+      } : current);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitConnectionPicker();
+    }
+  }, [closeConnectionPicker, commitConnectionPicker, connectionPicker, connectionTargets.length]);
+
   const handleCanvasKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (!keyboardEnabled || event.defaultPrevented || shouldIgnoreCanvasKeyboardEvent(event.target, event.currentTarget)) return;
@@ -489,11 +768,22 @@ function WireCanvasInner({
       const item = eventItem ?? activeItem;
 
       if (event.key === "Escape") {
+        if (connectionPicker) {
+          event.preventDefault();
+          closeConnectionPicker(true);
+          return;
+        }
         if (selectionRef.current.nodeIds.length > 0 || selectionRef.current.edgeIds.length > 0) {
           event.preventDefault();
           clearWireSelection("keyboard");
           announce("Selection cleared.");
         }
+        return;
+      }
+
+      if (event.key === "/" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        openSearch(item);
         return;
       }
 
@@ -505,6 +795,25 @@ function WireCanvasInner({
         dispatchMany(nextActions);
         clearWireSelection("keyboard");
         announce("Selection deleted.");
+        return;
+      }
+
+      if (event.key.toLowerCase() === "c" && !event.altKey && !event.ctrlKey && !event.metaKey && editable && item?.type === "node") {
+        event.preventDefault();
+        openConnectionPicker(item);
+        return;
+      }
+
+      if (event.key === "Enter" && event.shiftKey && !event.altKey && item) {
+        event.preventDefault();
+        if (item.type === "node") {
+          setWireSelection({ nodeIds: [item.id], edgeIds: [] }, "canvas", "keyboard");
+          ctx.eventActions.emit({ type: "node.inspect", source: "canvas", nodeId: item.id, input: "keyboard" });
+        } else {
+          setWireSelection({ nodeIds: [], edgeIds: [item.id] }, "canvas", "keyboard");
+          ctx.eventActions.emit({ type: "edge.click", source: "canvas", edgeId: item.id, input: "keyboard", intent: inspectOnEdgeClick ? "inspect" : "select" });
+        }
+        dispatchWireInspectorFocusRequest(event.currentTarget, { item });
         return;
       }
 
@@ -550,6 +859,8 @@ function WireCanvasInner({
       activeItem,
       announce,
       clearWireSelection,
+      closeConnectionPicker,
+      connectionPicker,
       ctx.eventActions,
       dispatchMany,
       editable,
@@ -561,6 +872,8 @@ function WireCanvasInner({
       model.edgeById,
       model.explicitEdgeIds,
       model.framesById,
+      openConnectionPicker,
+      openSearch,
       setWireSelection
     ]
   );
@@ -830,6 +1143,7 @@ function WireCanvasInner({
       };
       connectionStateRef.current = next;
       setConnection(next);
+      setConnectionFeedback(null);
       event.currentTarget.setPointerCapture(event.pointerId);
     },
     [editable]
@@ -889,7 +1203,7 @@ function WireCanvasInner({
           diagram: ctx.diagram
         });
         if (validationResult !== true) {
-          announce(typeof validationResult === "string" ? validationResult : "Connection not allowed.");
+          announceConnectionFeedback(typeof validationResult === "string" ? validationResult : "Connection not allowed.");
           return;
         }
       }
@@ -902,9 +1216,10 @@ function WireCanvasInner({
           toHandle: target.side
         }
       });
+      setConnectionFeedback(null);
       announce(`Connected ${sourceNode.title} to ${targetNode.title}.`);
     },
-    [actions, announce, ctx.diagram, isValidConnection, model.direction, model.framesById, model.nodeById]
+    [actions, announce, announceConnectionFeedback, ctx.diagram, isValidConnection, model.direction, model.framesById, model.nodeById]
   );
 
   const handleNodeClick = useCallback(
@@ -973,6 +1288,10 @@ function WireCanvasInner({
         if (event.target === event.currentTarget && !activeItem && focusItems[0]) {
           setActiveItem(focusItems[0]);
         }
+      }}
+      onBlur={(event) => {
+        if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+        if (!search && !connectionPicker) setActiveItem(null);
       }}
       onPointerDown={handlePanePointerDown}
       onPointerMove={handlePanePointerMove}
@@ -1108,6 +1427,84 @@ function WireCanvasInner({
           );
         })}
       </div>
+
+      {search ? (
+        <WireCanvasSearch
+          inputRef={searchInputRef}
+          inputId={searchInputId}
+          listId={searchListId}
+          label={nonEmptyString(ariaLabelConfig?.search, "Search diagram items")}
+          query={search.query}
+          results={searchResults}
+          activeResult={activeSearchResult}
+          onQueryChange={(query) => setSearch((current) => current ? { ...current, query, activeIndex: 0 } : current)}
+          onKeyDown={handleSearchKeyDown}
+          onBlur={(event) => {
+            if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+            closeSearch(false);
+          }}
+          onResultPointerDown={(result) => {
+            setSearch(null);
+            focusCanvasItem(result);
+            announce(`${result.label} focused.`);
+          }}
+        />
+      ) : null}
+
+      {connectionPicker ? (
+        <WireCanvasConnectionPicker
+          inputRef={connectionPickerInputRef}
+          inputId={connectionPickerInputId}
+          listId={connectionPickerListId}
+          feedbackId={connectionFeedbackId}
+          label={nonEmptyString(ariaLabelConfig?.connectionTarget, "Choose connection target")}
+          query={connectionPicker.query}
+          sourceSides={connectionSourceSides(model, connectionPicker)}
+          sourceSide={connectionPicker.sourceSide}
+          targetSides={connectionTargetSides(model, activeConnectionTarget)}
+          targetSide={connectionPicker.targetSide}
+          results={connectionTargets}
+          activeResult={activeConnectionTarget}
+          message={connectionPicker.message}
+          messageKey={connectionPicker.messageKey}
+          onQueryChange={(query) => setConnectionPicker((current) => current ? { ...current, query, activeIndex: 0, message: null } : current)}
+          onSourceSideChange={(sourceSide) => setConnectionPicker((current) => current ? { ...current, sourceSide, activeIndex: 0, message: null } : current)}
+          onTargetSideChange={(targetSide) => setConnectionPicker((current) => current ? { ...current, targetSide, activeIndex: 0, message: null } : current)}
+          onActiveIndexChange={(activeIndex) => setConnectionPicker((current) => current ? { ...current, activeIndex, message: null } : current)}
+          onKeyDown={handleConnectionPickerKeyDown}
+          onBlur={(event) => {
+            if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
+            closeConnectionPicker(false);
+          }}
+        />
+      ) : null}
+
+      {connectionFeedback ? (
+        <div
+          key={connectionFeedback.key}
+          id={connectionFeedbackId}
+          className="wire-canvas__connection-feedback"
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: 14,
+            transform: "translateX(-50%)",
+            maxWidth: "min(420px, calc(100% - 32px))",
+            borderRadius: 8,
+            border: "1px solid var(--wire-status-invalid, #b91c1c)",
+            background: "var(--wire-status-invalid-bg, #fef2f2)",
+            color: "var(--wire-status-invalid, #b91c1c)",
+            padding: "8px 10px",
+            fontSize: 12,
+            fontWeight: 650,
+            boxShadow: "var(--wire-card-shadow)"
+          }}
+        >
+          {connectionFeedback.message}
+        </div>
+      ) : null}
 
       <div
         key={status?.key ?? 0}
@@ -1421,6 +1818,268 @@ function ControlButton({
   );
 }
 
+function WireCanvasSearch({
+  inputRef,
+  inputId,
+  listId,
+  label,
+  query,
+  results,
+  activeResult,
+  onQueryChange,
+  onKeyDown,
+  onBlur,
+  onResultPointerDown
+}: {
+  inputRef: RefObject<HTMLInputElement>;
+  inputId: string;
+  listId: string;
+  label: string;
+  query: string;
+  results: WireCanvasSearchResult[];
+  activeResult: WireCanvasSearchResult | null;
+  onQueryChange: (query: string) => void;
+  onKeyDown: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
+  onBlur: (event: ReactFocusEvent<HTMLDivElement>) => void;
+  onResultPointerDown: (result: WireCanvasSearchResult) => void;
+}): ReactElement {
+  return (
+    <div
+      data-wire-interactive
+      className="wire-canvas-search wire-canvas-search--styled"
+      onBlur={onBlur}
+      style={{
+        position: "absolute",
+        left: 16,
+        top: 16,
+        width: "min(360px, calc(100% - 32px))",
+        borderRadius: 8,
+        border: "1px solid var(--wire-border)",
+        background: "var(--wire-bg-surface)",
+        color: "var(--wire-fg-primary)",
+        boxShadow: "var(--wire-card-shadow)",
+        padding: 10,
+        zIndex: 8
+      }}
+    >
+      <label htmlFor={inputId} style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--wire-fg-secondary)", marginBottom: 6 }}>
+        {label}
+      </label>
+      <input
+        ref={inputRef}
+        id={inputId}
+        role="combobox"
+        aria-expanded="true"
+        aria-controls={listId}
+        aria-activedescendant={activeResult ? `${listId}-${activeResult.type}-${activeResult.id}` : undefined}
+        value={query}
+        onChange={(event) => onQueryChange(event.currentTarget.value)}
+        onKeyDown={onKeyDown}
+        style={{
+          width: "100%",
+          minHeight: 32,
+          boxSizing: "border-box",
+          border: "1px solid var(--wire-border)",
+          borderRadius: 6,
+          background: "var(--wire-bg-surface)",
+          color: "var(--wire-fg-primary)",
+          font: "inherit",
+          fontSize: 12.5,
+          padding: "4px 8px"
+        }}
+      />
+      <div id={listId} role="listbox" aria-label={`${label} results`} style={{ display: "grid", gap: 2, marginTop: 8, maxHeight: 220, overflow: "auto" }}>
+        {results.length > 0 ? results.map((result) => {
+          const active = activeResult?.type === result.type && activeResult.id === result.id;
+          return (
+            <div
+              key={`${result.type}-${result.id}`}
+              id={`${listId}-${result.type}-${result.id}`}
+              role="option"
+              aria-selected={active}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                onResultPointerDown(result);
+              }}
+              style={{
+                borderRadius: 6,
+                background: active ? "var(--wire-bg-sunken)" : "transparent",
+                color: "var(--wire-fg-primary)",
+                cursor: "pointer",
+                fontSize: 12,
+                padding: "6px 8px"
+              }}
+            >
+              {result.label}
+            </div>
+          );
+        }) : (
+          <div role="option" aria-selected="false" style={{ color: "var(--wire-fg-tertiary)", fontSize: 12, padding: "6px 8px" }}>
+            No results
+          </div>
+        )}
+      </div>
+      <div role="status" aria-live="polite" style={{ marginTop: 6, color: "var(--wire-fg-tertiary)", fontSize: 11.5 }}>
+        {results.length === 0 ? "No results" : `${results.length} result${results.length === 1 ? "" : "s"}${activeResult ? `, ${activeResult.label}` : ""}`}
+      </div>
+    </div>
+  );
+}
+
+function WireCanvasConnectionPicker({
+  inputRef,
+  inputId,
+  listId,
+  feedbackId,
+  label,
+  query,
+  sourceSides,
+  sourceSide,
+  targetSides,
+  targetSide,
+  results,
+  activeResult,
+  message,
+  messageKey,
+  onQueryChange,
+  onSourceSideChange,
+  onTargetSideChange,
+  onActiveIndexChange,
+  onKeyDown,
+  onBlur
+}: {
+  inputRef: RefObject<HTMLInputElement>;
+  inputId: string;
+  listId: string;
+  feedbackId: string;
+  label: string;
+  query: string;
+  sourceSides: Side[];
+  sourceSide: Side;
+  targetSides: Side[];
+  targetSide: Side;
+  results: WireCanvasConnectionTarget[];
+  activeResult: WireCanvasConnectionTarget | null;
+  message: string | null;
+  messageKey: number;
+  onQueryChange: (query: string) => void;
+  onSourceSideChange: (side: Side) => void;
+  onTargetSideChange: (side: Side) => void;
+  onActiveIndexChange: (index: number) => void;
+  onKeyDown: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
+  onBlur: (event: ReactFocusEvent<HTMLDivElement>) => void;
+}): ReactElement {
+  return (
+    <div
+      data-wire-interactive
+      className="wire-canvas-connection-picker wire-canvas-connection-picker--styled"
+      onBlur={onBlur}
+      style={{
+        position: "absolute",
+        right: 16,
+        top: 16,
+        width: "min(390px, calc(100% - 32px))",
+        borderRadius: 8,
+        border: `1px solid ${message ? "var(--wire-status-invalid, #b91c1c)" : "var(--wire-border)"}`,
+        background: "var(--wire-bg-surface)",
+        color: "var(--wire-fg-primary)",
+        boxShadow: "var(--wire-card-shadow)",
+        padding: 10,
+        zIndex: 9
+      }}
+    >
+      <label htmlFor={inputId} style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "var(--wire-fg-secondary)", marginBottom: 6 }}>
+        {label}
+      </label>
+      <input
+        ref={inputRef}
+        id={inputId}
+        role="combobox"
+        aria-expanded="true"
+        aria-controls={listId}
+        aria-invalid={message ? true : undefined}
+        aria-describedby={message ? feedbackId : undefined}
+        aria-activedescendant={activeResult ? `${listId}-${activeResult.nodeId}` : undefined}
+        value={query}
+        onChange={(event) => onQueryChange(event.currentTarget.value)}
+        onKeyDown={onKeyDown}
+        style={{
+          width: "100%",
+          minHeight: 32,
+          boxSizing: "border-box",
+          border: "1px solid var(--wire-border)",
+          borderRadius: 6,
+          background: "var(--wire-bg-surface)",
+          color: "var(--wire-fg-primary)",
+          font: "inherit",
+          fontSize: 12.5,
+          padding: "4px 8px"
+        }}
+      />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+        <label style={{ display: "grid", gap: 3, color: "var(--wire-fg-secondary)", fontSize: 11.5, fontWeight: 650 }}>
+          Source side
+          <select value={sourceSide} onChange={(event) => onSourceSideChange(event.currentTarget.value as Side)} style={sideSelectStyle()}>
+            {sourceSides.map((side) => <option key={side} value={side}>{side}</option>)}
+          </select>
+        </label>
+        <label style={{ display: "grid", gap: 3, color: "var(--wire-fg-secondary)", fontSize: 11.5, fontWeight: 650 }}>
+          Target side
+          <select value={targetSide} onChange={(event) => onTargetSideChange(event.currentTarget.value as Side)} style={sideSelectStyle()}>
+            {targetSides.map((side) => <option key={side} value={side}>{side}</option>)}
+          </select>
+        </label>
+      </div>
+      <div id={listId} role="listbox" aria-label={`${label} results`} style={{ display: "grid", gap: 2, marginTop: 8, maxHeight: 220, overflow: "auto" }}>
+        {results.length > 0 ? results.map((result, index) => {
+          const active = activeResult?.nodeId === result.nodeId;
+          return (
+            <div
+              key={result.nodeId}
+              id={`${listId}-${result.nodeId}`}
+              role="option"
+              aria-selected={active}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                onActiveIndexChange(index);
+                inputRef.current?.focus();
+              }}
+              style={{
+                borderRadius: 6,
+                background: active ? "var(--wire-bg-sunken)" : "transparent",
+                color: "var(--wire-fg-primary)",
+                cursor: "pointer",
+                fontSize: 12,
+                padding: "6px 8px"
+              }}
+            >
+              {result.label}
+            </div>
+          );
+        }) : (
+          <div role="option" aria-selected="false" style={{ color: "var(--wire-fg-tertiary)", fontSize: 12, padding: "6px 8px" }}>
+            No valid targets
+          </div>
+        )}
+      </div>
+      <div
+        key={messageKey}
+        id={feedbackId}
+        role="status"
+        aria-live="polite"
+        style={{
+          marginTop: 6,
+          color: message ? "var(--wire-status-invalid, #b91c1c)" : "var(--wire-fg-tertiary)",
+          fontSize: 11.5,
+          fontWeight: message ? 650 : 500
+        }}
+      >
+        {message ?? (results.length === 0 ? "No valid targets" : `${results.length} target${results.length === 1 ? "" : "s"}${activeResult ? `, ${activeResult.label}` : ""}`)}
+      </div>
+    </div>
+  );
+}
+
 function WireMiniMap({
   model,
   viewport,
@@ -1663,6 +2322,10 @@ export function resolveWireCanvasInteraction({
   };
 }
 
+export function canvasInteractionModeForWireMode(mode: WireMode): "view" | "edit" {
+  return mode === "view" ? "view" : "edit";
+}
+
 export function wireActionsFromCanvasDragCommit(
   frames: readonly WireCanvasFrame[],
   movedPositions: ReadonlyMap<string, Point>
@@ -1889,6 +2552,91 @@ function canvasFocusItems(model: WireCanvasModel, nodesFocusable: boolean, edges
   ];
 }
 
+function canvasSearchResults(
+  items: WireCanvasFocusItem[],
+  model: WireCanvasModel,
+  query: string
+): WireCanvasSearchResult[] {
+  const normalizedQuery = normalizeSearchText(query);
+  return items
+    .map((item) => {
+      const label = canvasFocusItemLabel(item, model);
+      return {
+        ...item,
+        label,
+        searchText: normalizeSearchText(`${label} ${item.id}`)
+      };
+    })
+    .filter((item) => !normalizedQuery || item.searchText.includes(normalizedQuery));
+}
+
+function canvasFocusItemLabel(item: WireCanvasFocusItem, model: WireCanvasModel): string {
+  if (item.type === "node") {
+    const node = model.nodeById.get(item.id);
+    return node ? `${node.title || node.id} ${node.kind} node` : `${item.id} node`;
+  }
+  const geometry = model.edges.find((edge) => edge.edge.id === item.id);
+  if (!geometry) return `${item.id} edge`;
+  return geometry.edge.label
+    ? `${geometry.edge.label} edge`
+    : `Edge from ${geometry.edge.from} to ${geometry.edge.to}`;
+}
+
+function canvasConnectionTargets(
+  model: WireCanvasModel,
+  picker: WireCanvasConnectionPickerState
+): WireCanvasConnectionTarget[] {
+  const sourceFrame = model.framesById.get(picker.sourceId);
+  if (!sourceFrame) return [];
+  const sourcePoint = handlePoint(sourceFrame, picker.sourceSide);
+  const query = normalizeSearchText(picker.query);
+  return model.frames
+    .map((frame, diagramIndex): WireCanvasConnectionTarget | null => {
+      if (frame.id === picker.sourceId || frame.node.kind === "group") return null;
+      const targetSides = targetSidesForNode(frame.node, model.direction);
+      if (targetSides.length === 0) return null;
+      const side = targetSides.includes(picker.targetSide) ? picker.targetSide : targetSides[0]!;
+      const targetPoint = handlePoint(frame, side);
+      const label = frame.node.title || frame.id;
+      const distance = squaredDistance(sourcePoint, targetPoint);
+      return { nodeId: frame.id, label, side, distance, diagramIndex };
+    })
+    .filter((target): target is WireCanvasConnectionTarget => {
+      if (!target) return false;
+      return !query || normalizeSearchText(`${target.label} ${target.nodeId}`).includes(query);
+    })
+    .sort((left, right) => left.distance - right.distance || left.diagramIndex - right.diagramIndex);
+}
+
+function connectionSourceSides(model: WireCanvasModel, picker: WireCanvasConnectionPickerState): Side[] {
+  const frame = model.framesById.get(picker.sourceId);
+  return frame ? sourceSidesForNode(frame.node, model.direction) : [picker.sourceSide];
+}
+
+function connectionTargetSides(model: WireCanvasModel, activeTarget: WireCanvasConnectionTarget | null): Side[] {
+  const frame = activeTarget ? model.framesById.get(activeTarget.nodeId) : undefined;
+  return frame ? targetSidesForNode(frame.node, model.direction) : ["left", "right", "top", "bottom"];
+}
+
+function firstTargetSideForConnection(model: WireCanvasModel, sourceId: string): Side | undefined {
+  for (const frame of model.frames) {
+    if (frame.id === sourceId || frame.node.kind === "group") continue;
+    const sides = targetSidesForNode(frame.node, model.direction);
+    if (sides[0]) return sides[0];
+  }
+  return undefined;
+}
+
+function normalizeSearchText(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function squaredDistance(left: Point, right: Point): number {
+  const dx = left.x - right.x;
+  const dy = left.y - right.y;
+  return dx * dx + dy * dy;
+}
+
 function sameFocusItem(left: WireCanvasFocusItem, right: WireCanvasFocusItem): boolean {
   return left.type === right.type && left.id === right.id;
 }
@@ -2013,4 +2761,36 @@ function normalizeWheelDelta(event: { deltaY: number; deltaMode: number }): numb
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function clampIndex(index: number, length: number): number {
+  if (length <= 0) return 0;
+  return clamp(index, 0, length - 1);
+}
+
+function nextCompositeIndex(index: number, length: number, direction: 1 | -1): number {
+  if (length <= 0) return 0;
+  return (index + direction + length) % length;
+}
+
+function requestAnimationFrameOrTimeout(callback: () => void): void {
+  if (typeof requestAnimationFrame === "undefined") {
+    setTimeout(callback, 0);
+    return;
+  }
+  requestAnimationFrame(callback);
+}
+
+function sideSelectStyle(): CSSProperties {
+  return {
+    width: "100%",
+    minHeight: 30,
+    border: "1px solid var(--wire-border)",
+    borderRadius: 6,
+    background: "var(--wire-bg-surface)",
+    color: "var(--wire-fg-primary)",
+    font: "inherit",
+    fontSize: 12,
+    padding: "3px 6px"
+  };
 }

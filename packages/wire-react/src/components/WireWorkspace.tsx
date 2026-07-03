@@ -1,4 +1,4 @@
-import { useCallback, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from "react";
 import type { ApplyWireActionResult, WireAction, WireDiagram } from "@aigentive/wire-core";
 import { WireCanvas, type WireCanvasProps } from "../canvas/WireCanvas.js";
 import type { WireNodeRenderer } from "../canvas/nodeTypes.js";
@@ -9,6 +9,11 @@ import { cx } from "./classes.js";
 import { WireGroupFrame, WireNodeCardView } from "./WireNodeCardView.js";
 import { WireInspector, type WireInspectorProps } from "./WireInspector.js";
 import { WireNodeList } from "./WireNodeList.js";
+import {
+  WIRE_INSPECTOR_FOCUS_REQUEST_EVENT,
+  type WireInspectorFocusRequestDetail,
+  type WireWorkspaceFocusItem
+} from "./workspaceFocusEvents.js";
 
 export interface WireWorkspaceProps {
   diagram?: WireDiagram;
@@ -123,6 +128,9 @@ export function WireWorkspace({
 }: WireWorkspaceProps): ReactElement {
   const [internalInspectNodeId, setInternalInspectNodeId] = useState<string | undefined>(defaultInspectNodeId);
   const [internalInspectEdgeId, setInternalInspectEdgeId] = useState<string | undefined>(defaultInspectEdgeId);
+  const mainRef = useRef<HTMLElement | null>(null);
+  const inspectorRef = useRef<HTMLElement | null>(null);
+  const lastCanvasFocusItemRef = useRef<WireWorkspaceFocusItem | null>(null);
   const activeInspectNodeId = inspectNodeId ?? internalInspectNodeId;
   const activeInspectEdgeId = activeInspectNodeId ? undefined : inspectEdgeId ?? internalInspectEdgeId;
 
@@ -168,6 +176,24 @@ export function WireWorkspace({
     ...(showValidation ? ["validation" as const] : [])
   ];
 
+  useEffect(() => {
+    if (activeInspectNodeId) lastCanvasFocusItemRef.current = { type: "node", id: activeInspectNodeId };
+    else if (activeInspectEdgeId) lastCanvasFocusItemRef.current = { type: "edge", id: activeInspectEdgeId };
+  }, [activeInspectEdgeId, activeInspectNodeId]);
+
+  useEffect(() => {
+    const element = mainRef.current;
+    if (!element) return undefined;
+    const handleInspectorFocusRequest = (event: Event) => {
+      const detail = (event as CustomEvent<WireInspectorFocusRequestDetail>).detail;
+      lastCanvasFocusItemRef.current = detail?.item ?? lastCanvasFocusItemRef.current;
+      event.preventDefault();
+      focusWorkspaceInspector(inspectorRef.current);
+    };
+    element.addEventListener(WIRE_INSPECTOR_FOCUS_REQUEST_EVENT, handleInspectorFocusRequest);
+    return () => element.removeEventListener(WIRE_INSPECTOR_FOCUS_REQUEST_EVENT, handleInspectorFocusRequest);
+  }, []);
+
   return (
     <WireProvider
       diagram={diagram}
@@ -191,6 +217,7 @@ export function WireWorkspace({
       onDirtyChange={onDirtyChange}
     >
       <main
+        ref={mainRef}
         className={cx(
           "wire-workspace wire-workspace--styled",
           layout === "fixed"
@@ -220,7 +247,20 @@ export function WireWorkspace({
           />
         </section>
 
-        <aside className={cx("wire-workspace__inspector grid content-start gap-3 lg:p-4", inspectorClassName)}>
+        <aside
+          ref={inspectorRef}
+          className={cx("wire-workspace__inspector grid content-start gap-3 lg:p-4", inspectorClassName)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || !event.altKey || !event.shiftKey) return;
+            event.preventDefault();
+            const item = activeInspectNodeId
+              ? { type: "node" as const, id: activeInspectNodeId }
+              : activeInspectEdgeId
+                ? { type: "edge" as const, id: activeInspectEdgeId }
+                : lastCanvasFocusItemRef.current;
+            focusWorkspaceCanvasItem(mainRef.current, item);
+          }}
+        >
           {inspector ?? (inspectorTabs.length > 0 ? (
             <WireInspector
               {...inspectorProps}
@@ -236,4 +276,40 @@ export function WireWorkspace({
       </main>
     </WireProvider>
   );
+}
+
+function focusWorkspaceInspector(inspector: HTMLElement | null): void {
+  requestFrame(() => {
+    const target = inspector?.querySelector<HTMLElement>(
+      "[role='tab'][aria-selected='true'], input, textarea, select, button, [tabindex]:not([tabindex='-1'])"
+    );
+    (target ?? inspector)?.focus();
+  });
+}
+
+function focusWorkspaceCanvasItem(root: HTMLElement | null, item: WireWorkspaceFocusItem | null): void {
+  requestFrame(() => {
+    const canvas = root?.querySelector<HTMLElement>("[data-wire-canvas]");
+    if (!item) {
+      canvas?.focus();
+      return;
+    }
+    const candidates = root?.querySelectorAll<HTMLElement | SVGGElement>(
+      item.type === "node" ? "[data-wire-node-id]" : "[data-wire-edge-id]"
+    );
+    const target = [...(candidates ?? [])].find((candidate) =>
+      item.type === "node"
+        ? candidate.dataset.wireNodeId === item.id
+        : candidate.dataset.wireEdgeId === item.id
+    );
+    (target ?? canvas)?.focus();
+  });
+}
+
+function requestFrame(callback: () => void): void {
+  if (typeof requestAnimationFrame === "undefined") {
+    setTimeout(callback, 0);
+    return;
+  }
+  requestAnimationFrame(callback);
 }

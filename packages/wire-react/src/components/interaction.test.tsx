@@ -12,6 +12,7 @@ import { WireNodeList } from "./WireNodeList.js";
 import { WireOptionPanel } from "./WireOptionPanel.js";
 import { WirePalette } from "./WirePalette.js";
 import { WireToolbar } from "./WireToolbar.js";
+import { WireWorkspace } from "./WireWorkspace.js";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -141,6 +142,111 @@ describe("wire component interactions", () => {
     focus(readOnly.container.querySelector<HTMLElement>("[data-wire-node-id='a']")!);
     keyDown(readOnly.container.querySelector<HTMLElement>("[data-wire-canvas]")!, "ArrowRight");
     expect(readOnlyActions).toHaveLength(0);
+  });
+
+  it("searches canvas nodes with combobox semantics and focuses the chosen result", async () => {
+    const actions: WireAction[] = [];
+    const { container } = renderWithContext(
+      <WireCanvas fitView={false} showControls={false} showMiniMap={false} />,
+      contextFor(edgeDiagram(), {
+        dispatch: (action) => {
+          actions.push(action);
+          return applyResult(edgeDiagram(), action);
+        }
+      })
+    );
+
+    const root = container.querySelector<HTMLElement>("[data-wire-canvas]")!;
+    focus(container.querySelector<HTMLElement>("[data-wire-node-id='a']")!);
+    keyDown(root, "/");
+
+    const search = container.querySelector<HTMLInputElement>("input[role='combobox']")!;
+    expect(search.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelector("[role='listbox']")).toBeTruthy();
+
+    input(search, "B");
+    expect(container.textContent).toContain("B action node");
+    keyDown(search, "Enter");
+    await flush();
+
+    expect(document.activeElement).toBe(container.querySelector<HTMLElement>("[data-wire-node-id='b']"));
+    expect(actions).toHaveLength(0);
+  });
+
+  it("creates and rejects keyboard connections through the target picker", () => {
+    const actions: WireAction[] = [];
+    const { container } = renderWithContext(
+      <WireCanvas fitView={false} showControls={false} showMiniMap={false} />,
+      contextFor(edgeDiagram(), {
+        dispatch: (action) => {
+          actions.push(action);
+          return applyResult(edgeDiagram(), action);
+        }
+      })
+    );
+
+    const root = container.querySelector<HTMLElement>("[data-wire-canvas]")!;
+    focus(container.querySelector<HTMLElement>("[data-wire-node-id='a']")!);
+    keyDown(root, "c");
+
+    const picker = container.querySelector<HTMLInputElement>("input[role='combobox']")!;
+    expect(picker.getAttribute("aria-controls")).toBeTruthy();
+    expect(container.textContent).toContain("Choose connection target");
+    expect(container.textContent).toContain("B");
+    keyDown(picker, "Enter");
+
+    expect(actions).toContainEqual({
+      type: "edge.connect",
+      edge: { from: "a", to: "b", fromHandle: "right", toHandle: "left" }
+    });
+
+    const rejectedActions: WireAction[] = [];
+    const rejected = renderWithContext(
+      <WireCanvas
+        fitView={false}
+        showControls={false}
+        showMiniMap={false}
+        isValidConnection={() => "Blocked by policy."}
+      />,
+      contextFor(edgeDiagram(), {
+        dispatch: (action) => {
+          rejectedActions.push(action);
+          return applyResult(edgeDiagram(), action);
+        }
+      })
+    );
+    const rejectedRoot = rejected.container.querySelector<HTMLElement>("[data-wire-canvas]")!;
+    focus(rejected.container.querySelector<HTMLElement>("[data-wire-node-id='a']")!);
+    keyDown(rejectedRoot, "c");
+    const rejectedPicker = rejected.container.querySelector<HTMLInputElement>("input[role='combobox']")!;
+    keyDown(rejectedPicker, "Enter");
+
+    expect(rejectedActions).toHaveLength(0);
+    expect(rejectedPicker.getAttribute("aria-invalid")).toBe("true");
+    expect(rejected.container.textContent).toContain("Blocked by policy.");
+  });
+
+  it("moves focus between owned workspace canvas and inspector", async () => {
+    const { container } = render(
+      <WireWorkspace
+        diagram={edgeDiagram()}
+        layout="embedded"
+        canvasProps={{ fitView: false, showControls: false, showMiniMap: false }}
+      />
+    );
+
+    const root = container.querySelector<HTMLElement>("[data-wire-canvas]")!;
+    const node = container.querySelector<HTMLElement>("[data-wire-node-id='a']")!;
+    focus(node);
+    keyDown(root, "Enter", { shiftKey: true });
+    await flush();
+
+    expect(document.activeElement?.getAttribute("role")).toBe("tab");
+
+    keyDown(document.activeElement as HTMLElement, "Enter", { altKey: true, shiftKey: true });
+    await flush();
+
+    expect(document.activeElement).toBe(node);
   });
 
   it("dispatches option patches for text, textarea, number, boolean, and select fields", () => {
@@ -413,12 +519,16 @@ describe("wire component interactions", () => {
 });
 
 function renderWithContext(element: ReactElement, value: WireContextValue): { container: HTMLDivElement } {
+  return render(<WireContext.Provider value={value}>{element}</WireContext.Provider>);
+}
+
+function render(element: ReactElement): { container: HTMLDivElement } {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   mounted.push(root);
   act(() => {
-    root.render(<WireContext.Provider value={value}>{element}</WireContext.Provider>);
+    root.render(element);
   });
   return { container };
 }
@@ -534,9 +644,9 @@ function focus(element: HTMLElement): void {
   });
 }
 
-function keyDown(element: HTMLElement, key: string): void {
+function keyDown(element: HTMLElement, key: string, init: KeyboardEventInit = {}): void {
   act(() => {
-    element.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+    element.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, ...init }));
   });
 }
 
@@ -571,4 +681,10 @@ function inputByPlaceholder(container: ParentNode, placeholder: string): HTMLInp
   const input = container.querySelector<HTMLInputElement>(`input[placeholder="${placeholder}"]`);
   if (!input) throw new Error(`Input not found: ${placeholder}`);
   return input;
+}
+
+async function flush(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canvasInteractionModeForWireMode,
   miniMapViewportRect,
   resolveWireCanvasInteraction,
   wireActionsFromCanvasDragCommit
@@ -58,6 +59,13 @@ describe("resolveWireCanvasInteraction", () => {
       clearSelectionOnPaneClick: false,
       elementsSelectable: true
     });
+  });
+
+  it("maps current non-view provider modes to editable canvas interaction", () => {
+    expect(canvasInteractionModeForWireMode("view")).toBe("view");
+    expect(canvasInteractionModeForWireMode("edit")).toBe("edit");
+    expect(canvasInteractionModeForWireMode("connect")).toBe("edit");
+    expect(canvasInteractionModeForWireMode("comment")).toBe("edit");
   });
 });
 
