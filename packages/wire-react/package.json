@@ -1,6 +1,6 @@
 {
   "name": "@aigentive/wire-react",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Wire — JSX facade. Author diagrams as React components; compile to canonical Wire JSON.",
   "license": "Apache-2.0",
   "repository": {
@@ -19,14 +19,20 @@
     "./compile": {
       "types": "./dist/compile.d.ts",
       "default": "./dist/compile.js"
-    }
+    },
+    "./styles.css": "./dist/styles.css"
   },
+  "sideEffects": [
+    "./src/styles.css",
+    "./dist/styles.css"
+  ],
   "files": [
     "dist",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "clean": "node scripts/build.mjs --clean",
+    "build": "node scripts/build.mjs",
     "test": "vitest run --root ../.. packages/wire-react/src",
     "test:coverage": "vitest run --root ../.. packages/wire-react/src --coverage --coverage.include='packages/wire-react/src/**/*.{ts,tsx}' --coverage.exclude='packages/wire-react/src/**/*.test.{ts,tsx}' --coverage.exclude='packages/wire-react/src/index.ts' --coverage.exclude='packages/wire-react/src/primitives/index.ts' --coverage.exclude='packages/wire-react/src/provider/types.ts' --coverage.thresholds.lines=80 --coverage.thresholds.functions=80 --coverage.thresholds.branches=80 --coverage.thresholds.statements=80",
     "typecheck": "tsc --noEmit -p tsconfig.json"

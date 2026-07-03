@@ -25,6 +25,7 @@ export function KindChip({ kind, children, className }: KindChipProps): ReactEle
   return (
     <span
       className={cx(
+        "wire-kind-chip",
         "inline-block rounded-sm px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.08em]",
         CHIP_CLASS[key],
         className

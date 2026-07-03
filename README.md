@@ -12,7 +12,7 @@ LLMs and agents struggle with diagrams: they emit Mermaid blobs that almost rend
 - **Shared actions** — every human, hosted editor, CLI, and MCP edit flows through the `WireAction` reducer in `wire-core`.
 - **React library** — `WireEditor`, `WireViewer`, `WireCanvas`, palette, toolbar, inspector, validation panel, and JSX authoring.
 - **LLM-friendly React extensibility** — option catalogs, custom node cards, custom edge renderers, and custom group renderers without requiring app code to import a graph-canvas package.
-- **Static renderers** — SVG, PNG, Mermaid, and optional React Flow conversion without pulling React into server-only consumers.
+- **Static renderers** — SVG, PNG, Mermaid, and optional canvas-adapter conversion without pulling React into server-only consumers.
 - **MCP server** — diagram CRUD, direct action tools, atomic `apply_actions`, resources, prompts, render tools, and `v1_get_agent_guide` over stdio or HTTP.
 - **Hosted parity** — the playground/editor uses `@aigentive/wire-react`, stores canonical JSON, and renders from the same model as MCP.
 
@@ -21,7 +21,7 @@ LLMs and agents struggle with diagrams: they emit Mermaid blobs that almost rend
 | Package | Description |
 |---|---|
 | [`@aigentive/wire-core`](packages/wire-core) | Schema, validation, IDs, graph normalization, layout, pure `WireAction` reducer |
-| [`@aigentive/wire-renderers`](packages/wire-renderers) | Static renderers and adapters: SVG, PNG helpers, Mermaid, optional React Flow conversion |
+| [`@aigentive/wire-renderers`](packages/wire-renderers) | Static renderers and adapters: SVG, PNG helpers, Mermaid, optional canvas-adapter conversion |
 | [`@aigentive/wire-react`](packages/wire-react) | Reusable React editor/viewer components and JSX authoring facade |
 | [`@aigentive/wire-mcp`](packages/wire-mcp) | MCP server (stdio + streamable-HTTP) |
 | [`@aigentive/wire-cli`](packages/wire-cli) | `wire` CLI (init, add, validate, export, ls) |
@@ -82,6 +82,7 @@ Controlled editor:
 ```tsx
 import type { WireDiagram } from "@aigentive/wire-core";
 import { WireEditor, WireViewer } from "@aigentive/wire-react";
+import "@aigentive/wire-react/styles.css";
 
 export function WorkflowEditor({
   diagram,
@@ -101,6 +102,7 @@ export function WorkflowPreview({ diagram }: { diagram: WireDiagram }) {
 Custom editor surface:
 
 ```tsx
+import "@aigentive/wire-react/styles.css";
 import {
   WireCanvas,
   WireInspector,
@@ -126,6 +128,7 @@ export function ProductEditor({ diagram, onChange }) {
 LLM-friendly custom cards and options:
 
 ```tsx
+import "@aigentive/wire-react/styles.css";
 import {
   WireWorkspace,
   type WireOptionCatalog
@@ -154,6 +157,8 @@ export function AgentEditor({ diagram, onChange }) {
 `WireWorkspace` uses a decoupled event model: card/list clicks emit
 `node.inspect` and update selection; option panels can follow selection by
 default or receive an explicit `inspectNodeId` for fully controlled sidebars.
+The package stylesheet is the supported npm-consumer styling path; no utility
+source scan is required for the React package.
 
 See [`docs/REACT_COMPONENTS.md`](docs/REACT_COMPONENTS.md), the playground
 route `/docs`, and the playground route `/samples/agent-chain`.

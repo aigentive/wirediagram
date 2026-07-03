@@ -58,7 +58,7 @@ export type EdgeRouting = z.infer<typeof EdgeRoutingSchema>;
 /**
  * Per-node visual overrides. All fields optional — when omitted, falls
  * back to tone-derived defaults. Renderers and adapters honor these
- * uniformly so the same diagram looks identical in SVG and React Flow.
+ * uniformly so the same diagram looks identical across render targets.
  */
 export const NodeStyleSchema = z.object({
   fill: z.string().optional(),

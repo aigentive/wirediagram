@@ -10,7 +10,7 @@ export default function InstallPage() {
     <DocsPage
       eyebrow="Get started"
       title="Install & setup"
-      description="Add the package, point Tailwind at the source, render your first canvas."
+      description="Add the package, import the stylesheet, render your first canvas."
       crumbs={[{ href: "/", label: "Docs" }, { label: "Install" }]}
       next={{ href: "/quickstart", label: "Quickstart" }}
     >
@@ -30,52 +30,50 @@ export default function InstallPage() {
       </Callout>
 
       <Prose>
-        <h2 id="tailwind">Tailwind v4</h2>
+        <h2 id="package-css">Package CSS</h2>
         <p>
-          The components ship pre-styled with Tailwind utility classes. Tell Tailwind where to find them so the
-          classes survive purging, and opt into class-based dark mode.
+          Import the package stylesheet once in your app entry. npm consumers do not need to point a CSS compiler at
+          the package source.
         </p>
       </Prose>
-      <CodeBlock language="css">
-        {`@import "tailwindcss";
-
-@source "../node_modules/@aigentive/wire-react";
-
-/* opt into class-based dark mode */
-@custom-variant dark (&:where(.dark, .dark *));`}
+      <CodeBlock language="tsx">
+        {`import "@aigentive/wire-react/styles.css";`}
       </CodeBlock>
 
-      <Callout tone="tip" title="Monorepo">
-        Pointing <InlineCode>@source</InlineCode> at the package source path (rather than the published bundle) is
-        fine when you're iterating in a workspace.
+      <Callout tone="tip" title="Host styling">
+        Your app can still use its own CSS stack around Wire. Use <InlineCode>colorMode</InlineCode>,{" "}
+        <InlineCode>unstyled</InlineCode>, slot <InlineCode>classNames</InlineCode>, and CSS variables when you need
+        tighter design-system integration.
       </Callout>
 
       <Prose>
         <h2 id="theme">Light &amp; dark mode</h2>
         <p>
-          Wire components are theme-aware via Tailwind&rsquo;s <InlineCode>dark:</InlineCode> variant. There&rsquo;s no
-          provider — add or remove the <InlineCode>dark</InlineCode> class on{" "}
-          <InlineCode>{`<html>`}</InlineCode> and every component follows.
+          Wire surfaces accept <InlineCode>colorMode=&quot;light&quot;</InlineCode>,{" "}
+          <InlineCode>colorMode=&quot;dark&quot;</InlineCode>, or{" "}
+          <InlineCode>colorMode=&quot;system&quot;</InlineCode>. You can also override the package CSS variables in your
+          app stylesheet.
         </p>
       </Prose>
-      <CodeBlock language="ts">
-        {`// somewhere in your app
-function setTheme(theme: "light" | "dark") {
-  document.documentElement.classList.toggle("dark", theme === "dark");
-  window.localStorage.setItem("wire-theme", theme);
-}`}
+      <CodeBlock language="tsx">
+        {`<WireWorkspace
+  diagram={diagram}
+  onChange={setDiagram}
+  colorMode="system"
+/>`}
       </CodeBlock>
 
       <Prose>
         <h2 id="smoke-test">Verify the install</h2>
         <p>
           Drop this component anywhere in your app. If you see the trigger card with its kind chip and title, install
-          + Tailwind setup are wired correctly.
+          and CSS import are wired correctly.
         </p>
       </Prose>
       <CodeBlock language="tsx">
         {`"use client";
 
+import "@aigentive/wire-react/styles.css";
 import {
   WireProvider,
   WireCanvas,

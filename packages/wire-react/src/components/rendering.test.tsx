@@ -8,8 +8,11 @@ import { WireProvider } from "../provider/WireProvider.js";
 import type { WireSelection } from "../provider/types.js";
 import { WireEditor } from "./WireEditor.js";
 import { WireInspector } from "./WireInspector.js";
-import { WireNodeCardView } from "./WireNodeCardView.js";
+import { WireGroupFrame, WireNodeCardView } from "./WireNodeCardView.js";
+import { WireNodeList } from "./WireNodeList.js";
 import { WireOptionPanel } from "./WireOptionPanel.js";
+import { WirePalette } from "./WirePalette.js";
+import { WireToolbar } from "./WireToolbar.js";
 import { WireValidationPanel } from "./WireValidationPanel.js";
 import { WireViewer } from "./WireViewer.js";
 import { WireWorkspace } from "./WireWorkspace.js";
@@ -25,14 +28,59 @@ describe("wire component rendering surfaces", () => {
     );
 
     expect(viewer).toContain("data-wire-canvas=\"true\"");
+    expect(viewer).toContain("wire-canvas wire-canvas--styled");
     expect(viewer).toContain("Canvas minimap");
     expect(viewer).toContain("queued");
     expect(viewer).toContain("wire-canvas-arrow-end");
     expect(editor).toContain("Zoom in");
+    expect(editor).toContain("wire-controls wire-controls--styled");
     expect(editor).toContain("Fit view");
     expect(editor).toContain("data-wire-handle=\"true\"");
     expect(editor).toContain("wire-canvas-circle-start");
   });
+
+  it("server-renders canvas accessibility labels and live status region", () => {
+    const markup = renderToStaticMarkup(
+      <WireProvider diagram={sampleDiagram()}>
+        <WireCanvas
+          fitView={false}
+          showMiniMap
+          showControls
+          ariaLabelConfig={{
+            canvas: "Workflow diagram",
+            node: (node) => `Node ${node.title}`,
+            edge: (edge) => `Edge ${edge.id}`,
+            minimap: "Workflow map",
+            controls: { zoomIn: "Increase zoom", zoomOut: "Decrease zoom", fitView: "Fit workflow" }
+          }}
+        />
+      </WireProvider>
+    );
+
+    expect(markup).toContain("role=\"region\"");
+    expect(markup).toContain("aria-label=\"Workflow diagram\"");
+    expect(markup).toContain("aria-label=\"Node Write Code\"");
+    expect(markup).toContain("aria-label=\"Edge code-review\"");
+    expect(markup).toContain("aria-label=\"Workflow map\"");
+    expect(markup).toContain("aria-label=\"Increase zoom\"");
+    expect(markup).toContain("role=\"status\"");
+  });
+
+  it("server-renders large-diagram mode markup and simplified minimap", () => {
+    const markup = renderToStaticMarkup(
+      <WireProvider diagram={largeDiagram(1001)} defaultSelection={{ nodeIds: ["node-1"], edgeIds: [] }}>
+        <WireCanvas fitView={false} showMiniMap showControls={false} />
+      </WireProvider>
+    );
+
+    expect(markup).toContain("data-wire-large-diagram=\"true\"");
+    expect(markup).toContain("wire-canvas--large");
+    expect(markup).toContain("Skip to inspector and controls");
+    expect(markup).toContain("data-wire-minimap-mode=\"large\"");
+    expect(markup).toContain("data-wire-minimap-bounds=\"true\"");
+    expect(markup).toContain("data-wire-minimap-selection=\"true\"");
+  });
+
 
   it("server-renders workspace sidebars and custom inspector slots", () => {
     const markup = renderToStaticMarkup(
@@ -51,6 +99,8 @@ describe("wire component rendering surfaces", () => {
 
     expect(markup).toContain("Workflow");
     expect(markup).toContain("Production");
+    expect(markup).toContain("wire-workspace wire-workspace--styled");
+    expect(markup).toContain("wire-workspace__canvas-region");
     expect(markup).toContain("Custom nav");
     expect(markup).toContain("Custom inspector");
     expect(markup).toContain("data-wire-canvas=\"true\"");
@@ -83,6 +133,18 @@ describe("wire component rendering surfaces", () => {
     expect(minimalMarkup).toContain("data-wire-canvas=\"true\"");
     expect(minimalMarkup).not.toContain("Owner");
     expect(minimalMarkup).not.toContain("Validation");
+
+    const edgeMarkup = renderToStaticMarkup(
+      <WireWorkspace
+        diagram={sampleDiagram()}
+        defaultInspectEdgeId="code-review"
+        canvasProps={{ fitView: false, showMiniMap: false, showControls: false }}
+      />
+    );
+    expect(edgeMarkup).toContain("Edge");
+    expect(edgeMarkup).toContain("Label");
+    expect(edgeMarkup).toContain("code");
+    expect(edgeMarkup).toContain("review");
   });
 
   it("renders inspector empty, preset, and custom appearance states", () => {
@@ -92,6 +154,7 @@ describe("wire component rendering surfaces", () => {
       </WireContext.Provider>
     );
     expect(emptyMarkup).toContain("No node selected");
+    expect(emptyMarkup).toContain("wire-inspector wire-inspector--styled");
 
     const diagram = sampleDiagram();
     const selectedMarkup = renderToStaticMarkup(
@@ -169,6 +232,8 @@ describe("wire component rendering surfaces", () => {
     );
 
     expect(markup).toContain("Owner");
+    expect(markup).toContain("wire-option-panel wire-option-panel--styled");
+    expect(markup).toContain("wire-option-field");
     expect(markup).toContain("Review carefully");
     expect(markup).toContain("value=\"2\"");
     expect(markup).toContain("checked=\"\"");
@@ -242,6 +307,117 @@ describe("wire component rendering surfaces", () => {
     expect(markup).toContain("50%");
     expect(markup).toContain("Footer text");
   });
+
+  it("honors unstyled, color mode, and slot class names on current public surfaces", () => {
+    const diagram = sampleDiagram();
+    const workspaceMarkup = renderToStaticMarkup(
+      <WireWorkspace
+        diagram={diagram}
+        colorMode="dark"
+        unstyled
+        optionCatalog={{ action: [{ key: "owner", label: "Owner", type: "text" }] }}
+        defaultInspectNodeId="code"
+        classNames={{
+          root: "slot-workspace",
+          header: "slot-workspace-header",
+          sidebar: "slot-workspace-sidebar",
+          canvasRegion: "slot-canvas-region",
+          canvas: "slot-workspace-canvas",
+          inspector: "slot-workspace-inspector",
+          nodeList: "slot-workspace-node-list",
+          optionPanel: "slot-option-panel",
+          validationPanel: "slot-validation-panel"
+        }}
+        canvasProps={{
+          fitView: false,
+          showControls: true,
+          showMiniMap: true,
+          classNames: {
+            root: "slot-canvas-root",
+            viewport: "slot-canvas-viewport",
+            background: "slot-canvas-background",
+            node: "slot-canvas-node",
+            edge: "slot-canvas-edge",
+            handle: "slot-canvas-handle",
+            controls: "slot-canvas-controls",
+            minimap: "slot-canvas-minimap",
+            status: "slot-canvas-status"
+          }
+        }}
+        inspectorProps={{
+          defaultTab: "validation",
+          classNames: {
+            root: "slot-inspector-root",
+            tabs: "slot-inspector-tabs",
+            tab: "slot-inspector-tab",
+            panel: "slot-inspector-panel"
+          }
+        }}
+      />
+    );
+
+    expect(workspaceMarkup).toContain("data-wire-theme=\"dark\"");
+    expect(workspaceMarkup).toContain("wire-theme-dark");
+    expect(workspaceMarkup).toContain("slot-workspace");
+    expect(workspaceMarkup).toContain("slot-workspace-header");
+    expect(workspaceMarkup).toContain("slot-workspace-node-list");
+    expect(workspaceMarkup).toContain("slot-workspace-canvas");
+    expect(workspaceMarkup).toContain("slot-canvas-root");
+    expect(workspaceMarkup).toContain("slot-canvas-viewport");
+    expect(workspaceMarkup).toContain("slot-canvas-background");
+    expect(workspaceMarkup).toContain("slot-canvas-node");
+    expect(workspaceMarkup).toContain("slot-canvas-edge");
+    expect(workspaceMarkup).toContain("slot-canvas-handle");
+    expect(workspaceMarkup).toContain("slot-canvas-controls");
+    expect(workspaceMarkup).toContain("slot-canvas-minimap");
+    expect(workspaceMarkup).toContain("slot-inspector-root");
+    expect(workspaceMarkup).toContain("slot-inspector-tabs");
+    expect(workspaceMarkup).toContain("slot-inspector-tab");
+    expect(workspaceMarkup).toContain("slot-option-panel");
+    expect(workspaceMarkup).toContain("slot-validation-panel");
+    expect(workspaceMarkup).not.toContain("wire-workspace--styled");
+    expect(workspaceMarkup).not.toContain("wire-canvas--styled");
+    expect(workspaceMarkup).not.toContain("wire-controls--styled");
+    expect(workspaceMarkup).not.toContain("wire-minimap--styled");
+    expect(workspaceMarkup).not.toContain("wire-node-card--styled");
+    expect(workspaceMarkup).not.toContain("wire-node-list--styled");
+    expect(workspaceMarkup).not.toContain("wire-inspector--styled");
+
+    const standaloneMarkup = renderToStaticMarkup(
+      <WireContext.Provider value={contextFor(diagram, { nodeIds: ["code"], edgeIds: [] }, { valid: true, issues: [] })}>
+        <WirePalette unstyled classNames={{ root: "slot-palette", item: "slot-palette-item" }} />
+        <WireNodeList unstyled classNames={{ root: "slot-list", item: "slot-list-item", empty: "slot-list-empty" }} />
+        <WireValidationPanel unstyled classNames={{ root: "slot-validation", issue: "slot-validation-issue", empty: "slot-validation-empty" }} />
+        <WireToolbar unstyled classNames={{ root: "slot-toolbar", group: "slot-toolbar-group", button: "slot-toolbar-button" }} />
+        <WireOptionPanel catalog={{ action: [{ key: "owner", label: "Owner", type: "text" }] }} unstyled classNames={{ root: "slot-options", field: "slot-options-field" }} />
+        <WireNodeCardView {...renderContextFor(diagram.nodes[1]!)} unstyled classNames={{ root: "slot-card", content: "slot-card-content", meta: "slot-card-meta" }} />
+        <WireGroupFrame {...renderContextFor({ id: "group", kind: "group", title: "Group", children: ["code"] })} unstyled classNames={{ root: "slot-group", header: "slot-group-header" }} />
+      </WireContext.Provider>
+    );
+
+    expect(standaloneMarkup).toContain("slot-palette");
+    expect(standaloneMarkup).toContain("slot-palette-item");
+    expect(standaloneMarkup).toContain("slot-list");
+    expect(standaloneMarkup).toContain("slot-list-item");
+    expect(standaloneMarkup).toContain("slot-validation");
+    expect(standaloneMarkup).toContain("slot-validation-empty");
+    expect(standaloneMarkup).toContain("slot-toolbar");
+    expect(standaloneMarkup).toContain("slot-toolbar-group");
+    expect(standaloneMarkup).toContain("slot-toolbar-button");
+    expect(standaloneMarkup).toContain("slot-options");
+    expect(standaloneMarkup).toContain("slot-options-field");
+    expect(standaloneMarkup).toContain("slot-card");
+    expect(standaloneMarkup).toContain("slot-card-content");
+    expect(standaloneMarkup).toContain("slot-card-meta");
+    expect(standaloneMarkup).toContain("slot-group");
+    expect(standaloneMarkup).toContain("slot-group-header");
+    expect(standaloneMarkup).not.toContain("wire-palette--styled");
+    expect(standaloneMarkup).not.toContain("wire-validation-panel--styled");
+    expect(standaloneMarkup).not.toContain("wire-toolbar--styled");
+    expect(standaloneMarkup).not.toContain("wire-option-panel--styled");
+    expect(standaloneMarkup).not.toContain("wire-node-card--styled");
+    expect(standaloneMarkup).not.toContain("wire-group-frame--styled");
+  });
 });
 
 function sampleDiagram(): WireDiagram {
@@ -274,6 +450,25 @@ function sampleDiagram(): WireDiagram {
       },
       { id: "code-review", from: "code", to: "review", routing: "step" }
     ]
+  };
+}
+
+function largeDiagram(count: number): WireDiagram {
+  return {
+    version: 1,
+    id: "large",
+    title: "Large",
+    layout: "LR",
+    nodes: Array.from({ length: count }, (_, index) => ({
+      id: `node-${index + 1}`,
+      kind: index === 0 ? "trigger" as const : "action" as const,
+      title: `Node ${index + 1}`,
+      position: {
+        x: (index % 50) * 260,
+        y: Math.floor(index / 50) * 120
+      }
+    })),
+    edges: []
   };
 }
 
@@ -342,6 +537,7 @@ function contextFor(
       undo: () => undefined,
       redo: () => undefined
     },
-    setMode: () => undefined
+    setMode: () => undefined,
+    markClean: () => undefined
   };
 }

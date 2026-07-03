@@ -1,7 +1,14 @@
 import type { CSSProperties, ReactElement } from "react";
 import { useWireHistory, useWireMode } from "../hooks.js";
+import { cx } from "./classes.js";
 
 export interface WireToolbarProps {
+  unstyled?: boolean;
+  classNames?: {
+    root?: string;
+    group?: string;
+    button?: string;
+  };
   className?: string;
   style?: CSSProperties;
 }
@@ -47,21 +54,24 @@ const DISABLED_STYLE: CSSProperties = {
   cursor: "not-allowed"
 };
 
-export function WireToolbar({ className, style }: WireToolbarProps): ReactElement {
+export function WireToolbar({ unstyled = false, classNames, className, style }: WireToolbarProps): ReactElement {
   const history = useWireHistory();
   const [mode, setMode] = useWireMode();
-  const undoStyle = history.canUndo ? ICON_BUTTON_STYLE : { ...ICON_BUTTON_STYLE, ...DISABLED_STYLE };
-  const redoStyle = history.canRedo ? ICON_BUTTON_STYLE : { ...ICON_BUTTON_STYLE, ...DISABLED_STYLE };
+  const undoStyle = unstyled ? undefined : history.canUndo ? ICON_BUTTON_STYLE : { ...ICON_BUTTON_STYLE, ...DISABLED_STYLE };
+  const redoStyle = unstyled ? undefined : history.canRedo ? ICON_BUTTON_STYLE : { ...ICON_BUTTON_STYLE, ...DISABLED_STYLE };
+  const buttonStyle = unstyled ? undefined : BUTTON_STYLE;
 
   return (
-    <div className={className} style={{ ...BAR_STYLE, ...style }}>
-      <button type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" style={undoStyle}>
+    <div className={cx("wire-toolbar", !unstyled && "wire-toolbar--styled", classNames?.root, className)} style={unstyled ? style : { ...BAR_STYLE, ...style }}>
+      <div className={cx("wire-toolbar__group", classNames?.group)}>
+        <button className={cx("wire-toolbar__button", classNames?.button)} type="button" onClick={history.undo} disabled={!history.canUndo} aria-label="Undo" title="Undo" style={undoStyle}>
         ↺
-      </button>
-      <button type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" style={redoStyle}>
+        </button>
+        <button className={cx("wire-toolbar__button", classNames?.button)} type="button" onClick={history.redo} disabled={!history.canRedo} aria-label="Redo" title="Redo" style={redoStyle}>
         ↻
-      </button>
-      <button type="button" onClick={() => setMode(mode === "edit" ? "view" : "edit")} style={BUTTON_STYLE}>
+        </button>
+      </div>
+      <button className={cx("wire-toolbar__button", classNames?.button)} type="button" onClick={() => setMode(mode === "edit" ? "view" : "edit", { source: "workspace", previousMode: mode, cause: "toolbar" })} style={buttonStyle}>
         {mode === "edit" ? "View" : "Edit"}
       </button>
     </div>

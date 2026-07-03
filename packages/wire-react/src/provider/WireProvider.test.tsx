@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { emptyDiagram, type WireDiagram } from "@aigentive/wire-core";
 import {
   useWireActions,
+  useWireContext,
   useWireDiagram,
   useWireEvents,
   useWireHistory,
@@ -46,8 +47,10 @@ describe("WireProvider", () => {
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ nodes: expect.arrayContaining([expect.objectContaining({ id: "code" })]) }), expect.any(Object));
     expect(container.textContent).toContain("nodes:2");
     expect(container.textContent).toContain("undo:true");
+    expect(container.textContent).toContain("dirty:true");
 
     click(button(container, "many"));
+    expect(onAction.mock.calls.map(([action]) => action.type)).toEqual(["node.add", "node.add", "metadata.patch"]);
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ nodes: expect.arrayContaining([expect.objectContaining({ id: "review" })]) }), expect.any(Object));
     expect(container.textContent).toContain("nodes:3");
 
@@ -64,9 +67,13 @@ describe("WireProvider", () => {
     click(button(container, "emit"));
     expect(onEvent).toHaveBeenCalledWith({ type: "pane.click", source: "api" });
 
+    click(button(container, "clean"));
+    expect(container.textContent).toContain("dirty:false");
+
     click(button(container, "undo"));
     expect(container.textContent).toContain("redo:true");
     expect(container.textContent).toContain("nodes:2");
+    expect(container.textContent).toContain("dirty:true");
     click(button(container, "redo"));
     expect(container.textContent).toContain("undo:true");
     expect(container.textContent).toContain("nodes:3");
@@ -89,6 +96,112 @@ describe("WireProvider", () => {
     expect(container.textContent).toContain("nodes:1");
     expect(container.textContent).toContain("undo:false");
   });
+
+  it("supports controlled runtime state with metadata and same-value no-ops", () => {
+    const order: string[] = [];
+    const errors: unknown[] = [];
+    const onChange = vi.fn(() => order.push("change"));
+    const onAction = vi.fn((action) => order.push(`action:${action.type}`));
+    const onSelectionChange = vi.fn(() => order.push("selection"));
+    const onViewportChange = vi.fn(() => order.push("viewport"));
+    const onModeChange = vi.fn(() => order.push("mode"));
+    const onDirtyChange = vi.fn(() => order.push("dirty"));
+    const { container } = render(
+      <WireProvider
+        diagram={baseDiagram()}
+        selection={{ nodeIds: ["start", "start"], edgeIds: [] }}
+        viewport={{ x: -0, y: 0, zoom: 1 }}
+        mode="edit"
+        dirty={false}
+        onChange={onChange}
+        onAction={onAction}
+        onSelectionChange={onSelectionChange}
+        onViewportChange={onViewportChange}
+        onModeChange={onModeChange}
+        onDirtyChange={onDirtyChange}
+      >
+        <ControlledHarness errors={errors} />
+      </WireProvider>
+    );
+
+    click(button(container, "same-selection"));
+    click(button(container, "same-viewport"));
+    click(button(container, "same-mode"));
+    expect(onSelectionChange).not.toHaveBeenCalled();
+    expect(onViewportChange).not.toHaveBeenCalled();
+    expect(onModeChange).not.toHaveBeenCalled();
+
+    click(button(container, "set-selection"));
+    expect(onSelectionChange).toHaveBeenCalledTimes(1);
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
+      { nodeIds: ["review"], edgeIds: ["edge-a", "edge-b"] },
+      {
+        type: "selection.change",
+        source: "workspace",
+        selection: { nodeIds: ["review"], edgeIds: ["edge-a", "edge-b"] },
+        previousSelection: { nodeIds: ["start"], edgeIds: [] },
+        cause: "keyboard"
+      }
+    );
+
+    click(button(container, "set-viewport"));
+    expect(onViewportChange).toHaveBeenCalledWith(
+      { x: 10, y: 20, zoom: 2 },
+      {
+        source: "canvas",
+        viewport: { x: 10, y: 20, zoom: 2 },
+        previousViewport: { x: 0, y: 0, zoom: 1 },
+        cause: "pan",
+        intent: undefined
+      }
+    );
+
+    click(button(container, "set-mode"));
+    expect(onModeChange).toHaveBeenCalledWith("view", {
+      source: "workspace",
+      mode: "view",
+      previousMode: "edit",
+      cause: "toolbar"
+    });
+
+    click(button(container, "noop"));
+    expect(onAction).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onDirtyChange).not.toHaveBeenCalled();
+
+    click(button(container, "bad"));
+    expect(errors[0]).toEqual(expect.any(Error));
+    expect(onAction).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onDirtyChange).not.toHaveBeenCalled();
+
+    click(button(container, "add"));
+    expect(order.slice(-3)).toEqual(["action:node.add", "change", "dirty"]);
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true, {
+      source: "api",
+      dirty: true,
+      previousDirty: false,
+      cause: "edit"
+    });
+  });
+
+  it("marks a controlled dirty provider clean without changing diagram state", () => {
+    const onDirtyChange = vi.fn();
+    const { container } = render(
+      <WireProvider defaultDiagram={baseDiagram()} dirty onDirtyChange={onDirtyChange}>
+        <ControlledHarness errors={[]} />
+      </WireProvider>
+    );
+
+    expect(container.textContent).toContain("dirty:true");
+    click(button(container, "clean"));
+    expect(onDirtyChange).toHaveBeenCalledWith(false, {
+      source: "api",
+      dirty: false,
+      previousDirty: true,
+      cause: "reset"
+    });
+  });
 });
 
 function Harness(): ReactElement {
@@ -100,6 +213,7 @@ function Harness(): ReactElement {
   const [viewport, viewportActions] = useWireViewport();
   const [mode, setMode] = useWireMode();
   const events = useWireEvents();
+  const ctx = useWireContext();
 
   return (
     <div>
@@ -108,6 +222,7 @@ function Harness(): ReactElement {
       <span>selection:{selection.nodeIds[0] ?? "none"}</span>
       <span>zoom:{viewport.zoom}</span>
       <span>mode:{mode}</span>
+      <span>dirty:{String(ctx.dirty)}</span>
       <span>undo:{String(history.canUndo)}</span>
       <span>redo:{String(history.canRedo)}</span>
       <button type="button" onClick={() => actions.dispatch({ type: "node.add", node: { id: "code", kind: "action", title: "Code", from: "start" } })}>add</button>
@@ -127,8 +242,39 @@ function Harness(): ReactElement {
       <button type="button" onClick={() => viewportActions.setViewport({ x: 12, y: 24, zoom: 2 })}>viewport</button>
       <button type="button" onClick={() => setMode("view")}>mode</button>
       <button type="button" onClick={() => events.emit({ type: "pane.click", source: "api" })}>emit</button>
+      <button type="button" onClick={ctx.markClean}>clean</button>
       <button type="button" onClick={history.undo} disabled={!history.canUndo}>undo</button>
       <button type="button" onClick={history.redo} disabled={!history.canRedo}>redo</button>
+    </div>
+  );
+}
+
+function ControlledHarness({ errors }: { errors: unknown[] }): ReactElement {
+  const ctx = useWireContext();
+  return (
+    <div>
+      <span>dirty:{String(ctx.dirty)}</span>
+      <button type="button" onClick={() => ctx.selectionActions.setSelection({ nodeIds: ["start"], edgeIds: [] }, { source: "workspace", cause: "keyboard" })}>same-selection</button>
+      <button type="button" onClick={() => ctx.viewportActions.setViewport({ x: 0, y: -0, zoom: 1 }, { source: "canvas", cause: "pan" })}>same-viewport</button>
+      <button type="button" onClick={() => ctx.setMode("edit", { source: "workspace", cause: "toolbar" })}>same-mode</button>
+      <button type="button" onClick={() => ctx.selectionActions.setSelection({ nodeIds: ["review"], edgeIds: ["edge-b", "edge-a", "edge-a"] }, { source: "workspace", cause: "keyboard" })}>set-selection</button>
+      <button type="button" onClick={() => ctx.viewportActions.setViewport({ x: 10, y: 20, zoom: 2 }, { source: "canvas", cause: "pan" })}>set-viewport</button>
+      <button type="button" onClick={() => ctx.setMode("view", { source: "workspace", cause: "toolbar" })}>set-mode</button>
+      <button type="button" onClick={() => ctx.actions.dispatch({ type: "diagram.patch", patch: {} })}>noop</button>
+      <button
+        type="button"
+        onClick={() => {
+          try {
+            ctx.actions.dispatch({ type: "node.patch", id: "missing", patch: { title: "Missing" } });
+          } catch (error) {
+            errors.push(error);
+          }
+        }}
+      >
+        bad
+      </button>
+      <button type="button" onClick={() => ctx.actions.dispatch({ type: "node.add", node: { id: "code", kind: "action", title: "Code", from: "start" } })}>add</button>
+      <button type="button" onClick={ctx.markClean}>clean</button>
     </div>
   );
 }

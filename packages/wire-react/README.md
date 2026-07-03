@@ -8,7 +8,13 @@ JSX facade for Wire diagrams. Author diagrams as React components, compile to ca
 npm install @aigentive/wire-react react react-dom
 ```
 
-`<Flow>` renders as inline SVG by default. `<WireCanvas>` provides the native interactive canvas; no separate canvas-engine package is required.
+Import the package stylesheet once in your app entry:
+
+```tsx
+import "@aigentive/wire-react/styles.css";
+```
+
+`<Flow>` renders as inline SVG by default. `<WireCanvas>` provides the native interactive canvas; no separate canvas-engine package is required and no utility-class source scan is required.
 
 ## Use
 
@@ -79,6 +85,7 @@ For interactive canvases, compile JSX to a Wire diagram and render it through th
 
 ```tsx
 "use client";
+import "@aigentive/wire-react/styles.css";
 import {
   Flow,
   TriggerNode,
@@ -107,14 +114,15 @@ export function MyDiagram() {
 
 ## LLM-friendly editor extensions
 
-Most apps should extend the built-in canvas with Wire-level props instead of
-importing a third-party graph canvas directly:
+Most apps should extend the built-in canvas with Wire-level props and keep
+`WireDiagram` plus reducer actions as the app contract:
 
 ```tsx
 import {
   WireWorkspace,
   type WireOptionCatalog
 } from "@aigentive/wire-react";
+import "@aigentive/wire-react/styles.css";
 
 const options: WireOptionCatalog = {
   ai: [
@@ -139,9 +147,68 @@ export function AgentEditor({ diagram, onChange }) {
 Option values are serializable Wire data. Runtime render callbacks are React-only
 and are never stored in canonical JSON.
 
-Cards, node lists, and canvas clicks emit Wire events such as `node.inspect`;
-the option panel can follow selection or receive a controlled `nodeId`. This
-keeps card rendering decoupled from the sidebar.
+Cards, node lists, and canvas clicks emit Wire events such as `node.inspect` and
+`edge.click`. `WireInspector` can follow selection or receive explicit `nodeId`
+and `edgeId` values, and `WireOptionPanel` can follow selection or receive a
+controlled `nodeId`. This keeps card rendering decoupled from sidebars.
+
+## Production component patterns
+
+Controlled editor with the packaged shell:
+
+```tsx
+import "@aigentive/wire-react/styles.css";
+import { useState } from "react";
+import { WireWorkspace, type WireDiagram } from "@aigentive/wire-react";
+
+export function ProductEditor({ initial }: { initial: WireDiagram }) {
+  const [diagram, setDiagram] = useState(initial);
+  return <WireWorkspace diagram={diagram} onChange={setDiagram} fitView />;
+}
+```
+
+Custom shell with current components:
+
+```tsx
+import "@aigentive/wire-react/styles.css";
+import {
+  WireCanvas,
+  WireInspector,
+  WirePalette,
+  WireProvider,
+  WireToolbar,
+  WireValidationPanel
+} from "@aigentive/wire-react";
+
+export function CustomEditor({ diagram, onChange }) {
+  return (
+    <WireProvider diagram={diagram} onChange={onChange}>
+      <WireToolbar />
+      <WirePalette />
+      <WireCanvas mode="edit" fitView keyboardA11y />
+      <WireInspector />
+      <WireValidationPanel />
+    </WireProvider>
+  );
+}
+```
+
+Read-only viewer:
+
+```tsx
+import "@aigentive/wire-react/styles.css";
+import { WireViewer } from "@aigentive/wire-react";
+
+export function Preview({ diagram }) {
+  return <WireViewer diagram={diagram} fitView colorMode="system" />;
+}
+```
+
+Theming and design-system integration use current props: `colorMode`,
+`unstyled`, `className`, `classNames`, `style`, and CSS variables. Keyboard
+navigation, search, connection picking, fit selection, and large-diagram mode are
+owned by `WireCanvas`; disable package keyboard handling only with
+`keyboardA11y={false}` when your host shell fully replaces it.
 
 See the root docs for the full component prop surface:
 [`docs/REACT_COMPONENTS.md`](../../docs/REACT_COMPONENTS.md). The playground

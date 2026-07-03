@@ -46,7 +46,7 @@ npx -y @aigentive/wire-mcp@latest --http`;
 const PACKAGES = [
   { name: "@aigentive/wire-core", desc: "Schema, validation, IDs, normalize, layout, the WireAction reducer." },
   { name: "@aigentive/wire-react", desc: "Editor, viewer, canvas, palette, inspector, hooks, JSX facade." },
-  { name: "@aigentive/wire-renderers", desc: "Static SVG, PNG helpers, Mermaid, optional React Flow conversion." },
+  { name: "@aigentive/wire-renderers", desc: "Static SVG, PNG helpers, Mermaid, optional canvas-adapter conversion." },
   { name: "@aigentive/wire-mcp", desc: "MCP server over stdio + streamable-HTTP with the full tool surface." },
   { name: "@aigentive/wire-cli", desc: "wire init · add · validate · export · ls." },
   { name: "apps/playground", desc: "Self-hostable Next.js editor, share API, and renderer service." }

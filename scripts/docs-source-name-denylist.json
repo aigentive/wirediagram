@@ -1,0 +1,21 @@
+{
+  "tokens": [
+    ["x", "y", "flow"],
+    ["react", " ", "flow"],
+    ["react", "-", "flow"],
+    ["x", "y", "flow", ".", "com"],
+    ["react", "flow", ".", "dev"]
+  ],
+  "allowedUrlPatterns": [
+    "^http://localhost(:[0-9]+)?(/|$)",
+    "^http://127\\.0\\.0\\.1(:[0-9]+)?(/|$)",
+    "^http://wire\\.local(/|$)",
+    "^http://www\\.w3\\.org/",
+    "^https://github\\.com/aigentive/wirediagram",
+    "^https://wire\\.example\\.com(/|$)",
+    "^https://mcp\\.example\\.com(/|$)",
+    "^https://json-schema\\.org/",
+    "^https://aigentive\\.dev/",
+    "^https://api\\.openai\\.com/"
+  ]
+}

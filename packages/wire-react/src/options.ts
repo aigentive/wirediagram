@@ -1,4 +1,4 @@
-import type { WireNode } from "@aigentive/wire-core";
+import type { WireDiagram, WireNode } from "@aigentive/wire-core";
 
 export type WireOptionInputType = "text" | "textarea" | "number" | "boolean" | "select";
 export type WireOptionStorage = "data.options" | "data" | "node";
@@ -9,6 +9,16 @@ export type WireOptionChoice =
     label: string;
     value: WireOptionPrimitive;
   };
+
+type WireOptionContext = {
+  node: WireNode;
+  diagram: WireDiagram;
+  value: unknown;
+  option: WireOptionSpec;
+};
+
+type WireOptionPredicate = boolean | ((context: WireOptionContext) => boolean);
+type WireOptionValidationIssue = { message: string; severity?: "error" | "warning" | "info" };
 
 export interface WireOptionSpec {
   /** Stable key. Defaults to data.options[key] storage. */
@@ -23,6 +33,23 @@ export interface WireOptionSpec {
   max?: number;
   step?: number;
   storage?: WireOptionStorage;
+  group?: string;
+  section?: string;
+  order?: number;
+  width?: "full" | "half" | "third";
+  required?: boolean;
+  readOnly?: WireOptionPredicate;
+  disabled?: WireOptionPredicate;
+  hidden?: WireOptionPredicate;
+  validate?: (context: WireOptionContext) =>
+    | WireOptionValidationIssue
+    | WireOptionValidationIssue[]
+    | null
+    | undefined;
+  parse?: (input: unknown, context: WireOptionContext) => unknown;
+  format?: (value: unknown, context: WireOptionContext) => unknown;
+  commitMode?: "change" | "blur" | "submit";
+  debounceMs?: number;
 }
 
 export type WireOptionCatalog = Partial<Record<WireNode["kind"] | "*", WireOptionSpec[]>>;
@@ -32,7 +59,10 @@ export function wireOptionSpecsForNode(
   node: WireNode
 ): WireOptionSpec[] {
   if (!catalog) return [];
-  return [...(catalog["*"] ?? []), ...(catalog[node.kind] ?? [])];
+  return [...(catalog["*"] ?? []), ...(catalog[node.kind] ?? [])]
+    .map((spec, index) => ({ spec, index }))
+    .sort((left, right) => (left.spec.order ?? left.index) - (right.spec.order ?? right.index) || left.index - right.index)
+    .map(({ spec }) => spec);
 }
 
 export function wireNodeOptions(node: WireNode): Record<string, unknown> {

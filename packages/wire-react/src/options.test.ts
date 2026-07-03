@@ -34,6 +34,22 @@ describe("wire option metadata", () => {
     ]);
   });
 
+  it("uses option order metadata without introducing a new catalog shape", () => {
+    const catalog: WireOptionCatalog = {
+      "*": [{ key: "owner", storage: "data", order: 3 }],
+      ai: [
+        { key: "temperature", type: "number", order: 2 },
+        { key: "model", storage: "node", order: 1 }
+      ]
+    };
+
+    expect(wireOptionSpecsForNode(catalog, aiNode).map((spec) => spec.key)).toEqual([
+      "model",
+      "temperature",
+      "owner"
+    ]);
+  });
+
   it("reads values from node fields, data fields, and data.options", () => {
     expect(readWireOption(aiNode, { key: "model", storage: "node" })).toBe("gpt-4.1");
     expect(readWireOption(aiNode, { key: "owner", storage: "data" })).toBe("runtime");

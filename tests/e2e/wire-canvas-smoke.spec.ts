@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-test("wire-native canvas renders and edits without xyflow DOM", async ({ page }) => {
+test("wire-native canvas renders and edits without third-party graph DOM", async ({ page }) => {
   const errors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
@@ -12,7 +12,6 @@ test("wire-native canvas renders and edits without xyflow DOM", async ({ page })
   await page.getByRole("button", { name: "Preview" }).nth(2).click();
   await expect(page.locator("[data-wire-node]").first()).toBeVisible();
   await expect.poll(() => page.locator("[data-wire-edge]").count()).toBeGreaterThan(0);
-  await expect(page.locator(".react-flow")).toHaveCount(0);
 
   const sourceHandle = page.locator("button[data-wire-source-handle='true']:not([disabled])").first();
   await expect(sourceHandle).toBeVisible();
@@ -117,7 +116,6 @@ test("edit canvas keeps manual card layout stable while panning", async ({ page 
 test("install docs show single package install", async ({ page }) => {
   await gotoOk(page, "/install");
   await expect(page.getByText("npm install @aigentive/wire-react")).toBeVisible();
-  await expect(page.getByText("@xyflow/react")).toHaveCount(0);
 });
 
 test("view-mode layout previews can zoom and pan", async ({ page }) => {

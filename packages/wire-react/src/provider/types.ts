@@ -8,12 +8,24 @@ import type {
 export type WireMode = "view" | "edit" | "connect" | "comment";
 export type WireEventSource = "canvas" | "node-card" | "node-list" | "option-panel" | "validation-panel" | "workspace" | "api";
 
+type WireSelectionCause = "node" | "edge" | "pane" | "keyboard" | "api";
+type WireViewportCause = "pan" | "zoom" | "fit-view" | "keyboard" | "api";
+type WireViewportIntent = "fit-view" | "fit-selection";
+type WireModeCause = "toolbar" | "keyboard" | "api";
+type WireDirtyCause = "edit" | "undo" | "redo" | "reset" | "api";
+
 export type WireEvent =
-  | { type: "node.click"; source: WireEventSource; nodeId: string }
-  | { type: "node.inspect"; source: WireEventSource; nodeId: string }
-  | { type: "edge.click"; source: WireEventSource; edgeId: string }
+  | { type: "node.click"; source: WireEventSource; nodeId: string; input?: "pointer" | "keyboard" }
+  | { type: "node.inspect"; source: WireEventSource; nodeId: string; input?: "pointer" | "keyboard" }
+  | { type: "edge.click"; source: WireEventSource; edgeId: string; input?: "pointer" | "keyboard"; intent?: "select" | "inspect" }
   | { type: "pane.click"; source: WireEventSource }
-  | { type: "selection.change"; source: WireEventSource; selection: WireSelection };
+  | {
+    type: "selection.change";
+    source: WireEventSource;
+    selection: WireSelection;
+    previousSelection?: WireSelection;
+    cause?: WireSelectionCause;
+  };
 
 export interface WireSelection {
   nodeIds: string[];
@@ -45,12 +57,25 @@ export interface WireHistoryActions {
 }
 
 export interface WireSelectionActions {
-  setSelection(selection: WireSelection): void;
-  clearSelection(): void;
+  setSelection(selection: WireSelection, event?: {
+    source?: WireEventSource;
+    previousSelection?: WireSelection;
+    cause?: WireSelectionCause;
+  }): void;
+  clearSelection(event?: {
+    source?: WireEventSource;
+    previousSelection?: WireSelection;
+    cause?: WireSelectionCause;
+  }): void;
 }
 
 export interface WireViewportActions {
-  setViewport(viewport: WireViewport): void;
+  setViewport(viewport: WireViewport, event?: {
+    source?: WireEventSource;
+    previousViewport?: WireViewport;
+    cause?: WireViewportCause;
+    intent?: WireViewportIntent;
+  }): void;
 }
 
 export interface WireEventActions {
@@ -65,6 +90,34 @@ export interface WireProviderProps {
   onEvent?: (event: WireEvent) => void;
   validateOnChange?: boolean;
   history?: boolean;
+  selection?: WireSelection;
+  defaultSelection?: WireSelection;
+  onSelectionChange?: (selection: WireSelection, event: Extract<WireEvent, { type: "selection.change" }>) => void;
+  viewport?: WireViewport;
+  defaultViewport?: WireViewport;
+  onViewportChange?: (viewport: WireViewport, event: {
+    source: WireEventSource;
+    viewport: WireViewport;
+    previousViewport?: WireViewport;
+    cause?: WireViewportCause;
+    intent?: WireViewportIntent;
+  }) => void;
+  mode?: WireMode;
+  defaultMode?: WireMode;
+  onModeChange?: (mode: WireMode, event: {
+    source: WireEventSource;
+    mode: WireMode;
+    previousMode?: WireMode;
+    cause?: WireModeCause;
+  }) => void;
+  dirty?: boolean;
+  defaultDirty?: boolean;
+  onDirtyChange?: (dirty: boolean, event: {
+    source: WireEventSource;
+    dirty: boolean;
+    previousDirty?: boolean;
+    cause?: WireDirtyCause;
+  }) => void;
   children: React.ReactNode;
 }
 

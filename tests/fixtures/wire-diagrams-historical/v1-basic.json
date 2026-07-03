@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "historical-v1-basic",
+  "title": "Historical V1 Basic",
+  "layout": "LR",
+  "nodes": [
+    {
+      "id": "start",
+      "kind": "trigger",
+      "title": "Start",
+      "position": { "x": 0, "y": 40 }
+    },
+    {
+      "id": "task",
+      "kind": "action",
+      "title": "Task",
+      "position": { "x": 300, "y": 40 },
+      "data": {
+        "options": {
+          "owner": "Ada"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-task",
+      "from": "start",
+      "to": "task",
+      "label": "handoff"
+    }
+  ]
+}

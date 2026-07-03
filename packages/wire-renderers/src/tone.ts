@@ -2,7 +2,7 @@ import type { Tone } from "@aigentive/wire-core";
 
 /**
  * Tailwind-friendly classnames per tone. The renderer ships these on
- * the rendered React Flow node — the consuming app may swap in its own
+ * the rendered adapter node — the consuming app may swap in its own
  * color tokens by passing a custom `theme` object to `toReactFlow`.
  */
 export const DEFAULT_TONE_CLASSES: Record<NonNullable<Tone>, string> = {

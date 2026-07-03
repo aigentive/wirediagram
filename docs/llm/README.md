@@ -30,7 +30,7 @@ Use `@aigentive/wire-react` for React UI:
 - `WireToolbar`, `WirePalette`, `WireInspector`, and `WireValidationPanel`
   for standard controls.
 
-Persist `WireDiagram` from `onChange`. Do not persist React Flow nodes as the
+Persist `WireDiagram` from `onChange`. Do not persist adapter nodes as the
 application contract.
 
 ## Hosted Chat Key
@@ -60,7 +60,7 @@ Cloud API key used by MCP clients.
 ## Banned Agent Outputs
 
 - Mermaid as primary state.
-- React Flow JSON as primary state.
+- Adapter JSON as primary state.
 - Node fields named `connectsTo`, `source`, `target`, `next`, or uppercase
   `kind`.
 - `from: null`; omit `from` when no source exists.

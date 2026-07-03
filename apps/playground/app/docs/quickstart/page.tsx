@@ -45,6 +45,7 @@ const QUICKSTART_OPTIONS: WireOptionCatalog = {
 
 const VIEWER_SNIPPET = `"use client";
 
+import "@aigentive/wire-react/styles.css";
 import {
   WireProvider,
   WireCanvas,
@@ -82,6 +83,7 @@ export function AgentDiagram() {
 const OPTIONS_SNIPPET = `"use client";
 
 import { useCallback, useState } from "react";
+import "@aigentive/wire-react/styles.css";
 import {
   WireProvider,
   WireCanvas,
@@ -127,6 +129,7 @@ export function AgentEditor({ diagram }) {
 const WORKSPACE_SNIPPET = `"use client";
 
 import { useState } from "react";
+import "@aigentive/wire-react/styles.css";
 import {
   WireWorkspace,
   type WireDiagram,

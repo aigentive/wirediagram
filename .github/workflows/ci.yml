@@ -16,8 +16,10 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm install
+      - run: npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm test
+      - run: npm run test:react:release
       - run: |
           echo "validate examples"
           for f in examples/*.json; do

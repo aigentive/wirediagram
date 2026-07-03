@@ -37,17 +37,33 @@ const KIND_LABEL: Record<WireNode["kind"], string> = {
 
 export interface WirePaletteProps {
   kinds?: WireNode["kind"][];
+  unstyled?: boolean;
+  classNames?: {
+    root?: string;
+    item?: string;
+  };
   className?: string;
   style?: CSSProperties;
 }
 
-export function WirePalette({ kinds = DEFAULT_KINDS, className, style }: WirePaletteProps): ReactElement {
+export function WirePalette({
+  kinds = DEFAULT_KINDS,
+  unstyled = false,
+  classNames,
+  className,
+  style
+}: WirePaletteProps): ReactElement {
   const diagram = useWireDiagram();
   const actions = useWireActions();
 
   return (
     <div
-      className={cx("grid gap-1.5 rounded-lg bg-wire-surface p-3", className)}
+      className={cx(
+        "wire-palette",
+        !unstyled && "wire-palette--styled grid gap-1.5 rounded-lg bg-wire-surface p-3",
+        classNames?.root,
+        className
+      )}
       style={style}
     >
       <Eyebrow muted>Add node</Eyebrow>
@@ -55,7 +71,11 @@ export function WirePalette({ kinds = DEFAULT_KINDS, className, style }: WirePal
         <button
           key={kind}
           type="button"
-          className="flex h-9 w-full items-center gap-2 rounded-md border border-wire bg-wire-surface px-3 text-left text-[13px] font-semibold text-wire-primary transition-colors hover:border-wire-strong hover:bg-wire-sunken"
+          className={cx(
+            "wire-palette__item",
+            !unstyled && "flex h-9 w-full items-center gap-2 rounded-md border border-wire bg-wire-surface px-3 text-left text-[13px] font-semibold text-wire-primary transition-colors hover:border-wire-strong hover:bg-wire-sunken",
+            classNames?.item
+          )}
           onClick={() => {
             const id = nextNodeId(kind, diagram.nodes.map((node) => node.id));
             actions.dispatch({

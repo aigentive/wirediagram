@@ -113,7 +113,7 @@ SCOPE AND TRUST BOUNDARIES:
 Expected outcome:
 - Produce one complete canonical WireDiagram JSON object.
 - Preserve useful existing node ids, positions, sizes, labels, and manual edits unless the user asks to replace them.
-- Use only Wire schema fields. Never emit React Flow JSON, SVG, Markdown diagrams, or prose as the primary artifact.
+- Use only Wire schema fields. Never emit adapter JSON, SVG, Markdown diagrams, or prose as the primary artifact.
 - Valid tones are only default, success, warning, error, info, ai. Never use danger.
 - Prefer clear workflow-wireframe diagrams with 4-8 nodes unless the user asks for more detail.
 - Every non-group workflow node renders as a card. Use node.kind for the card category, node.title for the card header, and node.description for body copy.

@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactElement, ReactNode } from "react";
 import type { WireNode } from "@aigentive/wire-core";
 import { useWireDiagram, useWireEvents, useWireSelection } from "../hooks.js";
+import { normalizeWireSelection, sameWireSelection } from "../provider/runtimeState.js";
 import { KindChip } from "../primitives/KindChip.js";
 import { cx } from "./classes.js";
 
@@ -14,6 +15,12 @@ export interface WireNodeListProps {
   inspectOnClick?: boolean;
   selectOnClick?: boolean;
   renderItem?: (context: WireNodeListRenderContext) => ReactNode;
+  unstyled?: boolean;
+  classNames?: {
+    root?: string;
+    item?: string;
+    empty?: string;
+  };
   className?: string;
   style?: CSSProperties;
 }
@@ -23,6 +30,8 @@ export function WireNodeList({
   inspectOnClick = true,
   selectOnClick = true,
   renderItem,
+  unstyled = false,
+  classNames,
   className,
   style
 }: WireNodeListProps): ReactElement {
@@ -35,11 +44,24 @@ export function WireNodeList({
   return (
     <div
       className={cx(
-        "grid content-start gap-1 overflow-auto rounded-lg bg-wire-surface p-1.5",
+        "wire-node-list",
+        !unstyled && "wire-node-list--styled grid content-start gap-1 overflow-auto rounded-lg bg-wire-surface p-1.5",
+        classNames?.root,
         className
       )}
       style={style}
     >
+      {nodes.length === 0 ? (
+        <p
+          className={cx(
+            "wire-node-list__empty",
+            !unstyled && "px-2 py-1.5 text-[12px] text-wire-tertiary",
+            classNames?.empty
+          )}
+        >
+          No nodes
+        </p>
+      ) : null}
       {nodes.map((node) => {
         const selected = selectedNodeIds.has(node.id);
         return (
@@ -48,16 +70,20 @@ export function WireNodeList({
             type="button"
             aria-selected={selected}
             className={cx(
-              "grid w-full grid-cols-[auto_1fr] items-start gap-x-2 gap-y-0.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-wire-sunken",
-              selected ? "bg-wire-sunken" : "bg-transparent"
+              "wire-node-list__item",
+              !unstyled && "grid w-full grid-cols-[auto_1fr] items-start gap-x-2 gap-y-0.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-wire-sunken",
+              !unstyled && (selected ? "bg-wire-sunken" : "bg-transparent"),
+              classNames?.item
             )}
             onClick={() => {
               events.emit({ type: "node.click", source: "node-list", nodeId: node.id });
               if (inspectOnClick) events.emit({ type: "node.inspect", source: "node-list", nodeId: node.id });
               if (selectOnClick) {
-                const nextSelection = { nodeIds: [node.id], edgeIds: [] };
-                selectionActions.setSelection(nextSelection);
-                events.emit({ type: "selection.change", source: "node-list", selection: nextSelection });
+                const nextSelection = normalizeWireSelection({ nodeIds: [node.id], edgeIds: [] });
+                if (!sameWireSelection(selection, nextSelection)) {
+                  selectionActions.setSelection(nextSelection, { source: "node-list", previousSelection: selection, cause: "node" });
+                  events.emit({ type: "selection.change", source: "node-list", selection: nextSelection, previousSelection: selection, cause: "node" });
+                }
               }
             }}
           >

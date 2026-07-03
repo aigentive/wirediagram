@@ -22,6 +22,7 @@ export function GroupFrame({
     <div
       data-selected={selected ? "true" : undefined}
       className={cx(
+        "wire-group-frame wire-group-frame--styled",
         "relative rounded-lg border-[1.5px] bg-wire-canvas pb-[14px] pl-[14px] pr-[14px] pt-[26px]",
         selected ? "border-wire-focus" : "border-wire-strong",
         className
