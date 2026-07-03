@@ -1,14 +1,16 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { performance } from "node:perf_hooks";
-import React from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { WireCanvas, WireProvider } from "../packages/wire-react/dist/index.js";
+import { execFileSync } from "node:child_process";
+import { chromium } from "@playwright/test";
+import * as esbuild from "esbuild";
 import {
   createWireReactPerformanceFixture,
   wireReactPerformanceFixtures
 } from "../tests/performance/wire-react-fixtures.mjs";
 
 const baselinePath = "tests/performance/baselines/wire-react-current.json";
+const cacheDir = ".cache/wire-react-performance";
+const entryPath = `${cacheDir}/browser-entry.mjs`;
+const latestPath = `${cacheDir}/latest.json`;
 const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
 const fixtureConfigs = new Map(wireReactPerformanceFixtures.map((fixture) => [fixture.name, fixture]));
 const fixtures = new Map(
@@ -18,10 +20,56 @@ const fixtures = new Map(
   ])
 );
 
+validateBaselineShape(baseline);
+mkdirSync(cacheDir, { recursive: true });
+writeFileSync(entryPath, browserEntrySource());
+
+const bundle = await esbuild.build({
+  entryPoints: [entryPath],
+  bundle: true,
+  write: false,
+  platform: "browser",
+  format: "iife",
+  target: ["chrome120"],
+  define: {
+    "process.env.NODE_ENV": "\"production\""
+  }
+});
+
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1280, height: 760 } });
+const browserVersion = browser.version();
+const errors = [];
+page.on("console", (message) => {
+  if (message.type() === "error") errors.push(message.text());
+});
+page.on("pageerror", (error) => errors.push(error.message));
+
+await page.setContent(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>wire-react performance</title>
+    <style>
+      html, body, #root { width: 100%; height: 100%; margin: 0; }
+      body { overflow: hidden; font-family: ui-sans-serif, system-ui, sans-serif; }
+      #root { contain: strict; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>${escapeScript(bundle.outputFiles[0].text)}</script>
+  </body>
+</html>`);
+
+await page.waitForFunction(() => Boolean(window.__wireReactPerformance));
+await page.evaluate((serializedFixtures) => {
+  window.__wireReactPerformance.loadFixtures(serializedFixtures);
+}, Object.fromEntries(fixtures));
+
 const results = [];
 const failures = [];
-
-validateBaselineShape(baseline);
+const currentCommit = currentGitCommit();
 
 for (const entry of baseline.entries) {
   const config = fixtureConfigs.get(entry.fixture);
@@ -35,10 +83,18 @@ for (const entry of baseline.entries) {
     continue;
   }
 
-  const sampleCount = entry.sampleCount;
-  const measured = measureInteraction(fixture, entry.interaction, sampleCount);
+  const measured = await page.evaluate((browserEntry) => {
+    return window.__wireReactPerformance.measure(browserEntry);
+  }, {
+    fixture: entry.fixture,
+    interaction: entry.interaction,
+    sampleCount: entry.sampleCount
+  });
+
   const result = {
     ...entry,
+    commitSha: currentCommit,
+    browserEngine: `chromium-${browserVersion}`,
     rawSamples: measured.samples,
     measuredMedian: measured.median,
     measuredP95: measured.p95,
@@ -50,13 +106,17 @@ for (const entry of baseline.entries) {
   }
 }
 
-mkdirSync(".cache/wire-react-performance", { recursive: true });
+await browser.close();
+
 writeFileSync(
-  ".cache/wire-react-performance/latest.json",
+  latestPath,
   `${JSON.stringify({
     schemaVersion: baseline.schemaVersion,
     package: baseline.package,
     generatedAt: new Date().toISOString(),
+    ciRunner: ciRunner(),
+    browserEngine: `chromium-${browserVersion}`,
+    productionBuild: true,
     results
   }, null, 2)}\n`
 );
@@ -65,104 +125,219 @@ for (const result of results) {
   console.log(`${result.fixture}/${result.interaction}: median=${result.measuredMedian.toFixed(2)}ms p95=${result.measuredP95.toFixed(2)}ms`);
 }
 
+if (errors.length > 0) {
+  failures.push(`Browser console/page errors:\n${errors.map((error) => `- ${error}`).join("\n")}`);
+}
+
 if (failures.length > 0) {
   for (const failure of failures) console.error(failure);
   process.exit(1);
 }
 
-function measureInteraction(diagram, interaction, sampleCount) {
-  const warmups = sampleCount === 1 ? 0 : 3;
-  for (let index = 0; index < warmups; index += 1) runInteraction(diagram, interaction);
-  const samples = [];
-  for (let index = 0; index < sampleCount; index += 1) {
-    const start = performance.now();
-    runInteraction(diagram, interaction);
-    samples.push(performance.now() - start);
-  }
-  samples.sort((left, right) => left - right);
-  return {
-    samples,
-    median: percentile(samples, 0.5),
-    p95: percentile(samples, 0.95)
-  };
-}
+function browserEntrySource() {
+  return `
+import React from "react";
+import { createRoot } from "react-dom/client";
+import { WireCanvas, WireProvider } from "../../packages/wire-react/dist/index.js";
 
-function runInteraction(diagram, interaction) {
+const fixtures = new Map();
+const host = document.getElementById("root");
+let root = createRoot(host);
+let appState = null;
+
+window.__wireReactPerformance = {
+  loadFixtures(serializedFixtures) {
+    fixtures.clear();
+    for (const [name, diagram] of Object.entries(serializedFixtures)) fixtures.set(name, diagram);
+  },
+  async measure(entry) {
+    const warmups = entry.sampleCount === 1 ? 0 : 3;
+    for (let index = 0; index < warmups; index += 1) await runInteraction(entry.fixture, entry.interaction);
+    const samples = [];
+    for (let index = 0; index < entry.sampleCount; index += 1) {
+      const start = performance.now();
+      await runInteraction(entry.fixture, entry.interaction);
+      samples.push(performance.now() - start);
+    }
+    samples.sort((left, right) => left - right);
+    return {
+      samples,
+      median: percentile(samples, 0.5),
+      p95: percentile(samples, 0.95)
+    };
+  }
+};
+
+async function runInteraction(fixtureName, interaction) {
+  const diagram = fixtures.get(fixtureName);
+  if (!diagram) throw new Error("Missing browser fixture " + fixtureName);
+
   if (interaction === "initial-render") {
-    renderCanvas(diagram, { showControls: false, showMiniMap: false });
+    await mount(diagram, { showControls: false, showMiniMap: false });
+    assertCanvasReady();
     return;
   }
   if (interaction === "selection-update") {
-    renderCanvas(diagram, { showControls: false, showMiniMap: false }, {
-      selection: { nodeIds: [diagram.nodes[Math.floor(diagram.nodes.length / 2)]?.id ?? "node-0"], edgeIds: [] }
-    });
+    await mount(diagram, { showControls: false, showMiniMap: false });
+    await updateApp({ selection: { nodeIds: [middleNodeId(diagram)], edgeIds: [] } });
+    assertCanvasReady();
     return;
   }
   if (interaction === "viewport-update") {
-    renderCanvas(diagram, { showControls: false, showMiniMap: false }, {
-      viewport: { x: -640, y: -320, zoom: 0.82 }
-    });
+    await mount(diagram, { showControls: false, showMiniMap: false });
+    await updateApp({ viewport: { x: -640, y: -320, zoom: 0.82 } });
+    assertCanvasReady();
     return;
   }
   if (interaction === "minimap-on") {
-    renderCanvas(diagram, { showControls: false, showMiniMap: true });
+    await mount(diagram, { showControls: false, showMiniMap: false });
+    await updateApp({ showMiniMap: true });
+    assertElement(".wire-minimap");
     return;
   }
   if (interaction === "search-filter") {
-    filterDiagramItems(diagram, "node 4");
+    await mount(diagram, { showControls: false, showMiniMap: false });
+    const canvas = assertElement("[data-wire-canvas]");
+    canvas.focus();
+    fireKey(canvas, "/");
+    await nextFrame();
+    const input = assertElement("input[role='combobox']");
+    setInputValue(input, "node 4");
+    await nextFrame();
+    assertElement("[role='listbox']");
     return;
   }
   if (interaction === "connection-picker") {
-    connectionPickerTargets(diagram, "node");
+    await mount(diagram, { showControls: false, showMiniMap: false });
+    const firstNode = assertElement("[data-wire-node][data-wire-node-id='node-0']");
+    firstNode.focus();
+    fireKey(assertElement("[data-wire-canvas]"), "c");
+    await nextFrame();
+    const input = assertElement("input[role='combobox']");
+    setInputValue(input, "node 19");
+    await nextFrame();
+    assertElement("[role='listbox']");
+    return;
+  }
+  if (interaction === "fit-selection") {
+    await mount(diagram, {
+      showControls: true,
+      showMiniMap: false,
+      selection: { nodeIds: [middleNodeId(diagram)], edgeIds: [] }
+    });
+    click(assertElement("button[aria-label='Fit selection']"));
+    await nextFrame();
+    assertCanvasReady();
     return;
   }
   if (interaction === "fallback-render-smoke") {
-    renderCanvas(diagram, { showControls: false, showMiniMap: false });
-    filterDiagramItems(diagram, "node 19");
-    connectionPickerTargets(diagram, "node 19");
+    await mount(diagram, {
+      showControls: true,
+      showMiniMap: true,
+      selection: { nodeIds: [middleNodeId(diagram)], edgeIds: [] }
+    });
+    assertElement("[data-wire-large-diagram='true']");
+    assertElement("[data-wire-minimap-mode='large']");
+    assertElement("button[aria-label='Skip to inspector and controls']");
+    const canvas = assertElement("[data-wire-canvas]");
+    canvas.focus();
+    fireKey(canvas, "/");
+    await nextFrame();
+    setInputValue(assertElement("input[role='combobox']"), "node 19");
+    await nextFrame();
+    assertElement("[role='listbox']");
     return;
   }
-  throw new Error(`Unknown performance interaction: ${interaction}`);
+  throw new Error("Unknown performance interaction: " + interaction);
 }
 
-function renderCanvas(diagram, canvasProps = {}, providerProps = {}) {
-  return renderToStaticMarkup(
+async function mount(diagram, options = {}) {
+  appState = {
+    diagram,
+    selection: options.selection ?? { nodeIds: [], edgeIds: [] },
+    viewport: options.viewport ?? { x: 0, y: 0, zoom: 1 },
+    showControls: options.showControls ?? true,
+    showMiniMap: options.showMiniMap ?? false
+  };
+  root.render(React.createElement(PerformanceApp, { state: appState }));
+  await nextFrame();
+}
+
+async function updateApp(patch) {
+  appState = { ...appState, ...patch };
+  root.render(React.createElement(PerformanceApp, { state: appState }));
+  await nextFrame();
+}
+
+function PerformanceApp({ state }) {
+  return React.createElement(
+    "div",
+    { style: { width: "1280px", height: "760px" } },
     React.createElement(
       WireProvider,
-      { diagram, ...providerProps },
-      React.createElement(WireCanvas, { fitView: false, keyboardA11y: true, ...canvasProps })
+      {
+        diagram: state.diagram,
+        selection: state.selection,
+        viewport: state.viewport,
+        onSelectionChange: (selection) => {
+          appState = { ...appState, selection };
+        },
+        onViewportChange: (viewport) => {
+          appState = { ...appState, viewport };
+        }
+      },
+      React.createElement(WireCanvas, {
+        fitView: false,
+        keyboardA11y: true,
+        showControls: state.showControls,
+        showMiniMap: state.showMiniMap
+      })
     )
   );
 }
 
-function filterDiagramItems(diagram, query) {
-  const normalized = query.toLowerCase();
-  return [
-    ...diagram.nodes.filter((node) => `${node.title} ${node.id}`.toLowerCase().includes(normalized)),
-    ...diagram.edges.filter((edge) => `${edge.label ?? ""} ${edge.id} ${edge.from} ${edge.to}`.toLowerCase().includes(normalized))
-  ];
+function assertCanvasReady() {
+  assertElement("[data-wire-canvas]");
+  assertElement("[data-wire-node]");
 }
 
-function connectionPickerTargets(diagram, query) {
-  const normalized = query.toLowerCase();
-  const source = diagram.nodes[0];
-  if (!source) return [];
-  return diagram.nodes
-    .slice(1)
-    .map((node, index) => ({
-      id: node.id,
-      title: node.title,
-      index,
-      distance: squaredDistance(source.position ?? { x: 0, y: 0 }, node.position ?? { x: 0, y: 0 })
-    }))
-    .filter((node) => `${node.title} ${node.id}`.toLowerCase().includes(normalized))
-    .sort((left, right) => left.distance - right.distance || left.index - right.index);
+function assertElement(selector) {
+  const element = document.querySelector(selector);
+  if (!element) throw new Error("Missing element " + selector);
+  return element;
 }
 
-function squaredDistance(left, right) {
-  const dx = left.x - right.x;
-  const dy = left.y - right.y;
-  return dx * dx + dy * dy;
+function middleNodeId(diagram) {
+  return diagram.nodes[Math.floor(diagram.nodes.length / 2)]?.id ?? diagram.nodes[0]?.id ?? "node-0";
+}
+
+function fireKey(element, key) {
+  element.dispatchEvent(new KeyboardEvent("keydown", {
+    key,
+    bubbles: true,
+    cancelable: true
+  }));
+}
+
+function click(element) {
+  element.dispatchEvent(new MouseEvent("click", {
+    bubbles: true,
+    cancelable: true,
+    view: window
+  }));
+}
+
+function setInputValue(element, value) {
+  const prototype = element instanceof HTMLTextAreaElement
+    ? HTMLTextAreaElement.prototype
+    : HTMLInputElement.prototype;
+  const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
+  descriptor?.set?.call(element, value);
+  element.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+async function nextFrame() {
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
 function percentile(samples, percentileValue) {
@@ -170,11 +345,14 @@ function percentile(samples, percentileValue) {
   const index = Math.min(samples.length - 1, Math.ceil(samples.length * percentileValue) - 1);
   return samples[index];
 }
+`;
+}
 
 function validateBaselineShape(value) {
   if (value.schemaVersion !== 1) throw new Error("Unsupported wire-react performance baseline schema.");
   if (value.package !== "@aigentive/wire-react") throw new Error("Performance baseline package mismatch.");
   if (!Array.isArray(value.entries) || value.entries.length === 0) throw new Error("Performance baseline has no entries.");
+  const seen = new Set();
   for (const entry of value.entries) {
     for (const key of [
       "fixture",
@@ -194,5 +372,33 @@ function validateBaselineShape(value) {
     ]) {
       if (!(key in entry)) throw new Error(`Performance baseline entry missing ${key}.`);
     }
+    const id = `${entry.fixture}/${entry.interaction}`;
+    if (seen.has(id)) throw new Error(`Duplicate performance baseline entry ${id}.`);
+    seen.add(id);
+    if (!entry.pathOwner || typeof entry.pathOwner !== "string") throw new Error(`Invalid path owner for ${id}.`);
+    if (!entry.commitSha || typeof entry.commitSha !== "string") throw new Error(`Invalid commit SHA for ${id}.`);
+    if (!entry.ciRunner || typeof entry.ciRunner !== "string") throw new Error(`Invalid CI runner for ${id}.`);
+    if (!entry.browserEngine || typeof entry.browserEngine !== "string") throw new Error(`Invalid browser engine for ${id}.`);
+    if (!Number.isInteger(entry.sampleCount) || entry.sampleCount <= 0) throw new Error(`Invalid sample count for ${id}.`);
+    if (typeof entry.thresholdMs !== "number" || entry.thresholdMs <= 0) throw new Error(`Invalid threshold for ${id}.`);
+    if (typeof entry.largeDiagramMode !== "boolean") throw new Error(`Invalid large diagram flag for ${id}.`);
+    if (typeof entry.blocking !== "boolean") throw new Error(`Invalid blocking flag for ${id}.`);
   }
+}
+
+function currentGitCommit() {
+  try {
+    return execFileSync("git", ["rev-parse", "--short=12", "HEAD"], { encoding: "utf8" }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
+function ciRunner() {
+  if (process.env.GITHUB_ACTIONS === "true") return "github-actions";
+  return "local";
+}
+
+function escapeScript(source) {
+  return source.replaceAll("</script", "<\\/script");
 }
