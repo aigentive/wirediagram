@@ -89,7 +89,7 @@ note, group.
 
 Use node.from for ordinary connections. Use "conditionId.branch" for condition
 branches. Do not invent connectsTo, next, source, target, type, label-only
-Mermaid, or React Flow JSON as the primary contract.
+Mermaid, or adapter JSON as the primary contract.
 
 ## Cards and Visual Content
 
@@ -138,7 +138,7 @@ update_edge to patch explicit edges.
 
 Use @aigentive/wire-react. Prefer WireWorkspace for full editors and
 WireProvider + WireCanvas for custom shells. Persist the WireDiagram emitted
-from onChange. Do not store React Flow nodes as application state.
+from onChange. Do not store adapter nodes as application state.
 
 ## Cloud Path
 
@@ -214,7 +214,7 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
     ],
     avoid: [
       "Do not output Mermaid as the canonical artifact.",
-      "Do not output React Flow JSON as the canonical artifact.",
+      "Do not output adapter JSON as the canonical artifact.",
       "Do not invent node fields such as connectsTo, source, target, next, or type."
     ],
     routes: [
@@ -300,8 +300,8 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
       "Use WireToolbar, WirePalette, WireInspector, and WireValidationPanel instead of reimplementing standard controls."
     ],
     avoid: [
-      "Do not import React Flow as the app-level contract.",
-      "Do not store canvas state as React Flow nodes and edges.",
+      "Do not import a canvas adapter as the app-level contract.",
+      "Do not store canvas state as adapter nodes and edges.",
       "Do not bypass WireProvider when edit state, validation, history, or events matter."
     ],
     components: [
@@ -576,8 +576,8 @@ export const LLM_DOCS_RECIPES = {
       "<WireWorkspace diagram={diagram} onChange={(next) => setDiagram(next)} />"
     ],
     avoid: [
-      "Do not import React Flow directly for app state.",
-      "Do not persist React Flow nodes.",
+      "Do not import a canvas adapter directly for app state.",
+      "Do not persist adapter nodes.",
       "Do not invent connectsTo or next fields."
     ]
   },
