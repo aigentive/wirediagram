@@ -68,6 +68,7 @@ export interface WireCanvasProps {
   selectOnNodeClick?: boolean;
   selectOnEdgeClick?: boolean;
   inspectOnNodeClick?: boolean;
+  inspectOnEdgeClick?: boolean;
   clearSelectionOnPaneClick?: boolean;
   fitView?: boolean;
   fitViewPadding?: number;
@@ -152,6 +153,7 @@ function WireCanvasInner({
   selectOnNodeClick,
   selectOnEdgeClick,
   inspectOnNodeClick = true,
+  inspectOnEdgeClick = true,
   clearSelectionOnPaneClick,
   fitView = true,
   fitViewPadding = 0.08,
@@ -758,11 +760,11 @@ function WireCanvasInner({
   const handleEdgeClick = useCallback(
     (event: ReactMouseEvent, edgeId: string) => {
       event.stopPropagation();
-      ctx.eventActions.emit({ type: "edge.click", source: "canvas", edgeId });
+      ctx.eventActions.emit({ type: "edge.click", source: "canvas", edgeId, intent: inspectOnEdgeClick ? "inspect" : "select" });
       if (!interaction.selectOnEdgeClick) return;
       setWireSelection({ nodeIds: [], edgeIds: [edgeId] }, "canvas", "edge");
     },
-    [ctx.eventActions, interaction.selectOnEdgeClick, setWireSelection]
+    [ctx.eventActions, inspectOnEdgeClick, interaction.selectOnEdgeClick, setWireSelection]
   );
 
   const selectedNodeIds = new Set(ctx.selection.nodeIds);

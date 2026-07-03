@@ -4,6 +4,7 @@ import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyWireAction, emptyDiagram, validate, type ApplyWireActionResult, type ValidationResult, type WireAction, type WireDiagram } from "@aigentive/wire-core";
+import { WireCanvas } from "../canvas/WireCanvas.js";
 import { WireContext, DEFAULT_VIEWPORT, EMPTY_SELECTION, type WireContextValue } from "../provider/context.js";
 import type { WireEvent, WireSelection } from "../provider/types.js";
 import { WireInspector } from "./WireInspector.js";
@@ -77,6 +78,25 @@ describe("wire component interactions", () => {
     expect(selections).toEqual([{ nodeIds: ["start"], edgeIds: [] }]);
     expect(events.map((event) => event.type)).toEqual(["node.click", "node.inspect", "selection.change"]);
     expect(events[0]).toMatchObject({ source: "node-list", nodeId: "start" });
+  });
+
+  it("emits edge inspection intent from canvas edge clicks", () => {
+    const events: WireEvent[] = [];
+    const selections: WireSelection[] = [];
+    const { container } = renderWithContext(
+      <WireCanvas fitView={false} showControls={false} showMiniMap={false} />,
+      contextFor(edgeDiagram(), {
+        setSelection: (selection) => selections.push(selection),
+        emit: (event) => events.push(event)
+      })
+    );
+
+    const hitPath = container.querySelector<SVGPathElement>("[data-wire-edge-id='approval'] path[stroke='transparent']");
+    if (!hitPath) throw new Error("Edge hit path not found.");
+    click(hitPath);
+
+    expect(events).toContainEqual({ type: "edge.click", source: "canvas", edgeId: "approval", intent: "inspect" });
+    expect(selections).toEqual([{ nodeIds: [], edgeIds: ["approval"] }]);
   });
 
   it("dispatches option patches for text, textarea, number, boolean, and select fields", () => {

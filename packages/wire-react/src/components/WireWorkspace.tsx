@@ -7,9 +7,8 @@ import type { WireChangeEvent, WireEvent, WireEventSource, WireMode, WireSelecti
 import type { WireOptionCatalog } from "../options.js";
 import { cx } from "./classes.js";
 import { WireGroupFrame, WireNodeCardView } from "./WireNodeCardView.js";
+import { WireInspector, type WireInspectorProps } from "./WireInspector.js";
 import { WireNodeList } from "./WireNodeList.js";
-import { WireOptionPanel } from "./WireOptionPanel.js";
-import { WireValidationPanel } from "./WireValidationPanel.js";
 
 export interface WireWorkspaceProps {
   diagram?: WireDiagram;
@@ -48,9 +47,13 @@ export interface WireWorkspaceProps {
     cause?: "edit" | "undo" | "redo" | "reset" | "api";
   }) => void;
   optionCatalog?: WireOptionCatalog;
+  readOnly?: boolean;
   inspectNodeId?: string;
   defaultInspectNodeId?: string;
   onInspectNodeChange?: (nodeId: string | undefined, event: WireEvent) => void;
+  inspectEdgeId?: string;
+  defaultInspectEdgeId?: string;
+  onInspectEdgeChange?: (edgeId: string | undefined, event: WireEvent) => void;
   clearInspectOnPaneClick?: boolean;
   title?: ReactNode;
   subtitle?: ReactNode;
@@ -63,6 +66,7 @@ export interface WireWorkspaceProps {
   renderNodeCard?: WireNodeRenderer;
   renderGroup?: WireNodeRenderer;
   canvasProps?: Omit<WireCanvasProps, "mode" | "optionCatalog" | "renderNodeCard" | "renderGroup">;
+  inspectorProps?: Omit<WireInspectorProps, "nodeId" | "edgeId" | "optionCatalog">;
   className?: string;
   sidebarClassName?: string;
   canvasClassName?: string;
@@ -91,9 +95,13 @@ export function WireWorkspace({
   defaultDirty,
   onDirtyChange,
   optionCatalog,
+  readOnly = false,
   inspectNodeId,
   defaultInspectNodeId,
   onInspectNodeChange,
+  inspectEdgeId,
+  defaultInspectEdgeId,
+  onInspectEdgeChange,
   clearInspectOnPaneClick = false,
   title = "Wire",
   subtitle,
@@ -106,6 +114,7 @@ export function WireWorkspace({
   renderNodeCard = WireNodeCardView,
   renderGroup = WireGroupFrame,
   canvasProps,
+  inspectorProps,
   className,
   sidebarClassName,
   canvasClassName,
@@ -113,27 +122,51 @@ export function WireWorkspace({
   style
 }: WireWorkspaceProps): ReactElement {
   const [internalInspectNodeId, setInternalInspectNodeId] = useState<string | undefined>(defaultInspectNodeId);
+  const [internalInspectEdgeId, setInternalInspectEdgeId] = useState<string | undefined>(defaultInspectEdgeId);
   const activeInspectNodeId = inspectNodeId ?? internalInspectNodeId;
+  const activeInspectEdgeId = activeInspectNodeId ? undefined : inspectEdgeId ?? internalInspectEdgeId;
 
-  const setInspectNode = useCallback(
+  const setInspectTarget = useCallback(
     (nodeId: string | undefined, event: WireEvent) => {
+      const edgeId = undefined;
       if (inspectNodeId === undefined) setInternalInspectNodeId(nodeId);
+      if (inspectEdgeId === undefined) setInternalInspectEdgeId(edgeId);
       onInspectNodeChange?.(nodeId, event);
+      onInspectEdgeChange?.(edgeId, event);
     },
-    [inspectNodeId, onInspectNodeChange]
+    [inspectEdgeId, inspectNodeId, onInspectEdgeChange, onInspectNodeChange]
+  );
+
+  const setInspectEdge = useCallback(
+    (edgeId: string | undefined, event: WireEvent) => {
+      const nodeId = undefined;
+      if (inspectNodeId === undefined) setInternalInspectNodeId(nodeId);
+      if (inspectEdgeId === undefined) setInternalInspectEdgeId(edgeId);
+      onInspectNodeChange?.(nodeId, event);
+      onInspectEdgeChange?.(edgeId, event);
+    },
+    [inspectEdgeId, inspectNodeId, onInspectEdgeChange, onInspectNodeChange]
   );
 
   const handleEvent = useCallback(
     (event: WireEvent) => {
       if (event.type === "node.inspect") {
-        setInspectNode(event.nodeId, event);
+        setInspectTarget(event.nodeId, event);
+      } else if (event.type === "edge.click" && event.intent === "inspect") {
+        setInspectEdge(event.edgeId, event);
       } else if (event.type === "pane.click" && clearInspectOnPaneClick) {
-        setInspectNode(undefined, event);
+        setInspectTarget(undefined, event);
       }
       onEvent?.(event);
     },
-    [clearInspectOnPaneClick, onEvent, setInspectNode]
+    [clearInspectOnPaneClick, onEvent, setInspectEdge, setInspectTarget]
   );
+
+  const inspectorTabs: WireInspectorProps["tabs"] = [
+    ...(showOptions ? (optionCatalog ? ["configure" as const, "style" as const] : ["style" as const]) : []),
+    ...(showOptions ? ["edge" as const, "json" as const] : []),
+    ...(showValidation ? ["validation" as const] : [])
+  ];
 
   return (
     <WireProvider
@@ -188,12 +221,17 @@ export function WireWorkspace({
         </section>
 
         <aside className={cx("wire-workspace__inspector grid content-start gap-3 lg:p-4", inspectorClassName)}>
-          {inspector ?? (
-            <>
-              {showOptions && optionCatalog ? <WireOptionPanel catalog={optionCatalog} nodeId={activeInspectNodeId} /> : null}
-              {showValidation ? <WireValidationPanel /> : null}
-            </>
-          )}
+          {inspector ?? (inspectorTabs.length > 0 ? (
+            <WireInspector
+              {...inspectorProps}
+              nodeId={activeInspectNodeId}
+              edgeId={activeInspectEdgeId}
+              optionCatalog={optionCatalog}
+              readOnly={readOnly || inspectorProps?.readOnly}
+              tabs={inspectorProps?.tabs ?? inspectorTabs}
+              className={cx(inspectorProps?.className)}
+            />
+          ) : null)}
         </aside>
       </main>
     </WireProvider>

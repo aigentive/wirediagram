@@ -87,6 +87,18 @@ describe("wire component rendering surfaces", () => {
     expect(minimalMarkup).toContain("data-wire-canvas=\"true\"");
     expect(minimalMarkup).not.toContain("Owner");
     expect(minimalMarkup).not.toContain("Validation");
+
+    const edgeMarkup = renderToStaticMarkup(
+      <WireWorkspace
+        diagram={sampleDiagram()}
+        defaultInspectEdgeId="code-review"
+        canvasProps={{ fitView: false, showMiniMap: false, showControls: false }}
+      />
+    );
+    expect(edgeMarkup).toContain("Edge");
+    expect(edgeMarkup).toContain("Label");
+    expect(edgeMarkup).toContain("code");
+    expect(edgeMarkup).toContain("review");
   });
 
   it("renders inspector empty, preset, and custom appearance states", () => {
