@@ -72,6 +72,8 @@ jobs:
       - if: steps.release.outputs.should_release == 'true'
         run: npm ci
       - if: steps.release.outputs.should_release == 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.release.outputs.should_release == 'true'
         run: npm run release:wire-react:dry-run
 
       - name: Pack workspace packages
