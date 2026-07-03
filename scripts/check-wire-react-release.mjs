@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { parseWireDiagram, validate } from "../packages/wire-core/dist/index.js";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const command = process.argv[2];
@@ -139,7 +138,8 @@ function checkDocsSnippets() {
   assertNoVersionedOptionNames(installDocs, "install docs");
 }
 
-function checkPersistence() {
+async function checkPersistence() {
+  const { parseWireDiagram, validate } = await wireCoreApi();
   const fixtureDir = resolve(rootDir, "tests/fixtures/wire-diagrams-historical");
   if (!existsSync(fixtureDir)) throw new Error("Missing historical wire diagram fixtures.");
   for (const file of readdirSync(fixtureDir)) {
@@ -340,6 +340,10 @@ function rootPackage() {
 
 function wireReactPackage() {
   return readJson("packages/wire-react/package.json");
+}
+
+async function wireCoreApi() {
+  return import("../packages/wire-core/dist/index.js");
 }
 
 function relative(path) {
