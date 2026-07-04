@@ -144,7 +144,7 @@ function checkDocsAgentSkill() {
   const serverSource = readFileSync(resolve(rootDir, "packages/wire-mcp/src/server.ts"), "utf8");
   const skill = readFileSync(resolve(rootDir, "docs/llm/SKILL.md"), "utf8");
   const llmReadme = readFileSync(resolve(rootDir, "docs/llm/README.md"), "utf8");
-  const manifest = readJson("examples/manifest.json");
+  const manifest = readJson("docs/examples/manifest.json");
 
   for (const expected of [
     "WireDiagram",
@@ -219,7 +219,7 @@ function checkDocsAgentSkill() {
     if (!docsShape.includes(`code: "${code}"`)) throw new Error(`docs shape missing validation code ${code}.`);
   }
 
-  if (!Array.isArray(manifest) || manifest.length < 12) throw new Error("examples/manifest.json must contain documented examples.");
+  if (!Array.isArray(manifest) || manifest.length < 12) throw new Error("docs/examples/manifest.json must contain documented examples.");
   const seenIds = new Set();
   for (const entry of manifest) {
     if (!entry.id || seenIds.has(entry.id)) throw new Error(`Invalid or duplicate examples manifest id ${entry.id}.`);
