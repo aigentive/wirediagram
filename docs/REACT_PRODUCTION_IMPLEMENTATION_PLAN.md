@@ -1,5 +1,11 @@
 # React Production Implementation Plan
 
+> Status: archived implementation planning. Do not use this file as the
+> current public API reference. Current implemented behavior lives in
+> [REACT_COMPONENTS.md](REACT_COMPONENTS.md),
+> [REACT_EDITOR_ARCHITECTURE.md](REACT_EDITOR_ARCHITECTURE.md), and
+> [WIRE_OPTIONS_CATALOG_SPEC.md](WIRE_OPTIONS_CATALOG_SPEC.md).
+
 ## Executive Summary
 
 This plan hardens the existing `@aigentive/wire-react` package in place. The
