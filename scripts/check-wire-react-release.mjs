@@ -13,6 +13,7 @@ const commands = {
   "api-compat": checkApiCompat,
   "docs-links": checkDocsLinks,
   "docs-snippets": checkDocsSnippets,
+  "docs-agent-skill": checkDocsAgentSkill,
   "persistence": checkPersistence,
   "release-notes": checkReleaseNotes,
   "semver": checkSemver,
@@ -138,6 +139,107 @@ function checkDocsSnippets() {
   assertNoVersionedOptionNames(installDocs, "install docs");
 }
 
+function checkDocsAgentSkill() {
+  const docsShape = readFileSync(resolve(rootDir, "packages/wire-mcp/src/docs-shape.ts"), "utf8");
+  const serverSource = readFileSync(resolve(rootDir, "packages/wire-mcp/src/server.ts"), "utf8");
+  const skill = readFileSync(resolve(rootDir, "docs/llm/SKILL.md"), "utf8");
+  const llmReadme = readFileSync(resolve(rootDir, "docs/llm/README.md"), "utf8");
+  const manifest = readJson("examples/manifest.json");
+
+  for (const expected of [
+    "WireDiagram",
+    "WireAction",
+    "@aigentive/wire-react/styles.css",
+    "WireProvider",
+    "WireCanvas",
+    "WireWorkspace",
+    "WireInspector",
+    "WireOptionSpec",
+    "WireOptionCatalog",
+    "WireOptionPanel",
+    "WireEditor",
+    "WireViewer",
+    "colorMode",
+    "unstyled",
+    "classNames",
+    "Tailwind"
+  ]) {
+    if (!skill.includes(expected)) throw new Error(`SKILL.md missing ${expected}.`);
+  }
+
+  const requiredTopics = ["agent", "mcp", "cli", "react", "cloud", "schema", "validation", "examples", "recipes", "skill"];
+  for (const topic of requiredTopics) {
+    if (!docsShape.includes(`| "${topic}"`)) throw new Error(`docs shape missing WireDocsTopic ${topic}.`);
+  }
+  if (!serverSource.includes("agent, mcp, cli, react, cloud, schema, validation, examples, recipes, skill")) {
+    throw new Error("MCP docs shape input description missing cli/skill topics.");
+  }
+
+  const requiredRoutes = [
+    "/llm/wire-docs.shape.json",
+    "/llm/agent-guide.md",
+    "/llm/mcp.shape.json",
+    "/llm/cli.shape.json",
+    "/llm/react.shape.json",
+    "/llm/cloud.shape.json",
+    "/llm/validation.shape.json",
+    "/llm/skill.shape.json",
+    "/llm/schema/wire-diagram.json"
+  ];
+  for (const route of requiredRoutes) {
+    if (!docsShape.includes(route)) throw new Error(`docs shape missing route ${route}.`);
+    if (!llmReadme.includes(route)) throw new Error(`LLM README missing route ${route}.`);
+    const routeFile = routeToAppFile(route);
+    if (routeFile && !existsSync(resolve(rootDir, routeFile))) {
+      throw new Error(`Missing app LLM route file for ${route}: ${routeFile}.`);
+    }
+  }
+
+  const requiredRecipes = [
+    "create-wire-diagram",
+    "edit-with-wire-actions",
+    "validate-and-repair",
+    "render-for-review",
+    "style-cards-and-edges",
+    "branch-condition-flow",
+    "group-nodes",
+    "embed-react-viewer"
+  ];
+  for (const id of requiredRecipes) {
+    if (!docsShape.includes(`"${id}"`)) throw new Error(`docs shape missing recipe ${id}.`);
+    if (!skill.includes(id.replaceAll("-", " ").split(" ").map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ").split(" ")[0]) && id !== "embed-react-viewer") {
+      throw new Error(`SKILL.md may not cover recipe ${id}.`);
+    }
+    if (!llmReadme.includes(`/llm/recipes/${id}.json`)) throw new Error(`LLM README missing recipe route ${id}.`);
+  }
+
+  const validationSource = readFileSync(resolve(rootDir, "packages/wire-core/src/validate.ts"), "utf8");
+  const validationCodes = [...new Set([...validationSource.matchAll(/code:\s*"([^"]+)"/g)].map((match) => match[1]))].sort();
+  for (const code of validationCodes) {
+    if (!docsShape.includes(`code: "${code}"`)) throw new Error(`docs shape missing validation code ${code}.`);
+  }
+
+  if (!Array.isArray(manifest) || manifest.length < 12) throw new Error("examples/manifest.json must contain documented examples.");
+  const seenIds = new Set();
+  for (const entry of manifest) {
+    if (!entry.id || seenIds.has(entry.id)) throw new Error(`Invalid or duplicate examples manifest id ${entry.id}.`);
+    seenIds.add(entry.id);
+    if (!entry.file || !existsSync(resolve(rootDir, entry.file))) throw new Error(`Manifest entry ${entry.id} missing file ${entry.file}.`);
+    if (!entry.route?.startsWith("/docs/examples")) throw new Error(`Manifest entry ${entry.id} route must be under /docs/examples.`);
+    if (!Array.isArray(entry.apis) || entry.apis.length === 0) throw new Error(`Manifest entry ${entry.id} must list APIs.`);
+    if (!Array.isArray(entry.renderModes) || entry.renderModes.length === 0) throw new Error(`Manifest entry ${entry.id} must list render modes.`);
+  }
+  for (const requiredId of ["package-css", "custom-shell", "options", "controlled-state", "edge-inspection"]) {
+    if (!seenIds.has(requiredId)) throw new Error(`examples manifest missing ${requiredId}.`);
+  }
+
+  assertNoVersionedPublicApiNames(skill, "SKILL.md");
+  assertNoVersionedPublicApiNames(docsShape, "LLM docs shape");
+  assertNoExternalHostNames(skill, "SKILL.md");
+  assertNoExternalHostNames(docsShape, "LLM docs shape");
+  assertNoExternalHostNames(llmReadme, "LLM README");
+}
+
 async function checkPersistence() {
   const { parseWireDiagram, validate } = await wireCoreApi();
   const fixtureDir = resolve(rootDir, "tests/fixtures/wire-diagrams-historical");
@@ -232,6 +334,7 @@ async function checkReleaseDryRun() {
     ["npm", ["run", "test:docs-source-names"]],
     ["npm", ["run", "test:docs-links"]],
     ["npm", ["run", "test:docs-snippets"]],
+    ["npm", ["run", "test:docs-agent-skill"]],
     ["npm", ["run", "build:playground"]],
     ["npm", ["run", "test:persistence"]],
     ["npm", ["run", "test:performance"]],
@@ -296,6 +399,44 @@ function assertNoVersionedNames(source, label) {
 function assertNoVersionedOptionNames(source, label) {
   const forbidden = /\bWireOption(?:Catalog|Spec)?(?:V2|Next|Pro)\b/;
   if (forbidden.test(source)) throw new Error(`${label} includes forbidden versioned option/catalog naming.`);
+}
+
+function assertNoVersionedPublicApiNames(source, label) {
+  const publicApi = [
+    "WireProvider",
+    "WireCanvas",
+    "WireWorkspace",
+    "WireInspector",
+    "WireOptionSpec",
+    "WireOptionCatalog",
+    "WireOptionPanel",
+    "WireEditor",
+    "WireViewer",
+    "WireDiagram",
+    "WireAction"
+  ].join("|");
+  const forbidden = new RegExp(`\\b(?:${publicApi})(?:V2|Next|Pro)\\b|@aigentive\\/wire(?:-react)?(?:-v2|-next|-pro)\\b`, "i");
+  if (forbidden.test(source)) throw new Error(`${label} includes forbidden versioned public API naming.`);
+}
+
+function assertNoExternalHostNames(source, label) {
+  const forbidden = /\b(Claude|Cursor)\b/i;
+  if (forbidden.test(source)) throw new Error(`${label} includes external MCP host names.`);
+}
+
+function routeToAppFile(route) {
+  const routeMap = {
+    "/llm/wire-docs.shape.json": "apps/playground/app/llm/wire-docs.shape.json/route.ts",
+    "/llm/agent-guide.md": "apps/playground/app/llm/agent-guide.md/route.ts",
+    "/llm/mcp.shape.json": "apps/playground/app/llm/mcp.shape.json/route.ts",
+    "/llm/cli.shape.json": "apps/playground/app/llm/cli.shape.json/route.ts",
+    "/llm/react.shape.json": "apps/playground/app/llm/react.shape.json/route.ts",
+    "/llm/cloud.shape.json": "apps/playground/app/llm/cloud.shape.json/route.ts",
+    "/llm/validation.shape.json": "apps/playground/app/llm/validation.shape.json/route.ts",
+    "/llm/skill.shape.json": "apps/playground/app/llm/skill.shape.json/route.ts",
+    "/llm/schema/wire-diagram.json": "apps/playground/app/llm/schema/wire-diagram.json/route.ts"
+  };
+  return routeMap[route];
 }
 
 function markdownFiles(dir) {

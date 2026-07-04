@@ -43,7 +43,7 @@ export const optionCatalog: WireOptionCatalog = {
       label: "Model",
       storage: "node",
       type: "select",
-      options: ["gpt-5.4-mini", "gpt-4.1-mini", "o4-mini"]
+      options: ["fast-model", "balanced-model", "compact-model"]
     },
     {
       key: "temperature",

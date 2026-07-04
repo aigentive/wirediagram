@@ -69,7 +69,7 @@ npx -y @aigentive/wire-mcp@latest --http
 ```bash
 npm install -g @aigentive/wire-cli
 wire init my-flow --template=approval-flow
-wire add ai --diagram=my-flow --title="Classify" --from=incoming --model=gpt-5.4-mini
+wire add ai --diagram=my-flow --title="Classify" --from=incoming --model=fast-model
 wire validate my-flow
 wire export my-flow --format=svg --out=my-flow.svg
 wire ls
@@ -136,7 +136,7 @@ import {
 
 const options: WireOptionCatalog = {
   ai: [
-    { key: "model", storage: "node", type: "select", options: ["gpt-4.1", "gpt-4.1-mini"] },
+    { key: "model", storage: "node", type: "select", options: ["careful-model", "balanced-model"] },
     { key: "temperature", type: "number", min: 0, max: 2, step: 0.1 }
   ]
 };
@@ -172,7 +172,7 @@ export function Example() {
   return (
     <Flow layout="LR">
       <TriggerNode id="webhook" title="Webhook fires" />
-      <AINode id="classify" title="Classify intent" from="webhook" model="gpt-4.1" />
+      <AINode id="classify" title="Classify intent" from="webhook" model="careful-model" />
       <ConditionNode id="route" title="Route request" from="classify" branches={["sales", "support", "other"]} />
       <ActionNode id="notify-sales" title="Notify sales" from="route.sales" tone="success" />
       <ActionNode id="open-ticket" title="Open ticket" from="route.support" tone="warning" />

@@ -32,7 +32,7 @@ export function Example() {
   return (
     <Flow layout="LR">
       <TriggerNode id="webhook" title="Webhook fires" />
-      <AINode id="classify" title="Classify intent" from="webhook" model="gpt-4.1" />
+      <AINode id="classify" title="Classify intent" from="webhook" model="careful-model" />
       <ConditionNode
         id="route"
         title="Route request"
@@ -99,7 +99,7 @@ export function MyDiagram() {
   const diagram = useCompiledWireDiagram(
     <Flow layout="LR">
       <TriggerNode id="t" title="Tick" />
-      <AINode id="plan" title="Plan" from="t" model="gpt-4.1" />
+      <AINode id="plan" title="Plan" from="t" model="careful-model" />
     </Flow>
   );
   return (
@@ -128,7 +128,7 @@ import "@aigentive/wire-react/styles.css";
 
 const options: WireOptionCatalog = {
   ai: [
-    { key: "model", storage: "node", type: "select", options: ["gpt-4.1", "gpt-4.1-mini"] },
+    { key: "model", storage: "node", type: "select", options: ["careful-model", "balanced-model"] },
     { key: "temperature", type: "number", min: 0, max: 2, step: 0.1 }
   ]
 };

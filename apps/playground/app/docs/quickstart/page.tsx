@@ -27,7 +27,7 @@ const QUICKSTART_DIAGRAM: WireDiagram = {
   layout: "LR",
   nodes: [
     { id: "in", kind: "trigger", title: "Webhook", data: { options: { event: "ticket.created" } } },
-    { id: "ai", kind: "ai", title: "Plan answer", from: "in", model: "gpt-5.4-mini", data: { options: { mode: "plan", temperature: 0.3 } } },
+    { id: "ai", kind: "ai", title: "Plan answer", from: "in", model: "fast-model", data: { options: { mode: "plan", temperature: 0.3 } } },
     { id: "out", kind: "action", title: "Send reply", from: "ai", tone: "success", data: { options: { channel: "email" } } }
   ],
   edges: []
@@ -35,7 +35,7 @@ const QUICKSTART_DIAGRAM: WireDiagram = {
 
 const QUICKSTART_OPTIONS: WireOptionCatalog = {
   ai: [
-    { key: "model", storage: "node", type: "select", options: ["gpt-5.4-mini", "gpt-4.1-mini", "o4-mini"] },
+    { key: "model", storage: "node", type: "select", options: ["fast-model", "balanced-model", "compact-model"] },
     { key: "temperature", type: "number", min: 0, max: 2, step: 0.1 }
   ],
   action: [
@@ -58,7 +58,7 @@ const diagram: WireDiagram = {
   layout: "LR",
   nodes: [
     { id: "in",  kind: "trigger", title: "Webhook" },
-    { id: "ai",  kind: "ai",      title: "Plan answer", from: "in", model: "gpt-5.4-mini" },
+    { id: "ai",  kind: "ai",      title: "Plan answer", from: "in", model: "fast-model" },
     { id: "out", kind: "action",  title: "Send reply",  from: "ai", tone: "success" }
   ],
   edges: []
@@ -95,7 +95,7 @@ import {
 const options: WireOptionCatalog = {
   ai: [
     { key: "model", storage: "node", type: "select",
-      options: ["gpt-5.4-mini", "gpt-4.1-mini", "o4-mini"] },
+      options: ["fast-model", "balanced-model", "compact-model"] },
     { key: "temperature", type: "number", min: 0, max: 2, step: 0.1 }
   ],
   action: [
@@ -163,7 +163,7 @@ export function AgentDiagram() {
   return (
     <Flow layout="LR">
       <TriggerNode id="in"  title="Webhook" />
-      <AINode      id="ai"  title="Plan answer" from="in"  model="gpt-5.4-mini" />
+      <AINode      id="ai"  title="Plan answer" from="in"  model="fast-model" />
       <ActionNode  id="out" title="Send reply"  from="ai"  tone="success" />
     </Flow>
   );
@@ -295,7 +295,7 @@ export function CompileOnly({ onSave }: { onSave: (d: WireDiagram) => void }) {
   return (
     <Flow mode="json" onCompile={onSave}>
       <TriggerNode id="in"  title="Webhook" />
-      <AINode      id="ai"  title="Plan answer" from="in"  model="gpt-5.4-mini" />
+      <AINode      id="ai"  title="Plan answer" from="in"  model="fast-model" />
       <ActionNode  id="out" title="Send reply"  from="ai"  tone="success" />
     </Flow>
   );
@@ -398,7 +398,7 @@ function JsxFlowPreview() {
     <div className="grid h-full place-items-center overflow-auto p-3 [&_svg]:max-h-full [&_svg]:max-w-full">
       <Flow layout="LR">
         <TriggerNode id="in" title="Webhook" />
-        <AINode id="ai" title="Plan answer" from="in" model="gpt-5.4-mini" />
+        <AINode id="ai" title="Plan answer" from="in" model="fast-model" />
         <ActionNode id="out" title="Send reply" from="ai" tone="success" />
       </Flow>
     </div>

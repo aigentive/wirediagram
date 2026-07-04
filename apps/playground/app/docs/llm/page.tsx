@@ -11,10 +11,23 @@ const CORE_ROUTES = LLM_DOCS_ROUTES.filter((route) =>
   route.path === "/llm/agent-guide.md" ||
   route.path === "/llm/schema/wire-diagram.json" ||
   route.path === "/llm/mcp.shape.json" ||
+  route.path === "/llm/cli.shape.json" ||
   route.path === "/llm/react.shape.json" ||
   route.path === "/llm/cloud.shape.json" ||
-  route.path === "/llm/validation.shape.json"
+  route.path === "/llm/validation.shape.json" ||
+  route.path === "/llm/skill.shape.json"
 );
+
+const RECIPE_IDS = [
+  "create-wire-diagram",
+  "edit-with-wire-actions",
+  "validate-and-repair",
+  "render-for-review",
+  "style-cards-and-edges",
+  "branch-condition-flow",
+  "group-nodes",
+  "embed-react-viewer"
+];
 
 export default function LlmDocsPage() {
   return (
@@ -28,6 +41,12 @@ export default function LlmDocsPage() {
       <Callout title="Primary contract" tone="tip">
         Agents should start at <InlineCode>/llm/wire-docs.shape.json</InlineCode> or call{" "}
         <InlineCode>v1_get_docs_shape</InlineCode> through MCP. Human pages are secondary mirrors.
+      </Callout>
+
+      <Callout title="Repository skill" tone="info">
+        Agents working in this repo should read <InlineCode>docs/llm/SKILL.md</InlineCode> before editing
+        Wire JSON. The skill keeps the fast create, edit, validate, render, style, branch, group, and embed
+        workflows in one prompt-ready file.
       </Callout>
 
       <Prose>
@@ -82,11 +101,31 @@ export default function LlmDocsPage() {
       </CodeBlock>
 
       <Prose>
+        <h2 id="recipes">Fast-start recipes</h2>
+        <p>
+          Recipes are small JSON task plans. Use them when the agent already knows the task type and needs the shortest
+          path through the implemented APIs.
+        </p>
+      </Prose>
+      <div className="not-prose grid gap-2 sm:grid-cols-2">
+        {RECIPE_IDS.map((id) => (
+          <a
+            key={id}
+            href={`/llm/recipes/${id}.json`}
+            className="rounded-lg border border-slate-200 bg-white px-4 py-3 font-mono text-[12px] font-bold text-slate-900 no-underline hover:border-blue-300 hover:text-blue-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-700 dark:hover:text-blue-300"
+          >
+            /llm/recipes/{id}.json
+          </a>
+        ))}
+      </div>
+
+      <Prose>
         <h2 id="rules">Agent rules</h2>
         <ul>
           <li>Use <InlineCode>WireDiagram</InlineCode> JSON as the source of truth.</li>
+          <li>Use <InlineCode>WireAction</InlineCode> batches or <InlineCode>apply_actions</InlineCode> for coherent edits.</li>
           <li>Use <InlineCode>@aigentive/wire-react</InlineCode> for React UI.</li>
-          <li>Use <InlineCode>apply_actions</InlineCode> for coherent MCP edits.</li>
+          <li>Use <InlineCode>@aigentive/wire-cli</InlineCode> for local validate/export workflows.</li>
           <li>Run <InlineCode>validate</InlineCode> before rendering or sharing.</li>
           <li>Use Mermaid, SVG, and PNG as exports, not primary state.</li>
         </ul>

@@ -3,16 +3,18 @@ import type { WireDiagram } from "@aigentive/wire-core";
 export type WireDocsTopic =
   | "agent"
   | "mcp"
+  | "cli"
   | "react"
   | "cloud"
   | "schema"
   | "validation"
   | "examples"
-  | "recipes";
+  | "recipes"
+  | "skill";
 
 export interface WireDocsShape {
   id: string;
-  kind: "guide" | "tooling" | "library" | "contract" | "example-index" | "recipe-index";
+  kind: "guide" | "tooling" | "library" | "contract" | "example-index" | "recipe-index" | "skill";
   summary: string;
   useWhen: string[];
   doNotUseWhen?: string[];
@@ -25,24 +27,35 @@ export interface WireDocsShape {
   validationRules?: Array<{ code: string; severity: "error" | "warning"; repair: string }>;
   examples?: string[];
   recipes?: string[];
+  files?: string[];
   related?: string[];
 }
 
 export const WIRE_DOCS_VERSION = 1;
-export const WIRE_DOCS_UPDATED_AT = "2026-07-02T00:00:00.000Z";
+export const WIRE_DOCS_UPDATED_AT = "2026-07-04T00:00:00.000Z";
 
 export const LLM_DOCS_ROUTES = [
   { path: "/llm/wire-docs.shape.json", mediaType: "application/json", purpose: "Root machine-readable docs manifest." },
   { path: "/llm/agent-guide.md", mediaType: "text/markdown", purpose: "Prompt-ready operating guide for coding agents." },
   { path: "/llm/mcp.shape.json", mediaType: "application/json", purpose: "MCP tools, resources, and operating sequences." },
+  { path: "/llm/cli.shape.json", mediaType: "application/json", purpose: "CLI commands, storage rules, validation, and export workflows." },
   { path: "/llm/react.shape.json", mediaType: "application/json", purpose: "React library build surface and component contracts." },
   { path: "/llm/cloud.shape.json", mediaType: "application/json", purpose: "Wire Cloud auth, API key, share URL, and sync contracts." },
   { path: "/llm/schema/wire-diagram.json", mediaType: "application/schema+json", purpose: "Canonical WireDiagram JSON Schema." },
   { path: "/llm/validation.shape.json", mediaType: "application/json", purpose: "Validation issue codes and repair hints." },
+  { path: "/llm/skill.shape.json", mediaType: "application/json", purpose: "SKILL.md location, recipes, and guardrails for agent workflows." },
   { path: "/llm/examples/support-triage.wire.json", mediaType: "application/json", purpose: "Validated support triage diagram." },
   { path: "/llm/examples/approval-flow.wire.json", mediaType: "application/json", purpose: "Validated approval workflow diagram." },
   { path: "/llm/examples/rag-pipeline.wire.json", mediaType: "application/json", purpose: "Validated RAG pipeline diagram." },
   { path: "/llm/examples/mcp-tool-call-flow.wire.json", mediaType: "application/json", purpose: "Validated MCP tool-call loop diagram." },
+  { path: "/llm/recipes/create-wire-diagram.json", mediaType: "application/json", purpose: "Recipe for creating canonical WireDiagram JSON." },
+  { path: "/llm/recipes/edit-with-wire-actions.json", mediaType: "application/json", purpose: "Recipe for editing diagrams with WireAction batches or MCP apply_actions." },
+  { path: "/llm/recipes/validate-and-repair.json", mediaType: "application/json", purpose: "Recipe for validating and repairing generated Wire JSON." },
+  { path: "/llm/recipes/render-for-review.json", mediaType: "application/json", purpose: "Recipe for preview, SVG, PNG, JSON, and Mermaid export flows." },
+  { path: "/llm/recipes/style-cards-and-edges.json", mediaType: "application/json", purpose: "Recipe for persisted node and edge styling." },
+  { path: "/llm/recipes/branch-condition-flow.json", mediaType: "application/json", purpose: "Recipe for condition branches and branch targets." },
+  { path: "/llm/recipes/group-nodes.json", mediaType: "application/json", purpose: "Recipe for group nodes and group membership." },
+  { path: "/llm/recipes/embed-react-viewer.json", mediaType: "application/json", purpose: "Recipe for embedding WireViewer, WireEditor, or WireWorkspace in React." },
   { path: "/llm/recipes/build-react-workspace.json", mediaType: "application/json", purpose: "Recipe for building with @aigentive/wire-react." },
   { path: "/llm/recipes/connect-local-mcp.json", mediaType: "application/json", purpose: "Recipe for connecting local MCP clients to Wire Cloud." },
   { path: "/llm/recipes/repair-invalid-diagram.json", mediaType: "application/json", purpose: "Recipe for repairing invalid Wire JSON." }
@@ -61,7 +74,7 @@ them:
 
 - Wire MCP bare method: create_diagram
 - Server-name prefix when configured as "wire": wire__create_diagram
-- Claude-style prefix in some hosts: mcp__wire__create_diagram
+- Host-style prefix in some MCP runtimes: mcp__wire__create_diagram
 
 Never invent a namespace from this guide name. Use the actual server prefix
 provided by the host.
@@ -70,7 +83,7 @@ provided by the host.
 
 1. Get docs shape when unsure: v1_get_docs_shape({ task: "<user task>" }).
 2. Create or load a diagram.
-3. Use apply_actions for coherent multi-step edits.
+3. Use apply_actions or WireAction batches for coherent multi-step edits.
 4. Run validate after every saved change.
 5. Repair validation issues using their stable code and hint.
 6. Render for review with render_preview, render_svg, or render_png.
@@ -90,6 +103,13 @@ note, group.
 Use node.from for ordinary connections. Use "conditionId.branch" for condition
 branches. Do not invent connectsTo, next, source, target, type, label-only
 Mermaid, or adapter JSON as the primary contract.
+
+Durable edits use WireAction reducer objects:
+diagram.create, diagram.replace, diagram.patch, batch, node.add, node.patch,
+node.remove, node.move, node.resize, edge.connect, edge.patch,
+edge.disconnect, edge.remove, layout.apply, group.add, group.ungroup,
+note.add, and metadata.patch. Do not introduce alternate versioned action
+names or generic graph node/edge state as the app contract.
 
 ## Cards and Visual Content
 
@@ -140,6 +160,23 @@ Use @aigentive/wire-react. Prefer WireWorkspace for full editors and
 WireProvider + WireCanvas for custom shells. Persist the WireDiagram emitted
 from onChange. Do not store adapter nodes as application state.
 
+React consumers import @aigentive/wire-react/styles.css for default styling.
+They are not required to install or configure Tailwind. Use CSS variables,
+colorMode, unstyled, and classNames for product styling boundaries.
+
+## CLI Path
+
+Use @aigentive/wire-cli for local file workflows: wire init, wire add,
+wire validate, wire export, and wire ls. Validate before export. CLI diagrams
+are JSON files under ./diagrams by default, or WIRE_DIR when configured.
+
+## Skill Path
+
+When this repository is available, read docs/llm/SKILL.md for the compact
+agent-oriented operating loop. The skill repeats the guardrails and points to
+recipes for create, edit, validate, render, style, branch, group, and embed
+workflows.
+
 ## Cloud Path
 
 Authenticated users can generate a Wire Cloud API key. Local MCP clients should
@@ -179,10 +216,12 @@ export const WIRE_DOCS_MANIFEST = {
   entrypoints: {
     agent: "/llm/agent-guide.md",
     mcp: "/llm/mcp.shape.json",
+    cli: "/llm/cli.shape.json",
     react: "/llm/react.shape.json",
     cloud: "/llm/cloud.shape.json",
     schema: "/llm/schema/wire-diagram.json",
-    validation: "/llm/validation.shape.json"
+    validation: "/llm/validation.shape.json",
+    skill: "/llm/skill.shape.json"
   },
   contracts: [
     "wire-diagram",
@@ -190,6 +229,8 @@ export const WIRE_DOCS_MANIFEST = {
     "wire-validation-result",
     "wire-react-components",
     "wire-mcp-tools",
+    "wire-cli-commands",
+    "wire-agent-skill",
     "wire-cloud-share-urls"
   ],
   routes: LLM_DOCS_ROUTES
@@ -220,14 +261,14 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
     routes: [
       { path: "/llm/agent-guide.md", mediaType: "text/markdown", purpose: "Prompt-ready agent guide." }
     ],
-    related: ["wire.mcp", "wire.schema", "wire.validation"]
+    related: ["wire.mcp", "wire.cli", "wire.schema", "wire.validation", "wire.skill"]
   },
   mcp: {
     id: "wire.mcp",
     kind: "tooling",
     summary: "MCP server contract for local and cloud-synced Wire agents.",
     useWhen: [
-      "Claude Code, Codex, Cursor, or another MCP client needs to author wires",
+      "an MCP host needs to author or edit wires",
       "an agent needs cloud sync with a user's authenticated account",
       "an agent needs SVG, PNG, preview, JSON, or Mermaid exports"
     ],
@@ -280,29 +321,67 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
       { path: "/llm/mcp.shape.json", mediaType: "application/json", purpose: "MCP tool and connection guide." },
       { path: "/llm/recipes/connect-local-mcp.json", mediaType: "application/json", purpose: "Cloud API key setup recipe." }
     ],
-    related: ["wire.agent", "wire.cloud", "wire.validation"]
+    related: ["wire.agent", "wire.cli", "wire.cloud", "wire.validation"]
+  },
+  cli: {
+    id: "wire.cli",
+    kind: "tooling",
+    summary: "Command-line workflow for local WireDiagram files.",
+    useWhen: [
+      "a human or agent needs to create diagrams in a local file tree",
+      "a CI job needs to validate stored Wire JSON before rendering",
+      "a workflow needs SVG, JSON, or Mermaid exports without React"
+    ],
+    contracts: ["wire-diagram", "wire-cli-commands", "wire-validation-result"],
+    preferredPath: [
+      "Run npx @aigentive/wire-cli help to inspect implemented commands.",
+      "Create diagrams with wire init <id> and optional --template.",
+      "Append nodes with wire add <kind> --diagram=<id> --title=<title>.",
+      "Use --from=<id> or --from=<id.branch> to wire target-centric connections.",
+      "Run wire validate <id> before wire export.",
+      "Export SVG, JSON, or Mermaid as derived artifacts, not durable app state."
+    ],
+    avoid: [
+      "Do not expect CLI group editing; use MCP apply_actions or React for group commands.",
+      "Do not use Mermaid export as the source of truth.",
+      "Do not add --tools to tool nodes; --tools is only meaningful for ai nodes."
+    ],
+    tools: [
+      { name: "wire init", purpose: "Create a new local diagram, optionally from a built-in template." },
+      { name: "wire add", purpose: "Append a node and optionally set from, branches, model, tools, ref, body, and tone." },
+      { name: "wire validate", purpose: "Run schema and structural validation; exits non-zero for errors." },
+      { name: "wire export", purpose: "Export SVG, JSON, or Mermaid from canonical WireDiagram JSON." },
+      { name: "wire ls", purpose: "List local diagrams in recency order." }
+    ],
+    routes: [
+      { path: "/llm/cli.shape.json", mediaType: "application/json", purpose: "CLI commands and workflow guardrails." }
+    ],
+    related: ["wire.agent", "wire.schema", "wire.validation", "wire.recipes"]
   },
   react: {
     id: "wire.react",
     kind: "library",
     summary: "Preferred React integration surface for building Wire editors and viewers.",
     useWhen: [
-      "building a Wire UI in React or Next.js",
+      "building a Wire UI in a React app",
       "customizing cards, palettes, validation panels, or inspectors",
       "persisting canvas edits to cloud or local state"
     ],
     contracts: ["wire-react-components", "wire-diagram"],
     preferredPath: [
       "Install @aigentive/wire-react with @aigentive/wire-core.",
+      "Import @aigentive/wire-react/styles.css for default styles.",
       "Use WireWorkspace for a complete editor.",
       "Use WireProvider + WireCanvas for custom product shells.",
       "Persist the WireDiagram emitted by onChange.",
-      "Use WireToolbar, WirePalette, WireInspector, and WireValidationPanel instead of reimplementing standard controls."
+      "Use WireToolbar, WirePalette, WireInspector, WireOptionPanel, and WireValidationPanel instead of reimplementing standard controls.",
+      "Use colorMode, unstyled, classNames, and CSS variables for styling boundaries."
     ],
     avoid: [
       "Do not import a canvas adapter as the app-level contract.",
       "Do not store canvas state as adapter nodes and edges.",
-      "Do not bypass WireProvider when edit state, validation, history, or events matter."
+      "Do not bypass WireProvider when edit state, validation, history, or events matter.",
+      "Do not require React consumers to install or configure Tailwind."
     ],
     components: [
       {
@@ -310,6 +389,18 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
         package: "@aigentive/wire-react",
         purpose: "Full editor shell with sidebar, canvas, and inspector slots.",
         contract: "Accepts diagram/defaultDiagram and emits canonical WireDiagram through onChange."
+      },
+      {
+        name: "WireEditor",
+        package: "@aigentive/wire-react",
+        purpose: "Packaged editor entry point for embedding an editable Wire surface.",
+        contract: "Uses canonical WireDiagram input/output; does not expose adapter state as the app contract."
+      },
+      {
+        name: "WireViewer",
+        package: "@aigentive/wire-react",
+        purpose: "Read-only diagram viewer for embeds and previews.",
+        contract: "Renders canonical WireDiagram JSON and keeps Mermaid/SVG/PNG as exports."
       },
       {
         name: "WireProvider",
@@ -322,6 +413,30 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
         package: "@aigentive/wire-react",
         purpose: "Renders and edits the Wire diagram canvas.",
         contract: "Consumes WireProvider state; accepts mode, fitView, showMiniMap, renderNodeCard, renderGroup."
+      },
+      {
+        name: "WireInspector",
+        package: "@aigentive/wire-react",
+        purpose: "Selection inspector for node and edge fields.",
+        contract: "Emits WireAction-compatible patches through the provider state boundary."
+      },
+      {
+        name: "WireOptionSpec",
+        package: "@aigentive/wire-react",
+        purpose: "Schema for catalog-driven option controls.",
+        contract: "Runtime UI specification; persisted values still live on WireDiagram nodes, edges, data, or metadata."
+      },
+      {
+        name: "WireOptionCatalog",
+        package: "@aigentive/wire-react",
+        purpose: "Collection of WireOptionSpec entries keyed by node kind or option scope.",
+        contract: "Application-provided runtime catalog; do not persist the catalog itself inside WireDiagram."
+      },
+      {
+        name: "WireOptionPanel",
+        package: "@aigentive/wire-react",
+        purpose: "Default renderer for WireOptionCatalog controls.",
+        contract: "Writes selected values back through canonical diagram patches."
       },
       {
         name: "WireNodeCardView",
@@ -422,10 +537,17 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
       { code: "schema.invalid_type", severity: "error", repair: "Fix the field at the issue path. For missing node.title, add a non-empty title string." },
       { code: "schema.invalid_union_discriminator", severity: "error", repair: "Use one of the supported lowercase node kinds." },
       { code: "node.duplicate-id", severity: "error", repair: "Rename one node and update from, parent, children, and edge references." },
+      { code: "node.attached-to-missing", severity: "error", repair: "Add the referenced node or remove attachedTo from the note or annotation node." },
+      { code: "node.parent-missing", severity: "error", repair: "Create the referenced group node or remove the parent field." },
+      { code: "node.parent-not-group", severity: "error", repair: "Point parent at a group node or clear the parent field." },
+      { code: "condition.no-branches", severity: "error", repair: "Add a non-empty branches array to the condition node." },
+      { code: "condition.duplicate-branch", severity: "error", repair: "Make branch names unique within the condition node." },
       { code: "edge.from-missing", severity: "error", repair: "Add the source node or update the from reference." },
       { code: "edge.to-missing", severity: "error", repair: "Add the target node or update the explicit edge target." },
+      { code: "edge.branch-from-non-condition", severity: "error", repair: "Remove the branch suffix or change the source node to a condition." },
       { code: "edge.unknown-branch", severity: "error", repair: "Add the branch to the condition node or use a known branch name." },
       { code: "edge.duplicate-connection", severity: "error", repair: "Keep one connection and remove the duplicate from ref or explicit edge." },
+      { code: "group.child-missing", severity: "error", repair: "Add the missing child node or remove it from group.children." },
       { code: "flow.no-trigger", severity: "warning", repair: "Add a trigger node or confirm the diagram intentionally starts elsewhere." },
       { code: "trigger.no-outgoing", severity: "warning", repair: "Connect the trigger to the first workflow step." },
       { code: "end.no-incoming", severity: "warning", repair: "Connect a preceding workflow step to the end node." },
@@ -433,8 +555,12 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
       { code: "flow.unreachable", severity: "warning", repair: "Wire the node into a path from a trigger or add a trigger for that branch." },
       { code: "node.card-invalid", severity: "warning", repair: "Keep data.card serializable and limited to title, description, badges, meta, progress, and footer." },
       { code: "node.forbidden-field", severity: "warning", repair: "Replace connectsTo/connects_to with from on the target node." },
+      { code: "node.duplicate-from", severity: "warning", repair: "Remove repeated refs from the same node.from array." },
       { code: "node.orphan", severity: "warning", repair: "Connect the node with from or confirm it should stay isolated." },
-      { code: "flow.cycle", severity: "warning", repair: "Break the loop or add a guard that explains the repeated path." }
+      { code: "edge.self-loop", severity: "warning", repair: "Remove the self reference or document why the loop is intentional." },
+      { code: "flow.cycle", severity: "warning", repair: "Break the loop or add a guard that explains the repeated path." },
+      { code: "flow.layout-engine-not-implemented", severity: "warning", repair: "Use dagre or omit layoutEngine until elk is implemented." },
+      { code: "group.child-parent-mismatch", severity: "warning", repair: "Set the child's parent to the group id or remove it from group.children." }
     ],
     routes: [
       { path: "/llm/validation.shape.json", mediaType: "application/json", purpose: "Validation repair map." },
@@ -472,6 +598,14 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
       "docs retrieval needs a compact task answer"
     ],
     recipes: [
+      "create-wire-diagram",
+      "edit-with-wire-actions",
+      "validate-and-repair",
+      "render-for-review",
+      "style-cards-and-edges",
+      "branch-condition-flow",
+      "group-nodes",
+      "embed-react-viewer",
       "build-react-workspace",
       "connect-local-mcp",
       "repair-invalid-diagram"
@@ -479,7 +613,45 @@ export const LLM_DOCS_SHAPES: Record<WireDocsTopic, WireDocsShape> = {
     routes: [
       { path: "/llm/recipes/{id}.json", mediaType: "application/json", purpose: "Task recipes for agents." }
     ],
-    related: ["wire.agent", "wire.mcp", "wire.react", "wire.cloud"]
+    related: ["wire.agent", "wire.mcp", "wire.cli", "wire.react", "wire.cloud", "wire.skill"]
+  },
+  skill: {
+    id: "wire.skill",
+    kind: "skill",
+    summary: "Agent-oriented SKILL.md for fast Wire diagram creation, editing, validation, rendering, styling, branching, grouping, and React embedding.",
+    useWhen: [
+      "an LLM agent is operating inside this repository",
+      "an agent needs compact guardrails before editing Wire JSON",
+      "a workflow needs prompt-ready recipes without scraping human docs"
+    ],
+    contracts: ["wire-diagram", "wire-action", "wire-agent-skill"],
+    preferredPath: [
+      "Read docs/llm/SKILL.md when available.",
+      "Use /llm/wire-docs.shape.json or v1_get_docs_shape for structured retrieval.",
+      "Use /llm/schema/wire-diagram.json before raw JSON generation.",
+      "Use /llm/recipes/{id}.json for task-specific execution.",
+      "Keep WireDiagram and WireAction as durable contracts."
+    ],
+    avoid: [
+      "Do not introduce V2, Next, Pro, alternate package names, or parallel public APIs.",
+      "Do not make generic graph node/edge objects the app contract.",
+      "Do not cite unrelated external inspiration as implementation guidance."
+    ],
+    files: ["docs/llm/SKILL.md"],
+    recipes: [
+      "create-wire-diagram",
+      "edit-with-wire-actions",
+      "validate-and-repair",
+      "render-for-review",
+      "style-cards-and-edges",
+      "branch-condition-flow",
+      "group-nodes",
+      "embed-react-viewer"
+    ],
+    routes: [
+      { path: "/llm/skill.shape.json", mediaType: "application/json", purpose: "SKILL.md location, recipes, and guardrails." }
+    ],
+    related: ["wire.agent", "wire.schema", "wire.validation", "wire.recipes"]
   }
 };
 
@@ -560,6 +732,225 @@ export const LLM_DOCS_EXAMPLES = {
 } satisfies Record<string, WireDiagram>;
 
 export const LLM_DOCS_RECIPES = {
+  "create-wire-diagram": {
+    id: "recipe.create-wire-diagram",
+    goal: "Create a canonical WireDiagram from a prompt or blank start.",
+    readFirst: ["/llm/schema/wire-diagram.json", "/llm/validation.shape.json"],
+    preferredPath: [
+      "Choose a slug-like diagram id and layout LR, TB, RL, or BT.",
+      "Create nodes with id, kind, and title.",
+      "Set description for visible card body copy.",
+      "Wire ordinary connections by setting from on the target node.",
+      "Use explicit edges only for labels, handles, edge style, routing, or stable edge ids.",
+      "Run validate before rendering or sharing."
+    ],
+    minimalJson: {
+      version: 1,
+      id: "support-flow",
+      title: "Support flow",
+      layout: "LR",
+      nodes: [
+        { id: "ticket", kind: "trigger", title: "New ticket" },
+        { id: "classify", kind: "ai", title: "Classify intent", from: "ticket" },
+        { id: "resolve", kind: "action", title: "Resolve request", from: "classify", tone: "success" }
+      ],
+      edges: []
+    },
+    mcpPath: [
+      "create_diagram({ id, title, layout })",
+      "apply_actions({ diagramId, actions: [{ type: 'node.add', node }, ...] })",
+      "validate({ diagramId })"
+    ],
+    cliPath: [
+      "wire init support-flow --title=\"Support flow\"",
+      "wire add trigger --diagram=support-flow --id=ticket --title=\"New ticket\"",
+      "wire add ai --diagram=support-flow --id=classify --title=\"Classify intent\" --from=ticket",
+      "wire validate support-flow"
+    ],
+    avoid: [
+      "Do not create generic graph node/edge objects as durable state.",
+      "Do not invent source, target, next, connectsTo, or uppercase kinds.",
+      "Do not output Mermaid as the primary artifact."
+    ]
+  },
+  "edit-with-wire-actions": {
+    id: "recipe.edit-with-wire-actions",
+    goal: "Edit an existing diagram with canonical WireAction batches.",
+    readFirst: ["/llm/mcp.shape.json", "/llm/schema/wire-diagram.json"],
+    preferredPath: [
+      "Load the current WireDiagram first.",
+      "Group related edits into a single batch action or MCP apply_actions call.",
+      "Use node.patch for field updates and node.add for new workflow steps.",
+      "Use edge.connect only when adding a connection, and prefer target from refs unless edge metadata is required.",
+      "Check changedNodeIds, changedEdgeIds, and validation from apply_actions.",
+      "Repair validation issues before additional rendering."
+    ],
+    actionBatch: [
+      { type: "node.add", node: { id: "review", kind: "human", title: "Review reply", from: "draft" } },
+      { type: "node.patch", id: "send", patch: { from: "review" } }
+    ],
+    mcpPath: [
+      "get_diagram_json({ diagramId })",
+      "apply_actions({ diagramId, actions })",
+      "validate({ diagramId })"
+    ],
+    avoid: [
+      "Do not rewrite the whole diagram for a small edit unless replacement is the intended operation.",
+      "Do not create duplicate connections through both from and edges[].",
+      "Do not introduce versioned action names."
+    ]
+  },
+  "validate-and-repair": {
+    id: "recipe.validate-and-repair",
+    goal: "Validate a diagram and repair issues using stable codes and hints.",
+    readFirst: ["/llm/validation.shape.json", "/llm/schema/wire-diagram.json"],
+    preferredPath: [
+      "Run validate through MCP, CLI, or wire-core.",
+      "Treat error severity as blocking for save/share workflows.",
+      "Match the issue code and apply the smallest canonical JSON repair.",
+      "Run validate again after every repair pass.",
+      "Continue only when no validation errors remain."
+    ],
+    commonRepairs: [
+      "schema.invalid_union_discriminator -> use supported lowercase node kinds.",
+      "edge.from-missing -> add the source node or change the target node's from.",
+      "edge.unknown-branch -> add the branch to the condition node or use a declared branch.",
+      "node.forbidden-field -> move source/target/next/connectsTo intent into target from refs.",
+      "group.child-parent-mismatch -> align group.children and child.parent."
+    ],
+    mcpPath: [
+      "validate({ diagramId })",
+      "apply_actions({ diagramId, actions: repairs })",
+      "validate({ diagramId })"
+    ],
+    cliPath: ["wire validate <id>"],
+    avoid: [
+      "Do not ignore warnings that explain lost or stripped generated fields.",
+      "Do not repair by converting to Mermaid.",
+      "Do not render/share while errors remain."
+    ]
+  },
+  "render-for-review": {
+    id: "recipe.render-for-review",
+    goal: "Render or export a validated diagram for human review.",
+    readFirst: ["/llm/mcp.shape.json", "/llm/cli.shape.json"],
+    preferredPath: [
+      "Validate the diagram first.",
+      "Use render_preview for browser or cloud share review.",
+      "Use render_svg for embeddable vector output.",
+      "Use render_png when raster output is required and the rasterizer is installed.",
+      "Use export_mermaid or wire export --format=mermaid only as a derived export.",
+      "Use get_diagram_json or wire export --format=json for canonical JSON handoff."
+    ],
+    mcpPath: [
+      "validate({ diagramId })",
+      "render_preview({ diagramId, scope: 'view' })",
+      "render_svg({ diagramId })"
+    ],
+    cliPath: [
+      "wire validate <id>",
+      "wire export <id> --format=svg --out=<id>.svg",
+      "wire export <id> --format=json --out=<id>.json"
+    ],
+    avoid: [
+      "Do not use localhost preview URLs for customer-facing cloud shares.",
+      "Do not treat SVG, PNG, or Mermaid exports as editable source."
+    ]
+  },
+  "style-cards-and-edges": {
+    id: "recipe.style-cards-and-edges",
+    goal: "Persist visual styling without leaving the WireDiagram contract.",
+    readFirst: ["/llm/schema/wire-diagram.json", "/llm/react.shape.json"],
+    preferredPath: [
+      "Use node.tone for common semantic color.",
+      "Use node.style.fill, stroke, strokeWidth, strokeDasharray, borderRadius, opacity, shadow, and textColor for explicit card overrides.",
+      "Use node.data.card only for serializable card content: title, description, badges, meta, progress, and footer.",
+      "Use explicit edges when edge labels, edge tone, handles, style, labelStyle, or routing must persist.",
+      "Use React CSS variables, colorMode, unstyled, and classNames for host app styling boundaries."
+    ],
+    nodePatch: {
+      tone: "info",
+      style: { fill: "#eef6ff", stroke: "#2563eb", borderRadius: 8, shadow: true },
+      data: { card: { badges: [{ label: "SLA", tone: "info" }], footer: "Auto-routed" } }
+    },
+    edgePatch: {
+      label: "approved",
+      routing: "smoothstep",
+      style: { stroke: "#16a34a", strokeWidth: 2, markerEnd: "arrow" },
+      labelStyle: { background: "#ecfdf5", fill: "#166534" }
+    },
+    avoid: [
+      "Do not store React components, HTML, SVG, or CSS in data.card.",
+      "Do not require consumer Tailwind configuration for @aigentive/wire-react.",
+      "Do not create separate card nodes for workflow cards."
+    ]
+  },
+  "branch-condition-flow": {
+    id: "recipe.branch-condition-flow",
+    goal: "Create or repair condition branches.",
+    readFirst: ["/llm/schema/wire-diagram.json", "/llm/validation.shape.json"],
+    preferredPath: [
+      "Create a condition node with branches: ['yes', 'no'] or domain-specific slug names.",
+      "Connect each branch target by setting target.from to '<conditionId>.<branch>'.",
+      "Use MCP add_node with from plus branch, or pass the full branched ref directly.",
+      "Validate for edge.unknown-branch and condition.unused-branch.",
+      "Use explicit edge labels only when the visual label needs to differ from branch names."
+    ],
+    minimalJsonNodes: [
+      { id: "route", kind: "condition", title: "Route?", branches: ["sales", "support"], from: "classify" },
+      { id: "sales", kind: "action", title: "Create sales lead", from: "route.sales" },
+      { id: "support", kind: "action", title: "Open support ticket", from: "route.support" }
+    ],
+    avoid: [
+      "Do not set branch targets with source/target fields on nodes.",
+      "Do not use branch names that are absent from the condition branches array.",
+      "Do not put dots or spaces in branch names."
+    ]
+  },
+  "group-nodes": {
+    id: "recipe.group-nodes",
+    goal: "Group existing nodes while keeping group membership valid.",
+    readFirst: ["/llm/schema/wire-diagram.json", "/llm/validation.shape.json"],
+    preferredPath: [
+      "Use a group node when nodes need a visible parent frame.",
+      "Set the group node's children array to child ids.",
+      "Set each child node parent to the group id.",
+      "Use MCP add_group for existing children when available.",
+      "Validate for group.child-missing and group.child-parent-mismatch."
+    ],
+    actionBatch: [
+      { type: "group.add", group: { id: "knowledge", kind: "group", title: "Knowledge retrieval" }, children: ["rewrite", "search", "filter"] }
+    ],
+    avoid: [
+      "Do not use groups for ordinary control-flow edges.",
+      "Do not list missing child ids.",
+      "Do not forget parent on grouped child nodes when editing raw JSON."
+    ]
+  },
+  "embed-react-viewer": {
+    id: "recipe.embed-react-viewer",
+    goal: "Embed Wire diagrams in a React app with current package APIs.",
+    readFirst: ["/llm/react.shape.json", "/llm/schema/wire-diagram.json"],
+    preferredPath: [
+      "Install @aigentive/wire-react and @aigentive/wire-core.",
+      "Import @aigentive/wire-react/styles.css once in the app entry.",
+      "Use WireViewer for read-only embeds.",
+      "Use WireEditor or WireWorkspace for editable embeds.",
+      "Use WireProvider + WireCanvas for custom shells.",
+      "Persist only WireDiagram from onChange."
+    ],
+    minimalCode: [
+      "import '@aigentive/wire-react/styles.css';",
+      "import { WireViewer } from '@aigentive/wire-react';",
+      "<WireViewer diagram={diagram} colorMode=\"system\" />"
+    ],
+    styleControls: ["colorMode", "unstyled", "classNames", "CSS variables"],
+    avoid: [
+      "Do not require Tailwind in the consuming React app.",
+      "Do not store canvas adapter nodes or edges as application state.",
+      "Do not rename the package or introduce a parallel React API."
+    ]
+  },
   "build-react-workspace": {
     id: "recipe.build-react-workspace",
     goal: "Build a Wire editor or viewer in React using the Wire library surface.",
@@ -593,7 +984,7 @@ export const LLM_DOCS_RECIPES = {
       "Run list_diagrams to confirm cloud sync.",
       "Use render_preview for cloud URLs instead of localhost preview links."
     ],
-    claudeCodeCommand: "claude mcp add wire --env WIRE_CLOUD_URL='https://wire.example.com' --env WIRE_CLOUD_API_KEY='PASTE_GENERATED_KEY' -- npx -y @aigentive/wire-mcp@latest",
+    stdioCommand: "npx -y @aigentive/wire-mcp@latest",
     mcpJson: {
       mcpServers: {
         wire: {
@@ -630,13 +1021,15 @@ export const LLM_DOCS_RECIPES = {
 
 const TASK_HINTS: Record<WireDocsTopic, string[]> = {
   agent: ["agent", "llm", "prompt", "guide", "workflow"],
-  mcp: ["mcp", "claude", "codex", "cursor", "tool", "stdio", "http", "npx"],
+  mcp: ["mcp", "host", "tool", "stdio", "http", "npx"],
+  cli: ["cli", "command", "terminal", "wire init", "wire add", "wire export"],
   react: ["react", "next", "component", "canvas", "editor", "viewer", "workspace", "library"],
   cloud: ["cloud", "api key", "auth", "google", "share", "preview", "sync", "vercel", "openai", "chat"],
   schema: ["schema", "json", "diagram", "node", "edge", "wirediagram"],
   validation: ["validate", "invalid", "error", "repair", "zod", "missing", "duplicate"],
   examples: ["example", "sample", "template", "support", "approval", "rag"],
-  recipes: ["how to", "setup", "connect", "build", "recipe"]
+  recipes: ["how to", "setup", "connect", "build", "recipe"],
+  skill: ["skill", "skill.md", "guardrail", "agent-oriented"]
 };
 
 export function listLlmDocsExamples(): string[] {

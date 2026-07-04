@@ -97,7 +97,7 @@ const RESOURCES: Array<{ uri: string; purpose: string }> = [
   { uri: "wire://schemas/wire-diagram", purpose: "JSON schema info." },
   { uri: "wire://docs/", purpose: "Machine-readable docs manifest." },
   { uri: "wire://docs/agent-guide.md", purpose: "Prompt-ready agent guide." },
-  { uri: "wire://docs/{topic}.shape.json", purpose: "Topic docs for agent, mcp, react, cloud, schema, validation, examples, or recipes." },
+  { uri: "wire://docs/{topic}.shape.json", purpose: "Topic docs for agent, mcp, cli, react, cloud, schema, validation, examples, recipes, or skill." },
   { uri: "wire://docs/schema/wire-diagram.json", purpose: "WireDiagram JSON schema as a docs resource." },
   { uri: "wire://docs/examples/{name}.wire.json", purpose: "Validated example diagrams." },
   { uri: "wire://docs/recipes/{id}.json", purpose: "Task recipes for agents." }
@@ -136,13 +136,13 @@ npm install @resvg/resvg-js`}</Shell>
         <p>
           Pick a transport. <InlineCode>stdio</InlineCode> is the default for local agents.{" "}
           <InlineCode>--http</InlineCode> exposes a streamable-HTTP endpoint on port{" "}
-          <InlineCode>3860</InlineCode> for cloud agents and remote MCP clients.
+          <InlineCode>3860</InlineCode> for cloud agents and remote MCP hosts.
         </p>
       </Prose>
-      <Shell>{`# stdio — local IDE / desktop clients
+      <Shell>{`# stdio — local MCP hosts
 node node_modules/@aigentive/wire-mcp/dist/server.js
 
-# streamable HTTP — cloud / network clients
+# streamable HTTP — cloud / network hosts
 node node_modules/@aigentive/wire-mcp/dist/server.js --http
 
 # When installed globally
@@ -299,10 +299,10 @@ wire-mcp --http    # http on port 3860`}</Shell>
       </div>
 
       <Prose>
-        <h2 id="stdio-client-config">Stdio client config</h2>
+        <h2 id="stdio-host-config">Stdio host config</h2>
         <p>
-          Most local MCP clients accept a JSON server entry with a command, args, and environment. Point the command at
-          the built server and restart the client so the Wire tools appear in the tool list.
+          Most local MCP hosts accept a JSON server entry with a command, args, and environment. Point the command at
+          the built server and restart the host so the Wire tools appear in the tool list.
         </p>
       </Prose>
       <CodeBlock language="json">

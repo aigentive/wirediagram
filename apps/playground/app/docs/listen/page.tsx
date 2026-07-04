@@ -39,7 +39,7 @@ const DEMO_DIAGRAM: WireDiagram = {
   layout: "LR",
   nodes: [
     { id: "webhook", kind: "trigger", title: "Ticket webhook" },
-    { id: "plan", kind: "ai", title: "Plan answer", from: "webhook", model: "gpt-5.4-mini" },
+    { id: "plan", kind: "ai", title: "Plan answer", from: "webhook", model: "fast-model" },
     { id: "respond", kind: "action", title: "Send response", from: "plan", tone: "success" }
   ],
   edges: []

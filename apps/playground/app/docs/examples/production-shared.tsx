@@ -30,7 +30,7 @@ export const PRODUCTION_OPTIONS: WireOptionCatalog = {
       storage: "node",
       type: "select",
       section: "Runtime",
-      options: ["gpt-4.1-mini", "gpt-4.1", "o4-mini"]
+      options: ["balanced-model", "careful-model", "compact-model"]
     },
     {
       key: "temperature",
@@ -106,7 +106,7 @@ export const PRODUCTION_DIAGRAM: WireDiagram = {
       kind: "ai",
       title: "Qualify lead",
       description: "Rank fit and urgency",
-      model: "gpt-4.1-mini",
+      model: "balanced-model",
       data: { options: { mode: "rank", temperature: 0.2, owner: "ai-platform" } }
     },
     {

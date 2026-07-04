@@ -14,7 +14,7 @@ Common forms:
 ```text
 Wire MCP bare method: create_diagram
 Server-name prefix:    wire__create_diagram
-Claude-style prefix:   mcp__wire__create_diagram
+Host-style prefix:     mcp__wire__create_diagram
 ```
 
 Use the tool names your MCP host actually lists. Do not invent a prefix from the
@@ -67,8 +67,8 @@ For cloud-backed sync with the hosted Wire workspace, generate an API key from
 }
 ```
 
-Restart the MCP client after adding the server. Existing Claude Code sessions
-do not automatically gain new MCP tools.
+Restart the MCP client after adding the server. Existing sessions do not
+automatically gain new MCP tools.
 
 With `WIRE_CLOUD_URL` configured, `render_preview` returns Wire Cloud share URLs
 for browser viewing and raw embeds: SVG, PNG, JSON, and Mermaid. It accepts
@@ -198,6 +198,12 @@ wire://templates/
 wire://templates/{name}
 wire://schemas/wire-diagram
 wire://mcp/capabilities
+wire://docs/
+wire://docs/agent-guide.md
+wire://docs/{topic}.shape.json
+wire://docs/schema/wire-diagram.json
+wire://docs/examples/{name}.wire.json
+wire://docs/recipes/{id}.json
 ```
 
 Prompts:

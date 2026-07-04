@@ -13,10 +13,10 @@ npm install @aigentive/wire-mcp
 ## Run
 
 ```bash
-# stdio — for local MCP clients
+# stdio — for local MCP hosts
 npx -y @aigentive/wire-mcp@latest
 
-# streamable HTTP — for cloud agents / network clients
+# streamable HTTP — for cloud agents / network hosts
 npx -y @aigentive/wire-mcp@latest --http
 ```
 
@@ -197,7 +197,7 @@ ids.
 - `wire://schemas/wire-diagram` — JSON schema info
 - `wire://docs/` — machine-readable docs manifest
 - `wire://docs/agent-guide.md` — prompt-ready agent guide
-- `wire://docs/{topic}.shape.json` — topic docs for `agent`, `mcp`, `react`, `cloud`, `schema`, `validation`, `examples`, or `recipes`
+- `wire://docs/{topic}.shape.json` — topic docs for `agent`, `mcp`, `cli`, `react`, `cloud`, `schema`, `validation`, `examples`, `recipes`, or `skill`
 - `wire://docs/schema/wire-diagram.json` — WireDiagram JSON schema as a docs resource
 - `wire://docs/examples/{name}.wire.json` — validated example diagrams
 - `wire://docs/recipes/{id}.json` — task recipes for agents
@@ -226,7 +226,7 @@ Hosted docs expose the same content under `/llm/*`, with discovery at
 - `review_diagram_for_clarity` — critique an existing diagram
 - `simplify_diagram` — refactor for clarity
 
-## Stdio client config
+## Stdio host config
 
 ```json
 {

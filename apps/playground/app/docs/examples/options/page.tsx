@@ -17,7 +17,7 @@ import {
 
 const optionCatalog: WireOptionCatalog = {
   ai: [
-    { key: "model", storage: "node", type: "select", options: ["gpt-4.1-mini", "gpt-4.1"] },
+    { key: "model", storage: "node", type: "select", options: ["balanced-model", "careful-model"] },
     { key: "temperature", type: "number", min: 0, max: 2, step: 0.1, width: "half" }
   ],
   action: [

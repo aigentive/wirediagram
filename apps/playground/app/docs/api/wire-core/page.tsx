@@ -199,7 +199,7 @@ await fs.writeFile("flow.mmd", mermaid, "utf8");`}
 
 let d = emptyDiagram({ layout: "LR", title: "Support agent" });
 d = addNode(d, { kind: "trigger", title: "Webhook", id: "in" }).diagram;
-d = addNode(d, { kind: "ai", title: "Plan", from: "in", model: "gpt-5.4-mini" }).diagram;
+d = addNode(d, { kind: "ai", title: "Plan", from: "in", model: "fast-model" }).diagram;
 d = addNode(d, { kind: "action", title: "Reply", from: "plan", tone: "success" }).diagram;`}
       </CodeBlock>
 

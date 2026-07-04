@@ -1,7 +1,7 @@
 {
   "name": "@aigentive/wire-react",
   "version": "1.1.0",
-  "description": "Wire — JSX facade. Author diagrams as React components; compile to canonical Wire JSON.",
+  "description": "Wire React components for embedding, editing, viewing, and authoring canonical Wire diagrams.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

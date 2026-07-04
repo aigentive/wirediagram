@@ -188,7 +188,7 @@ function ApplyTemplate() {
   return (
     <button onClick={() => dispatchMany([
       { type: "node.add", node: { id: "in", kind: "trigger", title: "Webhook" } },
-      { type: "node.add", node: { id: "ai", kind: "ai", title: "Plan", from: "in", model: "gpt-5.4-mini" } }
+      { type: "node.add", node: { id: "ai", kind: "ai", title: "Plan", from: "in", model: "fast-model" } }
     ])}>
       Insert template
     </button>
