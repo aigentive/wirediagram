@@ -20,14 +20,14 @@ const HOOKS: Array<{ name: string; signature: string; returns: string; purpose: 
   },
   {
     name: "useWireSelection",
-    signature: "useWireSelection(): readonly [WireSelection, SelectionActions]",
-    returns: "[selection, { setNodeIds, setEdgeIds, clear, … }]",
-    purpose: "Read or drive selection state. Use `clear()` from a custom panel; `setNodeIds([id])` to focus a node."
+    signature: "useWireSelection(): readonly [WireSelection, WireSelectionActions]",
+    returns: "[selection, { setSelection, clearSelection }]",
+    purpose: "Read or drive selection state. Use `clearSelection()` from a custom panel; `setSelection({ nodeIds: [id], edgeIds: [] })` to focus a node."
   },
   {
     name: "useWireViewport",
-    signature: "useWireViewport(): readonly [WireViewport, ViewportActions]",
-    returns: "[{ x, y, zoom }, { setViewport, fitView, … }]",
+    signature: "useWireViewport(): readonly [WireViewport, WireViewportActions]",
+    returns: "[{ x, y, zoom }, { setViewport }]",
     purpose: "Read or drive pan/zoom. Useful when a sidebar action needs to recenter the canvas."
   },
   {
@@ -74,7 +74,7 @@ export default function ApiHooksPage() {
       eyebrow="Reference"
       title="Hooks"
       description="Read or drive every slice of WireProvider state from your own components — diagram, selection, viewport, mode, history, validation, and events."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Reference" }, { label: "Hooks" }]}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Reference" }, { label: "Hooks" }]}
     >
       <Prose>
         <h2 id="usage">Usage</h2>
@@ -97,7 +97,7 @@ export default function ApiHooksPage() {
 function Toolbar() {
   const [mode, setMode] = useWireMode();
   const { canUndo, canRedo, undo, redo } = useWireHistory();
-  const [selection, { clear }] = useWireSelection();
+  const [selection, { clearSelection }] = useWireSelection();
 
   return (
     <div className="flex gap-2">
@@ -106,7 +106,7 @@ function Toolbar() {
       </button>
       <button disabled={!canUndo} onClick={undo}>Undo</button>
       <button disabled={!canRedo} onClick={redo}>Redo</button>
-      <button disabled={!selection.nodeIds.length} onClick={clear}>Deselect</button>
+      <button disabled={!selection.nodeIds.length} onClick={() => clearSelection()}>Deselect</button>
     </div>
   );
 }

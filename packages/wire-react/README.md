@@ -1,6 +1,6 @@
 # @aigentive/wire-react
 
-JSX facade for Wire diagrams. Author diagrams as React components, compile to canonical Wire JSON.
+React components for embedding, editing, inspecting, and authoring Wire diagrams. Use `WireViewer`, `WireEditor`, `WireWorkspace`, or `WireProvider` + `WireCanvas`; JSX authoring compiles to canonical `WireDiagram` JSON.
 
 ## Install
 
@@ -14,7 +14,7 @@ Import the package stylesheet once in your app entry:
 import "@aigentive/wire-react/styles.css";
 ```
 
-`<Flow>` renders as inline SVG by default. `<WireCanvas>` provides the native interactive canvas; no separate canvas-engine package is required and no utility-class source scan is required.
+`<Flow>` renders as inline SVG by default. `<WireCanvas>` provides the native interactive canvas; no separate canvas-engine package is required and no Tailwind configuration is required for consumers.
 
 ## Use
 
@@ -90,13 +90,13 @@ import {
   Flow,
   TriggerNode,
   AINode,
-  useWireDiagram,
+  useCompiledWireDiagram,
   WireProvider,
   WireCanvas
 } from "@aigentive/wire-react";
 
 export function MyDiagram() {
-  const diagram = useWireDiagram(
+  const diagram = useCompiledWireDiagram(
     <Flow layout="LR">
       <TriggerNode id="t" title="Tick" />
       <AINode id="plan" title="Plan" from="t" model="gpt-4.1" />
@@ -111,6 +111,8 @@ export function MyDiagram() {
   );
 }
 ```
+
+`useWireDiagram()` is the provider hook for reading the current diagram from `WireProvider`. Use `compile(...)` or `useCompiledWireDiagram(...)` for JSX facade compilation.
 
 ## LLM-friendly editor extensions
 

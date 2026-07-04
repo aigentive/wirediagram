@@ -50,8 +50,8 @@ export default function CustomShellExamplePage() {
       eyebrow="Examples"
       title="Custom shell"
       description="Compose current components around WireProvider when product chrome is custom."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Custom shell" }]}
-      next={{ href: "/examples/options", label: "Options" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Custom shell" }]}
+      next={{ href: "/docs/examples/options", label: "Options" }}
     >
       <Prose>
         <h2 id="contract">Contract</h2>

@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "Wire Diagram — playground",
-  description: "Render and explore @aigentive/wire diagrams in the browser."
+  description: "Render and explore Wire diagrams in the browser."
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

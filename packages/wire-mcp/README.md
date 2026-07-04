@@ -1,6 +1,6 @@
 # @aigentive/wire-mcp
 
-Model Context Protocol server for Wire. Lets any MCP-compatible agent (Claude Desktop, Claude Code, Cursor, local agents, custom CUA) author and edit Wire diagrams as structured graphs — and render them to SVG/PNG.
+Model Context Protocol server for Wire. Lets MCP agents author, validate, edit, and render canonical `WireDiagram` JSON through stdio or streamable HTTP.
 
 Supports stdio (local IDE/desktop) and streamable-HTTP (cloud / network) transports out of the box.
 
@@ -13,7 +13,7 @@ npm install @aigentive/wire-mcp
 ## Run
 
 ```bash
-# stdio — for Claude Desktop, Cursor, Claude Code, and local MCP clients
+# stdio — for local MCP clients
 npx -y @aigentive/wire-mcp@latest
 
 # streamable HTTP — for cloud agents / network clients
@@ -56,13 +56,12 @@ edit, SVG, PNG, JSON, Mermaid, and workspace URLs. Customers do not need a local
 playground. The `render_svg` and `render_png` tools return inline assets
 directly from the MCP server.
 
-Claude Code:
+Generic local MCP command:
 
 ```bash
-claude mcp add wire \
-  --env WIRE_CLOUD_URL='https://wire.example.com' \
-  --env WIRE_CLOUD_API_KEY='PASTE_WIRE_CLOUD_API_KEY' \
-  -- npx -y @aigentive/wire-mcp@latest
+WIRE_CLOUD_URL='https://wire.example.com' \
+WIRE_CLOUD_API_KEY='PASTE_WIRE_CLOUD_API_KEY' \
+npx -y @aigentive/wire-mcp@latest
 ```
 
 Generic MCP JSON:
@@ -107,8 +106,8 @@ Expected cloud-backed health includes:
 }
 ```
 
-Restart the MCP client after changing server config. Existing Claude Code
-sessions do not automatically gain newly added MCP tools.
+Restart the MCP client after changing server config. Existing sessions do not
+automatically gain newly added MCP tools.
 
 ## Tools
 
@@ -116,6 +115,7 @@ sessions do not automatically gain newly added MCP tools.
 |---|---|
 | `v1_get_agent_guide` | Return the concise MCP agent operating guide for any client that wants live instructions |
 | `v1_get_docs_shape` | Return machine-readable docs chunks by topic or natural-language task |
+| `v1_get_capabilities` | Return server, docs, schema, reducer action, and reserved capability metadata |
 | `create_diagram` | Create a new diagram, optionally seeded from a template (`agent-workflow`, `approval-flow`, `rag-pipeline`) |
 | `load_diagram` | Load a stored diagram by id |
 | `save_diagram` | Overwrite a diagram with full JSON; validates before write |
@@ -198,6 +198,7 @@ ids.
 - `wire://docs/` — machine-readable docs manifest
 - `wire://docs/agent-guide.md` — prompt-ready agent guide
 - `wire://docs/{topic}.shape.json` — topic docs for `agent`, `mcp`, `react`, `cloud`, `schema`, `validation`, `examples`, or `recipes`
+- `wire://docs/schema/wire-diagram.json` — WireDiagram JSON schema as a docs resource
 - `wire://docs/examples/{name}.wire.json` — validated example diagrams
 - `wire://docs/recipes/{id}.json` — task recipes for agents
 
@@ -225,7 +226,7 @@ Hosted docs expose the same content under `/llm/*`, with discovery at
 - `review_diagram_for_clarity` — critique an existing diagram
 - `simplify_diagram` — refactor for clarity
 
-## Claude Desktop config
+## Stdio client config
 
 ```json
 {

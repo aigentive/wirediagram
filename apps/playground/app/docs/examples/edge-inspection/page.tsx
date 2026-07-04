@@ -38,8 +38,8 @@ export default function EdgeInspectionExamplePage() {
       eyebrow="Examples"
       title="Edge inspection"
       description="Inspect and patch current edge fields without changing the durable app contract."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Edge inspection" }]}
-      next={{ href: "/examples/accessibility", label: "Accessibility" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Edge inspection" }]}
+      next={{ href: "/docs/examples/accessibility", label: "Accessibility" }}
     >
       <Prose>
         <h2 id="edge-tab">Edge tab</h2>

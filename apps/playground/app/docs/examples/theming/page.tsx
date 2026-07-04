@@ -36,8 +36,8 @@ export default function ThemingExamplePage() {
       eyebrow="Examples"
       title="Theming"
       description="Use colorMode, CSS variables, unstyled, and slot class names on current components."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Theming" }]}
-      next={{ href: "/examples/wrappers", label: "Wrappers" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Theming" }]}
+      next={{ href: "/docs/examples/wrappers", label: "Wrappers" }}
     >
       <Prose>
         <h2 id="theme-contract">Theme contract</h2>

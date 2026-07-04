@@ -56,15 +56,15 @@ export function Flow({
 }
 
 /**
- * Hook: compile a JSX `<Flow>` tree into canonical Wire JSON. Useful when
+ * Hook exported as `useCompiledWireDiagram`: compile a JSX `<Flow>` tree into canonical Wire JSON. Useful when
  * you want to feed the diagram into `<WireProvider>` / `<WireCanvas>`:
  *
  * ```tsx
  * "use client";
- * import { useWireDiagram, WireProvider, WireCanvas, TriggerNode, AINode } from "@aigentive/wire-react";
+ * import { useCompiledWireDiagram, WireProvider, WireCanvas, TriggerNode, AINode } from "@aigentive/wire-react";
  *
  * export function MyDiagram() {
- *   const diagram = useWireDiagram(
+ *   const diagram = useCompiledWireDiagram(
  *     <Flow layout="LR">
  *       <TriggerNode id="t" title="Trigger" />
  *       <AINode id="plan" title="Plan" from="t" />

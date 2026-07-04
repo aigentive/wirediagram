@@ -15,7 +15,9 @@ export const NAV: NavSection[] = [
     items: [
       { href: "/docs", label: "Introduction" },
       { href: "/docs/install", label: "Install & setup" },
-      { href: "/docs/quickstart", label: "Quickstart" }
+      { href: "/docs/quickstart", label: "Quickstart" },
+      { href: "/docs/examples", label: "Examples" },
+      { href: "/docs/production", label: "Production" }
     ]
   },
   {
@@ -40,8 +42,7 @@ export const NAV: NavSection[] = [
     title: "Customize",
     items: [
       { href: "/docs/customize/cards", label: "Custom node cards" },
-      { href: "/docs/customize/list-rows", label: "Custom list rows", badge: "soon" },
-      { href: "/docs/customize/theme", label: "Theme & dark mode", badge: "soon" }
+      { href: "/docs/customize/options", label: "Option catalogs", badge: "new" }
     ]
   },
   {
@@ -53,6 +54,7 @@ export const NAV: NavSection[] = [
   {
     title: "Examples",
     items: [
+      { href: "/docs/examples", label: "Examples hub", badge: "new" },
       { href: "/docs/examples/package-css", label: "Package CSS", badge: "new" },
       { href: "/docs/examples/custom-shell", label: "Custom shell", badge: "new" },
       { href: "/docs/examples/options", label: "Options", badge: "new" },
@@ -70,6 +72,7 @@ export const NAV: NavSection[] = [
   {
     title: "Reference",
     items: [
+      { href: "/docs/api/react-components", label: "React components", badge: "new" },
       { href: "/docs/api/wire-core", label: "wire-core", badge: "new" },
       { href: "/docs/api/jsx-facade", label: "JSX facade", badge: "new" },
       { href: "/docs/api/hooks", label: "Hooks", badge: "new" }

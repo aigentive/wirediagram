@@ -72,8 +72,8 @@ export default function CliPage() {
       eyebrow="Tooling"
       title="Wire CLI"
       description="Author Wire diagrams from the command line. Init from templates, add nodes, validate, and export to SVG / JSON / Mermaid."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Tooling" }, { label: "CLI" }]}
-      next={{ href: "/api/wire-core", label: "API · wire-core" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Tooling" }, { label: "CLI" }]}
+      next={{ href: "/docs/api/wire-core", label: "API · wire-core" }}
     >
       <Prose>
         <h2 id="install">Install</h2>
@@ -91,7 +91,9 @@ npx @aigentive/wire-cli help`}</Shell>
       <Prose>
         <h2 id="quickstart">Quickstart</h2>
         <p>
-          Create a diagram from a template, add nodes, validate, and export.
+          Create a diagram from a template, add nodes, validate, and export. Run{" "}
+          <InlineCode>wire validate</InlineCode> before <InlineCode>wire export</InlineCode>; export parses and
+          renders the stored diagram, but validation is the preflight.
         </p>
       </Prose>
       <Shell>{`# Init from a built-in template
@@ -102,7 +104,7 @@ wire add ai        --diagram=my-flow --title="Classify intent" \\
                     --description="Route by customer intent" \\
                     --from=incoming --model=gpt-5.4-mini
 wire add tool      --diagram=my-flow --title="Search CRM" \\
-                    --from=classify --ref=crm.search --tools=crm_search
+                    --from=classify --ref=crm.search
 wire add condition --diagram=my-flow --title="Route" \\
                     --from=classify --branches=sales,support,other
 

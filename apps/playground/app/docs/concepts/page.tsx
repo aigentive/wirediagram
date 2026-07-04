@@ -42,8 +42,8 @@ export default function ConceptsPage() {
       eyebrow="Concepts"
       title="How Wire thinks"
       description="Five primitives describe the whole library. Internalise them once and the API maps cleanly."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Concepts" }]}
-      next={{ href: "/customize/cards", label: "Customize cards" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Concepts" }]}
+      next={{ href: "/docs/production", label: "Production usage" }}
     >
       <Prose>
         <p>

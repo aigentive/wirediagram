@@ -1,10 +1,12 @@
 import Link from "next/link";
 import {
+  Bot,
   Boxes,
+  Braces,
   Lightbulb,
   MousePointerClick,
   Rocket,
-  Sliders,
+  TerminalSquare,
   type LucideIcon
 } from "lucide-react";
 import { DocsPage } from "./_components/DocsPage";
@@ -15,40 +17,100 @@ const PATHS: Array<{ href: string; eyebrow: string; title: string; detail: strin
     href: "/docs/install",
     eyebrow: "Get started",
     title: "Install & setup",
-    detail: "Add the package, import the stylesheet, render your first canvas.",
+    detail: "Add the package, import the stylesheet, render your first verified surface.",
     icon: Rocket
   },
   {
-    href: "/docs/concepts",
-    eyebrow: "Concepts",
-    title: "How Wire thinks",
-    detail: "Diagram JSON, the action reducer, decoupled events, typed options, render contracts.",
-    icon: Lightbulb
+    href: "/docs/examples",
+    eyebrow: "Examples",
+    title: "See working surfaces",
+    detail: "Package CSS, full editor shells, options, theming, accessibility, and click flows.",
+    icon: Boxes
   },
   {
-    href: "/docs/customize/cards",
-    eyebrow: "Customize",
-    title: "Make it yours",
-    detail: "Replace node cards, list rows, and group frames without touching canvas internals.",
-    icon: Sliders
+    href: "/docs/production",
+    eyebrow: "Production",
+    title: "Ship with confidence",
+    detail: "Persistence, validation, CSS, client boundaries, MCP, CLI, and release checks.",
+    icon: Lightbulb
+  }
+];
+
+const ROLE_TRACKS = [
+  {
+    title: "React embed",
+    links: [
+      ["/docs/install", "Install"],
+      ["/docs/quickstart", "Quickstart"],
+      ["/docs/examples", "Examples"],
+      ["/docs/production", "Production"],
+      ["/docs/api/react-components", "API"]
+    ]
+  },
+  {
+    title: "Full editor",
+    links: [
+      ["/docs/quickstart#full-editor", "Workspace"],
+      ["/docs/examples/custom-shell", "Custom shell"],
+      ["/docs/examples/controlled-state", "Controlled state"],
+      ["/docs/api/hooks", "Hooks"]
+    ]
+  },
+  {
+    title: "LLM / agent",
+    links: [
+      ["/docs/llm", "LLM docs"],
+      ["/docs/mcp", "MCP"],
+      ["/docs/api/wire-core", "Core"],
+      ["/docs/cli", "CLI"]
+    ]
+  },
+  {
+    title: "Maintainer",
+    links: [
+      ["/docs/concepts", "Concepts"],
+      ["/docs/customize/options", "Options"],
+      ["/docs/listen", "Events"],
+      ["/docs/production", "Release checks"]
+    ]
   }
 ];
 
 const HIGHLIGHT_TASKS: Array<{ href: string; title: string; detail: string; icon: LucideIcon }> = [
-  { href: "/docs/customize/cards", title: "Custom node renderers", detail: "Three example surfaces from the same context object.", icon: Sliders },
-  { href: "/docs/listen", title: "Listen to clicks", detail: "Five event types, two built-in emitters, one onEvent.", icon: MousePointerClick },
-  { href: "/docs/examples/layouts", title: "Layouts", detail: "Router, vertical, and horizontal flows from the same nodes.", icon: Boxes },
-  { href: "/docs/examples/click-modal", title: "Click → modal", detail: "Surface params in a dialog using onEvent + WireOptionPanel.", icon: MousePointerClick }
+  {
+    href: "/docs/api/react-components",
+    title: "React component API",
+    detail: "WireProvider, WireCanvas, WireWorkspace, WireInspector, WireEditor, and WireViewer.",
+    icon: Braces
+  },
+  {
+    href: "/docs/llm",
+    title: "Agent workflows",
+    detail: "Machine-readable schema, validation, recipes, and SKILL.md entry points.",
+    icon: Bot
+  },
+  {
+    href: "/docs/mcp",
+    title: "MCP tools",
+    detail: "Tool, resource, prompt, security, render, and validation behavior.",
+    icon: MousePointerClick
+  },
+  {
+    href: "/docs/cli",
+    title: "CLI workflows",
+    detail: "Initialize, add nodes, validate, export, list, and use the shell fallback.",
+    icon: TerminalSquare
+  }
 ];
 
 export default function DocsLanding() {
   return (
     <DocsPage
-      title="Wire React Components"
+      title="Wire documentation"
       description={
         <>
-          A typed diagram schema, a layout engine, and a small set of React components that render the same{" "}
-          <InlineCode>WireDiagram</InlineCode> as an interactive canvas, a static SVG, or a Mermaid string.
+          Production docs for humans, React developers, and agent workflows. Everything centers on{" "}
+          <InlineCode>WireDiagram</InlineCode> JSON and <InlineCode>WireAction</InlineCode> reducer actions.
         </>
       }
       showToc={false}
@@ -71,7 +133,7 @@ export default function DocsLanding() {
                 <span className="text-[13px] leading-6 text-wire-secondary">{path.detail}</span>
               </span>
               <span aria-hidden className="mt-1 inline-flex items-center gap-1 text-[12px] font-bold text-wire-link">
-                Read <span className="inline-block transition-transform group-hover:translate-x-0.5">{"→"}</span>
+                Read <span className="inline-block transition-transform group-hover:translate-x-0.5">{"->"}</span>
               </span>
             </Link>
           );
@@ -81,87 +143,76 @@ export default function DocsLanding() {
       <Prose>
         <h2 id="what-you-get">What you get</h2>
         <p>
-          The package ships a small surface organized around one canonical{" "}
-          <InlineCode>WireDiagram</InlineCode>. Apps import Wire-level props; the canvas engine stays internal.
+          Wire uses one durable contract across the React package, CLI, MCP server, renderers, and agent docs. Apps
+          persist <InlineCode>WireDiagram</InlineCode>; durable edits use <InlineCode>WireAction</InlineCode>.
         </p>
         <ul>
           <li>
-            <strong>Provider &amp; canvas.</strong> <InlineCode>WireProvider</InlineCode> holds diagram, selection,
-            viewport, validation, mode, and history. <InlineCode>WireCanvas</InlineCode> renders it through the native
-            canvas with view/edit modes, fitView, background, and minimap toggles.
+            <strong>Provider and canvas.</strong> <InlineCode>WireProvider</InlineCode> holds diagram, selection,
+            viewport, validation, mode, dirty state, and history. <InlineCode>WireCanvas</InlineCode> renders that
+            state as an interactive surface.
           </li>
           <li>
-            <strong>Higher-level shells.</strong> <InlineCode>WireWorkspace</InlineCode> bundles provider + sidebar +
-            canvas + inspector for the &ldquo;drop in and ship&rdquo; case.{" "}
-            <InlineCode>WireViewer</InlineCode> is read-only; <InlineCode>WireEditor</InlineCode> is a thinner editable
-            wrapper.
+            <strong>Higher-level shells.</strong> <InlineCode>WireWorkspace</InlineCode> bundles provider, sidebar,
+            canvas, inspector, palette, and validation. <InlineCode>WireViewer</InlineCode> is read-only;{" "}
+            <InlineCode>WireEditor</InlineCode> is a thinner editable wrapper.
           </li>
           <li>
             <strong>Typed options.</strong> Declare a <InlineCode>WireOptionCatalog</InlineCode> once;{" "}
-            <InlineCode>WireOptionPanel</InlineCode> and <InlineCode>WireInspector</InlineCode> render the form and
-            patch the diagram via <InlineCode>node.patch</InlineCode> actions.
+            <InlineCode>WireOptionPanel</InlineCode> and <InlineCode>WireInspector</InlineCode> render forms and patch
+            the diagram with reducer actions.
           </li>
           <li>
-            <strong>Decoupled events.</strong> Five event types — <InlineCode>node.click</InlineCode>,{" "}
-            <InlineCode>node.inspect</InlineCode>, <InlineCode>edge.click</InlineCode>,{" "}
-            <InlineCode>selection.change</InlineCode>, <InlineCode>pane.click</InlineCode> — each carrying a{" "}
-            <InlineCode>source</InlineCode> label so you can tell a canvas click from a node-list click.
+            <strong>Decoupled events.</strong> Node, edge, selection, and pane events carry a source label so app
+            shells can distinguish canvas, inspector, node-list, option-panel, and API emissions.
           </li>
           <li>
-            <strong>Hooks.</strong> <InlineCode>useWireDiagram</InlineCode>,{" "}
-            <InlineCode>useWireSelection</InlineCode>, <InlineCode>useWireViewport</InlineCode>,{" "}
-            <InlineCode>useWireMode</InlineCode>, <InlineCode>useWireHistory</InlineCode>,{" "}
-            <InlineCode>useWireDispatch</InlineCode>, and friends — read or drive any slice of provider state from your
-            own components.
-          </li>
-          <li>
-            <strong>Static renders.</strong> <InlineCode>renderToSvg</InlineCode> and{" "}
-            <InlineCode>toMermaid</InlineCode> from <InlineCode>@aigentive/wire-core</InlineCode> emit the same diagram
-            as a self-contained SVG string or a Mermaid <InlineCode>flowchart</InlineCode>.
-          </li>
-          <li>
-            <strong>Theme.</strong> Package CSS variables, <InlineCode>colorMode</InlineCode>,{" "}
-            <InlineCode>unstyled</InlineCode>, and slot classes let product shells match their own design system.
+            <strong>Package CSS.</strong> Import <InlineCode>@aigentive/wire-react/styles.css</InlineCode>. Customize
+            with CSS variables, <InlineCode>colorMode</InlineCode>, <InlineCode>unstyled</InlineCode>, and slot{" "}
+            <InlineCode>classNames</InlineCode>.
           </li>
         </ul>
 
-        <h2 id="two-authoring-paths">Two authoring paths</h2>
+        <h2 id="role-tracks">Choose a track</h2>
         <p>
-          Everything compiles down to the same canonical JSON. Pick the path that fits the surface you&rsquo;re
-          building.
+          Start with the track closest to your task, then use concepts and API references when you need durable schema
+          details.
         </p>
-        <ul>
-          <li>
-            <strong>JSON.</strong> Hand-write a <InlineCode>WireDiagram</InlineCode> object — or have an LLM, the CLI,
-            or the MCP server emit one — and render it through <InlineCode>WireProvider</InlineCode> +{" "}
-            <InlineCode>WireCanvas</InlineCode>. This is what every page under{" "}
-            <Link href="/docs/examples/layouts">Examples</Link> does.
-          </li>
-          <li>
-            <strong>JSX facade.</strong> Compose the diagram as React children of <InlineCode>{`<Flow>`}</InlineCode>{" "}
-            using <InlineCode>{`<TriggerNode>`}</InlineCode>, <InlineCode>{`<AINode>`}</InlineCode>,{" "}
-            <InlineCode>{`<ConditionNode>`}</InlineCode>, etc. The walker compiles the tree to canonical JSON; the same
-            renderer takes it from there.
-          </li>
-        </ul>
+      </Prose>
 
-        <h2 id="where-to-render">Where to render</h2>
+      <section className="grid gap-3 md:grid-cols-2">
+        {ROLE_TRACKS.map((track) => (
+          <div key={track.title} className="grid gap-3 rounded-lg border border-wire bg-wire-surface p-4 shadow-wire-sm">
+            <h3 className="m-0 text-[15px] font-bold text-wire-primary">{track.title}</h3>
+            <div className="flex flex-wrap gap-2">
+              {track.links.map(([href, label]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="rounded-md border border-wire bg-wire-sunken px-2.5 py-1.5 text-[12px] font-bold text-wire-secondary no-underline hover:border-wire-strong hover:text-wire-primary"
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <Prose>
+        <h2 id="authoring-paths">Authoring paths</h2>
         <p>
-          The same diagram has three rendering surfaces. The toolbar on every card in{" "}
-          <Link href="/docs/examples/layouts">Layouts</Link> flips between them live.
+          Everything compiles down to the same canonical JSON. Pick the path that fits the surface you are building.
         </p>
         <ul>
           <li>
-            <strong>Interactive canvas.</strong> <InlineCode>WireCanvas</InlineCode> for pan/zoom, selection, edits,
-            and click events.
+            <strong>JSON.</strong> Hand-write a <InlineCode>WireDiagram</InlineCode>, have the CLI or MCP server emit
+            one, or let an agent generate it. Render the same object through React, SVG, Mermaid, MCP, or CLI flows.
           </li>
           <li>
-            <strong>Static SVG.</strong> <InlineCode>renderToSvg(diagram)</InlineCode> returns a self-contained SVG
-            string — server-renderable, embeddable in markdown, downloadable as a file.
-          </li>
-          <li>
-            <strong>Mermaid.</strong> <InlineCode>toMermaid(diagram)</InlineCode> returns a{" "}
-            <InlineCode>flowchart</InlineCode> source — paste into any Mermaid renderer or check it into a README.
+            <strong>React JSX facade.</strong> Compose a diagram with <InlineCode>{`<Flow>`}</InlineCode> and marker
+            components, then compile it to canonical JSON with <InlineCode>compile</InlineCode> or{" "}
+            <InlineCode>useCompiledWireDiagram</InlineCode>.
           </li>
         </ul>
 
@@ -183,7 +234,7 @@ export default function DocsLanding() {
                   {task.title}
                 </span>
                 <span aria-hidden className="text-[14px] font-bold text-wire-link transition-transform group-hover:translate-x-0.5">
-                  {"→"}
+                  {"->"}
                 </span>
               </div>
               <span className="text-[13px] leading-6 text-wire-secondary">{task.detail}</span>
@@ -191,6 +242,22 @@ export default function DocsLanding() {
           );
         })}
       </section>
+
+      <Prose>
+        <h2 id="next">Recommended order</h2>
+        <ol>
+          <li>
+            Start with <Link href="/docs/install">Install</Link> and <Link href="/docs/quickstart">Quickstart</Link>.
+          </li>
+          <li>
+            Browse the <Link href="/docs/examples">examples hub</Link> and production guide.
+          </li>
+          <li>
+            Use <Link href="/docs/concepts">Concepts</Link>, <Link href="/docs/api/react-components">React API</Link>,
+            MCP, CLI, and LLM docs as references.
+          </li>
+        </ol>
+      </Prose>
     </DocsPage>
   );
 }

@@ -82,11 +82,11 @@ export default function CardsCustomizePage() {
       title="Custom node cards"
       description="Replace the default card per kind, or globally. The render callback receives the same context the default uses."
       crumbs={[
-        { href: "/", label: "Docs" },
+        { href: "/docs", label: "Docs" },
         { label: "Customize" },
         { label: "Cards" }
       ]}
-      next={{ href: "/listen", label: "Listen to events" }}
+      next={{ href: "/docs/listen", label: "Listen to events" }}
     >
       <Prose>
         <h2 id="default">

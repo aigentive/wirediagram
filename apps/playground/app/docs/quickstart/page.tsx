@@ -175,8 +175,8 @@ export default function QuickstartPage() {
       eyebrow="Get started"
       title="Quickstart"
       description="Pick the API path, drop a canvas into a page, and react to events."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Quickstart" }]}
-      next={{ href: "/concepts", label: "How Wire thinks" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Quickstart" }]}
+      next={{ href: "/docs/examples", label: "Examples hub" }}
     >
       <Prose>
         <h2 id="pick-an-api-path">Pick an API path</h2>
@@ -277,8 +277,9 @@ export default function QuickstartPage() {
         <p>
           <InlineCode>{`<Flow>`}</InlineCode> has two modes. <InlineCode>mode=&quot;svg&quot;</InlineCode> (the default
           shown above) renders inline SVG. <InlineCode>mode=&quot;json&quot;</InlineCode> renders nothing and instead
-          fires <InlineCode>onCompile</InlineCode> with the canonical <InlineCode>WireDiagram</InlineCode> — perfect
-          for capturing the JSON to save, send to an MCP server, or hand off to your own renderer.
+          calls <InlineCode>onCompile</InlineCode> with the canonical <InlineCode>WireDiagram</InlineCode> whenever
+          the Flow renders with a callback — useful for capturing JSON to save, send to an MCP server, or hand off to
+          your own renderer.
         </p>
       </Prose>
       <CodeBlock language="tsx">
@@ -302,26 +303,29 @@ export function CompileOnly({ onSave }: { onSave: (d: WireDiagram) => void }) {
       </CodeBlock>
 
       <Callout tone="tip" title="Or grab it via hook">
-        If you&rsquo;re already inside a React tree, <InlineCode>useWireDiagram(flowElement)</InlineCode> compiles a
-        Flow element to JSON synchronously without mounting it — useful when you want to feed the JSON into{" "}
-        <InlineCode>WireProvider</InlineCode> or a custom canvas.
+        If you&rsquo;re already inside a React tree, <InlineCode>useCompiledWireDiagram(flowElement)</InlineCode> compiles
+        a Flow element to JSON synchronously without mounting it — useful when you want to feed the JSON into{" "}
+        <InlineCode>WireProvider</InlineCode> or a custom canvas. <InlineCode>useWireDiagram()</InlineCode> is the
+        provider hook for reading the current diagram from context.
       </Callout>
 
       <Prose>
         <h2 id="next">Where next</h2>
         <ul>
           <li>
+            <Link href="/docs/examples">Examples</Link> — working package CSS, editor, options, theme, and event
+            surfaces.
+          </li>
+          <li>
+            <Link href="/docs/production">Production</Link> — persistence, validation, CSS, accessibility, and release
+            checks.
+          </li>
+          <li>
+            <Link href="/docs/api/react-components">React component API</Link> — current public component props and
+            adoption surfaces.
+          </li>
+          <li>
             <Link href="/docs/concepts">Concepts</Link> — the diagram shape, action reducer, and event surface.
-          </li>
-          <li>
-            <Link href="/docs/customize/cards">Customize cards</Link> — replace the default node renderer.
-          </li>
-          <li>
-            <Link href="/docs/listen">Listen</Link> — the full <InlineCode>onEvent</InlineCode> surface.
-          </li>
-          <li>
-            <Link href="/docs/examples/layouts">Examples</Link> — three layouts plus modal/sidebar interactions, all live
-            on this site.
           </li>
         </ul>
       </Prose>

@@ -28,7 +28,7 @@ export default function ReadOnlyInspectorExamplePage() {
       eyebrow="Examples"
       title="Read-only inspector"
       description="Lock built-in mutating controls while keeping values reachable and copyable."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Read-only inspector" }]}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Read-only inspector" }]}
     >
       <Prose>
         <h2 id="read-only">Read-only behavior</h2>

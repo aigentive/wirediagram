@@ -22,8 +22,8 @@ export default function LlmDocsPage() {
       eyebrow="LLM interface"
       title="Machine-readable Wire docs"
       description="The fastest path for agents is not a tutorial. It is compact JSON shape, schema, examples, recipes, and a short agent guide that all point at the canonical Wire model."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "LLM docs" }]}
-      next={{ href: "/mcp", label: "Wire MCP server" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "LLM docs" }]}
+      next={{ href: "/docs/mcp", label: "Wire MCP server" }}
     >
       <Callout title="Primary contract" tone="tip">
         Agents should start at <InlineCode>/llm/wire-docs.shape.json</InlineCode> or call{" "}
@@ -33,8 +33,8 @@ export default function LlmDocsPage() {
       <Prose>
         <h2 id="entrypoints">Entrypoints</h2>
         <p>
-          These routes return raw JSON or Markdown with stable content types. They are designed for Codex, Claude Code,
-          Cursor, hosted Wire chat, and retrieval pipelines.
+          These routes return raw JSON or Markdown with stable content types. They are designed for local agents,
+          hosted Wire chat, and retrieval pipelines.
         </p>
       </Prose>
 

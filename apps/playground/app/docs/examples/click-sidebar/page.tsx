@@ -55,7 +55,7 @@ export default function ClickSidebarExamplePage() {
       eyebrow="Examples"
       title="Click → sidebar"
       description="Slide in a contextual panel. Same listener as the modal example, different placement — useful when option editing happens mid-flow without leaving the canvas."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Click → sidebar" }]}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Click → sidebar" }]}
     >
       <Prose>
         <h2 id="try-it">Try it</h2>
