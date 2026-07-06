@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import "@aigentive/wire-react/styles.css";
 import "./globals.css";
 
 export const metadata = {
