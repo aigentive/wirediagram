@@ -31,8 +31,8 @@ export default function PackageCssExamplePage() {
       eyebrow="Examples"
       title="Package CSS"
       description="Use the package stylesheet as the npm-consumer styling path."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Package CSS" }]}
-      next={{ href: "/examples/custom-shell", label: "Custom shell" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Package CSS" }]}
+      next={{ href: "/docs/examples/custom-shell", label: "Custom shell" }}
     >
       <Prose>
         <h2 id="pattern">Pattern</h2>

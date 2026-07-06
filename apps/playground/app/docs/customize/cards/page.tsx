@@ -16,7 +16,7 @@ import type { ReactNode } from "react";
 
 const CATALOG: WireOptionCatalog = {
   ai: [
-    { key: "model", storage: "node", type: "select", options: ["gpt-5.4-mini", "gpt-4.1-mini"] },
+    { key: "model", storage: "node", type: "select", options: ["fast-model", "balanced-model"] },
     { key: "temperature", type: "number", min: 0, max: 2, step: 0.1 }
   ],
   trigger: [{ key: "event", type: "text" }],
@@ -34,7 +34,7 @@ const SAMPLE_NODES: WireNode[] = [
     id: "plan",
     kind: "ai",
     title: "Plan answer",
-    model: "gpt-5.4-mini",
+    model: "fast-model",
     data: { options: { mode: "plan", temperature: 0.3 } }
   },
   {
@@ -82,11 +82,11 @@ export default function CardsCustomizePage() {
       title="Custom node cards"
       description="Replace the default card per kind, or globally. The render callback receives the same context the default uses."
       crumbs={[
-        { href: "/", label: "Docs" },
+        { href: "/docs", label: "Docs" },
         { label: "Customize" },
         { label: "Cards" }
       ]}
-      next={{ href: "/listen", label: "Listen to events" }}
+      next={{ href: "/docs/listen", label: "Listen to events" }}
     >
       <Prose>
         <h2 id="default">

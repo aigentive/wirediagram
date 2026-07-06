@@ -41,8 +41,8 @@ export default function AccessibilityExamplePage() {
       eyebrow="Examples"
       title="Accessibility"
       description="Use package-owned keyboard behavior, ARIA labels, search, and connection validation."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Accessibility" }]}
-      next={{ href: "/examples/theming", label: "Theming" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Accessibility" }]}
+      next={{ href: "/docs/examples/theming", label: "Theming" }}
     >
       <Prose>
         <h2 id="canvas-a11y">Canvas accessibility</h2>

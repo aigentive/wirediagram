@@ -37,8 +37,8 @@ export default function WrappersExamplePage() {
       eyebrow="Examples"
       title="Wrappers"
       description="Use WireEditor for editable embeds and WireViewer for read-only previews."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Wrappers" }]}
-      next={{ href: "/examples/read-only-inspector", label: "Read-only inspector" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Wrappers" }]}
+      next={{ href: "/docs/examples/read-only-inspector", label: "Read-only inspector" }}
     >
       <Prose>
         <h2 id="wrappers">Wrapper pass-through</h2>

@@ -47,7 +47,7 @@ export default function ContactPage() {
       eyebrow="Contact"
       title="Get in touch"
       description="Questions about Wire, integration help, or feedback on the docs — drop us a line."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Contact" }]}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Contact" }]}
       showToc={false}
     >
       {state.status === "ok" ? (

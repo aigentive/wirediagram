@@ -65,7 +65,7 @@ import {
 
 const options: WireOptionCatalog = {
   ai: [
-    { key: "model", storage: "node", type: "select", options: ["gpt-4.1", "gpt-4.1-mini"] },
+    { key: "model", storage: "node", type: "select", options: ["careful-model", "balanced-model"] },
     { key: "temperature", type: "number", min: 0, max: 2, step: 0.1 }
   ]
 };
@@ -339,7 +339,7 @@ nodes through `node.patch`.
 const options: WireOptionCatalog = {
   "*": [{ key: "owner", storage: "data" }],
   ai: [
-    { key: "model", storage: "node", type: "select", options: ["gpt-4.1"] },
+    { key: "model", storage: "node", type: "select", options: ["careful-model"] },
     { key: "maxSteps", type: "number", min: 1, max: 20, step: 1 }
   ]
 };

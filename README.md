@@ -2,11 +2,11 @@
 
 > The diagram library agents can reliably create, edit, validate, and explain.
 
-`@aigentive/wire` is an LLM-first diagram library with native MCP support. It pairs a canonical JSON schema for agent-friendly diagrams with a shared reducer, a reusable Wire-native React editor/viewer, static SVG/PNG/Mermaid renderers, and an MCP server so any MCP-compatible agent can author and edit diagrams as structured graphs, not pixels.
+Wire is an LLM-first diagram library with native MCP support. It pairs canonical `WireDiagram` JSON with a shared `WireAction` reducer, reusable React editor/viewer components, static SVG/PNG/Mermaid renderers, and an MCP server so agents can author, validate, edit, and render diagrams as structured data.
 
 ## Why Wire
 
-LLMs and agents struggle with diagrams: they emit Mermaid blobs that almost render, JSX trees that go fragile on edit, or PNGs they cannot revise. Wire solves this by giving agents a structured graph they can read, mutate, validate, and re-render — with the same canonical model behind a JSX developer surface and an MCP tool surface.
+LLMs and agents struggle with diagrams: they emit Mermaid blobs that almost render, JSX trees that go fragile on edit, or PNGs they cannot revise. Wire solves this by giving agents canonical `WireDiagram` JSON they can read, mutate, validate, and re-render — with the same durable model behind React, CLI, and MCP surfaces.
 
 - **Canonical JSON** — `from`, `branch`, `attachedTo`, `tone`, `handles`, style, routing, and metadata semantics designed to be unambiguous to LLMs.
 - **Shared actions** — every human, hosted editor, CLI, and MCP edit flows through the `WireAction` reducer in `wire-core`.
@@ -48,7 +48,7 @@ npx -y @aigentive/wire-mcp@latest
 npx -y @aigentive/wire-mcp@latest --http
 ```
 
-### Configure for Claude Desktop
+### Configure a local MCP client
 
 ```json
 {
@@ -69,7 +69,7 @@ npx -y @aigentive/wire-mcp@latest --http
 ```bash
 npm install -g @aigentive/wire-cli
 wire init my-flow --template=approval-flow
-wire add ai --diagram=my-flow --title="Classify" --from=incoming --model=gpt-5.4-mini
+wire add ai --diagram=my-flow --title="Classify" --from=incoming --model=fast-model
 wire validate my-flow
 wire export my-flow --format=svg --out=my-flow.svg
 wire ls
@@ -136,7 +136,7 @@ import {
 
 const options: WireOptionCatalog = {
   ai: [
-    { key: "model", storage: "node", type: "select", options: ["gpt-4.1", "gpt-4.1-mini"] },
+    { key: "model", storage: "node", type: "select", options: ["careful-model", "balanced-model"] },
     { key: "temperature", type: "number", min: 0, max: 2, step: 0.1 }
   ]
 };
@@ -172,7 +172,7 @@ export function Example() {
   return (
     <Flow layout="LR">
       <TriggerNode id="webhook" title="Webhook fires" />
-      <AINode id="classify" title="Classify intent" from="webhook" model="gpt-4.1" />
+      <AINode id="classify" title="Classify intent" from="webhook" model="careful-model" />
       <ConditionNode id="route" title="Route request" from="classify" branches={["sales", "support", "other"]} />
       <ActionNode id="notify-sales" title="Notify sales" from="route.sales" tone="success" />
       <ActionNode id="open-ticket" title="Open ticket" from="route.support" tone="warning" />
@@ -329,7 +329,7 @@ work.
 
 ## Deployment
 
-- **Local (stdio)** — bundled MCP server runs alongside Claude Desktop, Cursor, Claude Code, or another local MCP client.
+- **Local (stdio)** — bundled MCP server runs alongside a local MCP client.
 - **Local (HTTP)** — `wire-mcp --http` for network clients on `:3860`.
 - **Local (Docker Compose)** — MCP at `http://localhost:3860/mcp` plus playground/editor at `http://localhost:3870`, with local volumes for diagrams and share tokens.
 - **Cloud (Docker)** — multi-stage `Dockerfile` deploys MCP to Fly, Render, Cloud Run, or Kubernetes; persistent volume at `/data/diagrams`.

@@ -80,7 +80,8 @@ const TOOL_GROUPS: Array<{ title: string; tools: Array<{ name: string; purpose: 
     title: "Agent guidance",
     tools: [
       { name: "v1_get_agent_guide", purpose: "Return the concise MCP agent operating guide for live instructions." },
-      { name: "v1_get_docs_shape", purpose: "Return machine-readable docs chunks by topic or natural-language task." }
+      { name: "v1_get_docs_shape", purpose: "Return machine-readable docs chunks by topic or natural-language task." },
+      { name: "v1_get_capabilities", purpose: "Return server, docs, schema, reducer action, and reserved capability metadata." }
     ]
   }
 ];
@@ -96,7 +97,8 @@ const RESOURCES: Array<{ uri: string; purpose: string }> = [
   { uri: "wire://schemas/wire-diagram", purpose: "JSON schema info." },
   { uri: "wire://docs/", purpose: "Machine-readable docs manifest." },
   { uri: "wire://docs/agent-guide.md", purpose: "Prompt-ready agent guide." },
-  { uri: "wire://docs/{topic}.shape.json", purpose: "Topic docs for agent, mcp, react, cloud, schema, validation, examples, or recipes." },
+  { uri: "wire://docs/{topic}.shape.json", purpose: "Topic docs for agent, mcp, cli, react, cloud, schema, validation, examples, recipes, or skill." },
+  { uri: "wire://docs/schema/wire-diagram.json", purpose: "WireDiagram JSON schema as a docs resource." },
   { uri: "wire://docs/examples/{name}.wire.json", purpose: "Validated example diagrams." },
   { uri: "wire://docs/recipes/{id}.json", purpose: "Task recipes for agents." }
 ];
@@ -114,9 +116,9 @@ export default function McpPage() {
     <DocsPage
       eyebrow="Tooling"
       title="Wire MCP server"
-      description="Model Context Protocol server for Wire. Lets any MCP-compatible agent (Claude Desktop, Claude Code, Cursor, custom CUA) author and edit Wire diagrams as structured graphs — and render them to SVG or PNG. Stdio + streamable-HTTP transports out of the box."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Tooling" }, { label: "MCP server" }]}
-      next={{ href: "/cli", label: "Wire CLI" }}
+      description="Model Context Protocol server for Wire. Lets MCP agents author, validate, edit, and render WireDiagram JSON through stdio or streamable HTTP."
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Tooling" }, { label: "MCP server" }]}
+      next={{ href: "/docs/cli", label: "Wire CLI" }}
     >
       <Prose>
         <h2 id="install">Install</h2>
@@ -132,15 +134,15 @@ npm install @resvg/resvg-js`}</Shell>
       <Prose>
         <h2 id="run">Run</h2>
         <p>
-          Pick a transport. <InlineCode>stdio</InlineCode> is the default for desktop agents (Claude Desktop, Claude
-          Code, Cursor). <InlineCode>--http</InlineCode> exposes a streamable-HTTP endpoint on port{" "}
-          <InlineCode>3860</InlineCode> for cloud agents and remote MCP clients.
+          Pick a transport. <InlineCode>stdio</InlineCode> is the default for local agents.{" "}
+          <InlineCode>--http</InlineCode> exposes a streamable-HTTP endpoint on port{" "}
+          <InlineCode>3860</InlineCode> for cloud agents and remote MCP hosts.
         </p>
       </Prose>
-      <Shell>{`# stdio — local IDE / desktop clients
+      <Shell>{`# stdio — local MCP hosts
 node node_modules/@aigentive/wire-mcp/dist/server.js
 
-# streamable HTTP — cloud / network clients
+# streamable HTTP — cloud / network hosts
 node node_modules/@aigentive/wire-mcp/dist/server.js --http
 
 # When installed globally
@@ -179,7 +181,7 @@ wire-mcp --http    # http on port 3860`}</Shell>
       <Prose>
         <h2 id="tools">Tools</h2>
         <p>
-          28 tools cover the full diagram CRUD surface plus rendering, validation, and machine-readable docs. They&rsquo;re grouped here for
+          30 tools cover the full diagram CRUD surface plus rendering, validation, capabilities, and machine-readable docs. They&rsquo;re grouped here for
           orientation; agents discover them through the standard MCP tool list.
         </p>
       </Prose>
@@ -270,8 +272,8 @@ wire-mcp --http    # http on port 3860`}</Shell>
       <Prose>
         <h2 id="prompts">Prompts</h2>
         <p>
-          The server bundles five prompts that frame common diagram-authoring tasks. Clients with prompt support
-          (Claude Desktop, Cursor) surface them as templates.
+          The server bundles five prompts that frame common diagram-authoring tasks. Clients with prompt support can
+          surface them as reusable templates.
         </p>
       </Prose>
 
@@ -297,10 +299,10 @@ wire-mcp --http    # http on port 3860`}</Shell>
       </div>
 
       <Prose>
-        <h2 id="claude-desktop">Claude Desktop config</h2>
+        <h2 id="stdio-host-config">Stdio host config</h2>
         <p>
-          Drop this into <InlineCode>~/Library/Application Support/Claude/claude_desktop_config.json</InlineCode> (or
-          the equivalent on Windows / Linux), restart Claude Desktop, and the Wire tools appear in the tool picker.
+          Most local MCP hosts accept a JSON server entry with a command, args, and environment. Point the command at
+          the built server and restart the host so the Wire tools appear in the tool list.
         </p>
       </Prose>
       <CodeBlock language="json">

@@ -51,8 +51,8 @@ export default function ClickModalExamplePage() {
       eyebrow="Examples"
       title="Click → modal"
       description="Surface params in a dialog. Wire emits a node.click event for every node in the canvas. Listen for it, open a modal, and render the option panel inside."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Click → modal" }]}
-      next={{ href: "/examples/click-sidebar", label: "Click → sidebar" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Click → modal" }]}
+      next={{ href: "/docs/examples/click-sidebar", label: "Click → sidebar" }}
     >
       <Prose>
         <h2 id="try-it">Try it</h2>

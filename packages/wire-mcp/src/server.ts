@@ -344,7 +344,7 @@ const ApplyActionsInput = z.object({
 });
 
 const DocsShapeInput = z.object({
-  topic: z.string().optional().describe("Optional docs topic: agent, mcp, react, cloud, schema, validation, examples, recipes."),
+  topic: z.string().optional().describe("Optional docs topic: agent, mcp, cli, react, cloud, schema, validation, examples, recipes, skill."),
   task: z.string().optional().describe("Optional natural-language task. The server returns the most relevant docs chunks.")
 });
 

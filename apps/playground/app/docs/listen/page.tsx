@@ -39,7 +39,7 @@ const DEMO_DIAGRAM: WireDiagram = {
   layout: "LR",
   nodes: [
     { id: "webhook", kind: "trigger", title: "Ticket webhook" },
-    { id: "plan", kind: "ai", title: "Plan answer", from: "webhook", model: "gpt-5.4-mini" },
+    { id: "plan", kind: "ai", title: "Plan answer", from: "webhook", model: "fast-model" },
     { id: "respond", kind: "action", title: "Send response", from: "plan", tone: "success" }
   ],
   edges: []
@@ -59,8 +59,8 @@ export default function ListenPage() {
       eyebrow="Listen"
       title="Events surface"
       description="Five event types, two built-in emitters, seven source labels, one onEvent handler. Canvas gestures and list selections share the same shape."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Listen" }]}
-      next={{ href: "/examples/layouts", label: "See it on the sample page" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Listen" }]}
+      next={{ href: "/docs/examples/layouts", label: "See it on the sample page" }}
     >
       <Prose>
         <h2 id="why">Why a separate event channel</h2>

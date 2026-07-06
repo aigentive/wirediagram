@@ -10,14 +10,15 @@ export default function InstallPage() {
     <DocsPage
       eyebrow="Get started"
       title="Install & setup"
-      description="Add the package, import the stylesheet, render your first canvas."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Install" }]}
-      next={{ href: "/quickstart", label: "Quickstart" }}
+      description="Add the package, import the stylesheet, and render a verified Wire surface without extra CSS tooling."
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Install" }]}
+      next={{ href: "/docs/quickstart", label: "Quickstart" }}
     >
       <Prose>
         <h2 id="install">Install</h2>
         <p>
-          The interactive canvas ships inside <InlineCode>@aigentive/wire-react</InlineCode>. React 18+ is required.
+          The interactive canvas, editor shells, and viewer components ship inside{" "}
+          <InlineCode>@aigentive/wire-react</InlineCode>. React and React DOM 18 or newer are peer dependencies.
         </p>
       </Prose>
       <Shell>{`npm install @aigentive/wire-react`}</Shell>
@@ -32,8 +33,9 @@ export default function InstallPage() {
       <Prose>
         <h2 id="package-css">Package CSS</h2>
         <p>
-          Import the package stylesheet once in your app entry. npm consumers do not need to point a CSS compiler at
-          the package source.
+          Import the package stylesheet once in your client app entry, root layout, or bundled stylesheet entry. React
+          consumers do not need to install or configure Tailwind for Wire. npm consumers do not need to point a CSS
+          compiler at the package source.
         </p>
       </Prose>
       <CodeBlock language="tsx">
@@ -45,6 +47,30 @@ export default function InstallPage() {
         <InlineCode>unstyled</InlineCode>, slot <InlineCode>classNames</InlineCode>, and CSS variables when you need
         tighter design-system integration.
       </Callout>
+
+      <Prose>
+        <h2 id="app-boundaries">App boundaries</h2>
+        <p>
+          Wire editor surfaces are interactive React components. In server-rendered app frameworks, place the Wire
+          component behind a client boundary and import the CSS from the app entry or root layout. In single-page build
+          tools, import the CSS once from the application entry before rendering React.
+        </p>
+        <ul>
+          <li>
+            <strong>Client boundary.</strong> Use client-only modules for <InlineCode>WireProvider</InlineCode>,{" "}
+            <InlineCode>WireCanvas</InlineCode>, <InlineCode>WireWorkspace</InlineCode>,{" "}
+            <InlineCode>WireEditor</InlineCode>, and <InlineCode>WireViewer</InlineCode>.
+          </li>
+          <li>
+            <strong>Stable height.</strong> The canvas reads its parent box. Give the parent a height, min-height, or
+            grid track so pan, zoom, and fit view have real bounds.
+          </li>
+          <li>
+            <strong>Persist only JSON.</strong> Store <InlineCode>WireDiagram</InlineCode>, not viewport, selection,
+            inspector state, callbacks, option catalog functions, or rendered output.
+          </li>
+        </ul>
+      </Prose>
 
       <Prose>
         <h2 id="theme">Light &amp; dark mode</h2>
@@ -66,8 +92,8 @@ export default function InstallPage() {
       <Prose>
         <h2 id="smoke-test">Verify the install</h2>
         <p>
-          Drop this component anywhere in your app. If you see the trigger card with its kind chip and title, install
-          and CSS import are wired correctly.
+          Drop this client component into an app route. If you see the trigger card with its kind chip and title,
+          install and CSS import are wired correctly.
         </p>
       </Prose>
       <CodeBlock language="tsx">
@@ -121,8 +147,8 @@ export function SmokeTest() {
         <h2 id="next">What&rsquo;s next</h2>
         <p>
           You&rsquo;ve got the package and styles in place. The <a href="/docs/quickstart">Quickstart</a> picks an API path
-          and renders a working canvas. From there, the <a href="/docs/concepts">mental model</a> covers how Wire&rsquo;s
-          schema, actions, and events fit together.
+          and renders a working canvas. From there, the <a href="/docs/examples">examples hub</a> and{" "}
+          <a href="/docs/production">production guide</a> cover adoption details.
         </p>
       </Prose>
     </DocsPage>

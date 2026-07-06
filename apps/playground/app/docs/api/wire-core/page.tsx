@@ -15,7 +15,7 @@ const PARSE_EXPORTS: Array<{ name: string; signature: string; purpose: string }>
 
 const VALIDATE_EXPORTS: Array<{ name: string; signature: string; purpose: string }> = [
   { name: "validate", signature: "validate(input: unknown): ValidationResult", purpose: "Structural + reference validation. Returns `{ valid, issues: ValidationIssue[] }` with codes + repair hints." },
-  { name: "ValidationIssue", signature: "{ code: string; severity: \"error\" | \"warning\"; path: string; message: string; hint?: string }", purpose: "Individual issue shape. Codes are listed in Concepts → Validation." }
+  { name: "ValidationIssue", signature: "{ severity; code; message; nodeId?; edgeId?; hint? }", purpose: "Individual issue shape. Codes are listed in Concepts → Validation." }
 ];
 
 const LAYOUT_EXPORTS: Array<{ name: string; signature: string; purpose: string }> = [
@@ -62,8 +62,8 @@ export default function ApiWireCorePage() {
       eyebrow="Reference"
       title="@aigentive/wire-core"
       description="Canonical schema, validation, normalization, layout, and pure editors. Zero React; runs in browser, Node, edge functions."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Reference" }, { label: "Core" }]}
-      next={{ href: "/api/jsx-facade", label: "API · JSX facade" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Reference" }, { label: "Core" }]}
+      next={{ href: "/docs/api/jsx-facade", label: "API · JSX facade" }}
     >
       <Prose>
         <h2 id="install">Install</h2>
@@ -112,7 +112,8 @@ if (!result.success) console.error(result.error.issues);`}
 const { valid, issues } = validate(diagram);
 if (!valid) {
   for (const issue of issues) {
-    console.error(\`[\${issue.severity}] \${issue.code} @ \${issue.path}: \${issue.message}\`);
+    const target = issue.nodeId ?? issue.edgeId ?? "diagram";
+    console.error(\`[\${issue.severity}] \${issue.code} @ \${target}: \${issue.message}\`);
     if (issue.hint) console.error(\`  → \${issue.hint}\`);
   }
 }`}
@@ -121,7 +122,7 @@ if (!valid) {
       <Callout tone="info" title="Codes are stable">
         Issue codes (<InlineCode>edge.from-missing</InlineCode>, <InlineCode>condition.no-branches</InlineCode>, …)
         are part of the public contract. Programs and agents can switch on them. The full list lives in{" "}
-        <a href="/docs/concepts#validation">Concepts → Validation</a>.
+        <a href="/docs/concepts#validation">Concepts - Validation</a>.
       </Callout>
 
       <Prose>
@@ -198,7 +199,7 @@ await fs.writeFile("flow.mmd", mermaid, "utf8");`}
 
 let d = emptyDiagram({ layout: "LR", title: "Support agent" });
 d = addNode(d, { kind: "trigger", title: "Webhook", id: "in" }).diagram;
-d = addNode(d, { kind: "ai", title: "Plan", from: "in", model: "gpt-5.4-mini" }).diagram;
+d = addNode(d, { kind: "ai", title: "Plan", from: "in", model: "fast-model" }).diagram;
 d = addNode(d, { kind: "action", title: "Reply", from: "plan", tone: "success" }).diagram;`}
       </CodeBlock>
 

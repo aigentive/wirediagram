@@ -15,10 +15,10 @@ export function Brandmark({
   return (
     <Link
       href={href}
-      className="flex items-center gap-[9px] text-wire-primary no-underline"
+      className="flex min-w-0 items-center gap-[9px] text-wire-primary no-underline"
     >
       <BrandmarkTile />
-      <span className="text-[14.5px] font-bold tracking-[-0.01em]">{label}</span>
+      <span className="shrink-0 whitespace-nowrap text-[14.5px] font-bold tracking-[-0.01em]">{label}</span>
       {version ? (
         <span className="hidden font-mono text-[11px] text-wire-tertiary sm:inline">
           {version}
@@ -37,7 +37,7 @@ export function BrandmarkTile() {
       width="28"
       height="28"
       fill="none"
-      className="text-blue-600"
+      className="shrink-0 text-blue-600"
     >
       <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M6 9 L11 22" />

@@ -39,8 +39,7 @@ const FLOW_PROPS: Array<{ prop: string; type: string; purpose: string }> = [
   { prop: "id", type: "string", purpose: "Diagram id stamped onto the compiled JSON." },
   { prop: "title", type: "string", purpose: "Diagram title." },
   { prop: "mode", type: "\"svg\" | \"json\"", purpose: "Render mode. Default `svg`. Use `json` for headless compile." },
-  { prop: "onCompile", type: "(diagram: WireDiagram) => void", purpose: "Fires once with the canonical compiled JSON. Pair with `mode=\"json\"` to capture without rendering." },
-  { prop: "renderToSvgOptions", type: "RenderSvgOptions", purpose: "Forwarded to `renderToSvg` when in svg mode (padding, background, tone colors, etc.)." },
+  { prop: "onCompile", type: "(diagram: WireDiagram) => void", purpose: "Receives the canonical compiled JSON whenever Flow renders with a callback. Pair with `mode=\"json\"` to capture without rendering." },
   { prop: "className", type: "string", purpose: "Class on the wrapping element (svg or div) for styling hooks." }
 ];
 
@@ -50,8 +49,8 @@ export default function ApiJsxFacadePage() {
       eyebrow="Reference"
       title="JSX facade"
       description="Author Wire diagrams as React children of <Flow>. The walker compiles the tree to canonical JSON and either renders inline SVG or hands the JSON back through onCompile."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Reference" }, { label: "JSX facade" }]}
-      next={{ href: "/api/hooks", label: "API · Hooks" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Reference" }, { label: "JSX facade" }]}
+      next={{ href: "/docs/api/hooks", label: "API · Hooks" }}
     >
       <Prose>
         <h2 id="example">Example</h2>
@@ -77,7 +76,7 @@ export function SupportAgent() {
   return (
     <Flow layout="LR" id="support-agent" title="Support agent">
       <TriggerNode id="webhook" title="Webhook fires" />
-      <AINode id="classify" title="Classify intent" from="webhook" model="gpt-5.4-mini" />
+      <AINode id="classify" title="Classify intent" from="webhook" model="fast-model" />
       <ConditionNode
         id="route"
         title="Route request"
@@ -198,7 +197,7 @@ export function SupportAgent() {
         </p>
       </Prose>
       <CodeBlock language="tsx">
-        {`<Flow layout="LR" renderToSvgOptions={{ padding: 32, background: "transparent" }}>
+        {`<Flow layout="LR" style={{ height: 320 }}>
   <TriggerNode id="t" title="Tick" />
 </Flow>`}
       </CodeBlock>
@@ -208,9 +207,9 @@ export function SupportAgent() {
           <InlineCode>mode=&quot;json&quot;</InlineCode>
         </h3>
         <p>
-          Renders nothing. Fires <InlineCode>onCompile</InlineCode> once with the canonical{" "}
-          <InlineCode>WireDiagram</InlineCode>. Useful for capturing JSON to send to the MCP server, save to a
-          backend, or hand off to <InlineCode>WireProvider</InlineCode>.
+          Renders nothing. Calls <InlineCode>onCompile</InlineCode> with the canonical{" "}
+          <InlineCode>WireDiagram</InlineCode> whenever the Flow renders with a callback. Useful for capturing JSON to
+          send to the MCP server, save to a backend, or hand off to <InlineCode>WireProvider</InlineCode>.
         </p>
       </Prose>
       <CodeBlock language="tsx">
@@ -223,18 +222,19 @@ export function SupportAgent() {
         <h2 id="hook">Compile via hook</h2>
         <p>
           When you want the JSON without mounting <InlineCode>{`<Flow>`}</InlineCode> at all,{" "}
-          <InlineCode>useWireDiagram(element)</InlineCode> compiles a Flow element synchronously. Pair it with{" "}
-          <InlineCode>WireProvider</InlineCode> to drive your own canvas.
+          <InlineCode>useCompiledWireDiagram(element)</InlineCode> compiles a Flow element synchronously. Pair it with{" "}
+          <InlineCode>WireProvider</InlineCode> to drive your own canvas. Use <InlineCode>useWireDiagram()</InlineCode>{" "}
+          only inside a provider subtree to read the current diagram.
         </p>
       </Prose>
       <CodeBlock language="tsx">
-        {`import { useWireDiagram, WireProvider, WireCanvas } from "@aigentive/wire-react";
+        {`import { useCompiledWireDiagram, WireProvider, WireCanvas } from "@aigentive/wire-react";
 
 function AgentPanel() {
-  const diagram = useWireDiagram(
+  const diagram = useCompiledWireDiagram(
     <Flow layout="LR">
       <TriggerNode id="t" title="Tick" />
-      <AINode id="plan" title="Plan" from="t" model="gpt-5.4-mini" />
+      <AINode id="plan" title="Plan" from="t" model="fast-model" />
     </Flow>
   );
   return (

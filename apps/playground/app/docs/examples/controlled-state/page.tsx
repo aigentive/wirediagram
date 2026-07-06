@@ -58,8 +58,8 @@ export default function ControlledStateExamplePage() {
       eyebrow="Examples"
       title="Controlled state"
       description="Host the diagram plus runtime selection, viewport, mode, and dirty flags."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Controlled state" }]}
-      next={{ href: "/examples/edge-inspection", label: "Edge inspection" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Controlled state" }]}
+      next={{ href: "/docs/examples/edge-inspection", label: "Edge inspection" }}
     >
       <Prose>
         <h2 id="runtime-state">Runtime state</h2>

@@ -1,6 +1,6 @@
 # @aigentive/wire-playground
 
-Next.js diagram playground for `@aigentive/wire`. It renders Wire diagrams in the browser, provides an interactive React editor through `@aigentive/wire-react`, stores shared canonical JSON in Turso/libSQL or local SQLite, and acts as a render/preview service for MCP and hosted agents.
+Next.js diagram playground for Wire. It renders Wire diagrams in the browser, provides an interactive React editor through `@aigentive/wire-react`, stores shared canonical JSON in Turso/libSQL or local SQLite, and acts as a render/preview service for MCP and hosted agents.
 
 ## Local
 

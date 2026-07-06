@@ -9,6 +9,31 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <nav aria-label="Documentation" className="grid content-start gap-5 px-3 py-5 lg:px-4">
+      <div className="grid gap-3 rounded-lg border border-wire-nav-divider bg-white/[0.04] p-3">
+        <div className="grid gap-1">
+          <span className="text-[13px] font-bold text-wire-nav-fg">Build with Wire</span>
+          <span className="text-[12px] leading-5 text-wire-nav-fg-muted">
+            Start with package CSS, then move into examples and production guidance.
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            href="/docs/quickstart"
+            onClick={onNavigate}
+            className="rounded-md bg-wire-nav-button-bg px-2.5 py-1.5 text-center text-[12px] font-bold text-wire-nav-button-fg no-underline hover:bg-wire-nav-button-bg-hover"
+          >
+            Quickstart
+          </Link>
+          <Link
+            href="/docs/examples"
+            onClick={onNavigate}
+            className="rounded-md border border-wire-nav-divider px-2.5 py-1.5 text-center text-[12px] font-bold text-wire-nav-fg no-underline hover:bg-wire-nav-hover"
+          >
+            Examples
+          </Link>
+        </div>
+      </div>
+
       {NAV.map((section) => (
         <div key={section.title} className="grid gap-1">
           <span className="px-2.5 text-[10px] font-bold uppercase tracking-[0.08em] text-wire-nav-fg-dim">

@@ -11,16 +11,16 @@ Choose what to deploy:
 
 | Use case | What to run |
 |---|---|
-| Claude Desktop / Cursor / Claude Code / local MCP clients | `wire-mcp` over **stdio** |
-| Network agents, multiple clients | `wire-mcp` over **HTTP** (in a container) |
+| Local MCP hosts on the same machine | `wire-mcp` over **stdio** |
+| Network agents, multiple MCP hosts | `wire-mcp` over **HTTP** (in a container) |
 | Embed renders in a web app / docs | `wire-playground` on **Vercel** or any Next.js host |
 | Both — read/write diagrams + view them | Both, behind the same domain |
 
 ---
 
-## Local — stdio (MCP clients)
+## Local - Stdio MCP Hosts
 
-For normal local use, point your MCP client at the published npm package:
+For normal local use, point your MCP host at the published npm package:
 
 ```json
 {
@@ -54,21 +54,21 @@ Connect local MCP**:
 }
 ```
 
-Restart the MCP client after adding or changing the server config.
+Restart the MCP host after adding or changing the server config.
 
 When `WIRE_CLOUD_URL` is present, `render_preview` returns hosted Wire Cloud
 share URLs for browser viewing and raw embeds (`.svg`, `.png`, `.json`, `.mmd`).
 Customers do not need to run the playground locally. `render_svg` and
 `render_png` return inline assets from the MCP server.
 
-Other MCP clients use the same shape: command, args, and env. The visible tool
-names depend on the host. Some clients expose bare names such as
-`create_diagram`; others prefix the configured server name, such as
-`wire__create_diagram` or `mcp__wire__create_diagram`.
+Other MCP hosts use the same shape: command, args, and env. The visible tool
+names depend on the host. Some expose bare names such as `create_diagram`;
+others prefix the configured server name, such as `wire__create_diagram` or
+`mcp__wire__create_diagram`.
 
 ---
 
-## Local — HTTP (network clients)
+## Local - HTTP MCP Hosts
 
 ```bash
 npx -y @aigentive/wire-mcp@latest --http
@@ -177,14 +177,14 @@ Routes available after deploy:
 
 The playground can run by itself for preview/edit/share links. To pair it with
 persistent agent-authored diagrams, deploy `wire-mcp` (Docker) alongside it and
-point your MCP clients to the MCP endpoint.
+point your MCP hosts to the MCP endpoint.
 
 ---
 
 ## Combined topology
 
 ```
-MCP client / agent          ────→  wire-mcp (HTTP, container)
+MCP host / agent            ────→  wire-mcp (HTTP, container)
                                     │
                                     ▼
                              wire-storage (volume / DB)

@@ -17,7 +17,7 @@ import {
 
 const optionCatalog: WireOptionCatalog = {
   ai: [
-    { key: "model", storage: "node", type: "select", options: ["gpt-4.1-mini", "gpt-4.1"] },
+    { key: "model", storage: "node", type: "select", options: ["balanced-model", "careful-model"] },
     { key: "temperature", type: "number", min: 0, max: 2, step: 0.1, width: "half" }
   ],
   action: [
@@ -50,8 +50,8 @@ export default function OptionsExamplePage() {
       eyebrow="Examples"
       title="Options"
       description="Use WireOptionCatalog with the current inspector and option panel names."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Options" }]}
-      next={{ href: "/examples/controlled-state", label: "Controlled state" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Options" }]}
+      next={{ href: "/docs/examples/controlled-state", label: "Controlled state" }}
     >
       <Prose>
         <h2 id="entry-points">Entry points</h2>

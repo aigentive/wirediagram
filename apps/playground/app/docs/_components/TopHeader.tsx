@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu } from "lucide-react";
+import { Menu, Moon, Sun } from "lucide-react";
 import { GithubRepoLink } from "../../_components/GithubRepoLink";
 import { Brandmark } from "../../_components/wire-brand";
 
@@ -16,6 +17,7 @@ export function TopHeader({
   sidebarOpen: boolean;
 }) {
   const [theme, setTheme] = useState<Theme>("light");
+  const pathname = usePathname() ?? "";
 
   useEffect(() => {
     const stored = window.localStorage.getItem("wire-theme");
@@ -42,24 +44,44 @@ export function TopHeader({
             onClick={onToggleSidebar}
             aria-label={sidebarOpen ? "Close navigation" : "Open navigation"}
             aria-expanded={sidebarOpen}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-wire text-wire-secondary transition-colors duration-150 hover:border-wire-strong hover:text-wire-primary lg:hidden"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-wire text-wire-secondary transition-colors duration-150 hover:border-wire-strong hover:text-wire-primary lg:hidden"
           >
-            <Menu size={14} aria-hidden strokeWidth={1.75} />
+            <Menu size={16} aria-hidden strokeWidth={1.75} />
           </button>
 
-          <Brandmark href="/" version="alpha" />
+          <Brandmark href="/" label="WireDiagram" />
 
         </div>
 
         <div className="flex min-w-0 items-center gap-3 px-3 sm:px-4 lg:px-6">
-          <div className="hidden min-w-0 items-baseline gap-2 md:flex">
-            <span className="wire-eyebrow wire-eyebrow--muted">React components</span>
-          </div>
+          <nav aria-label="Primary documentation" className="hidden min-w-0 items-center gap-1 md:flex">
+            {[
+              ["/docs", "Docs"],
+              ["/docs/examples", "Examples"],
+              ["/docs/api/react-components", "API"],
+              ["/docs/llm", "Agents"]
+            ].map(([href, label]) => {
+              const active = pathname === href || (href !== "/docs" && pathname.startsWith(`${href}/`));
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`rounded-md px-3 py-1.5 text-[13px] font-bold no-underline transition-colors ${
+                    active
+                      ? "bg-wire-sunken text-wire-primary"
+                      : "text-wire-secondary hover:bg-wire-sunken hover:text-wire-primary"
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
 
           <div className="ml-auto flex items-center gap-2">
             <Link
               href="/playground"
-              className="rounded-md border border-wire bg-wire-surface px-3 py-1.5 text-[13px] font-bold text-wire-primary no-underline transition-colors duration-150 hover:border-wire-strong"
+              className="inline-flex min-h-9 items-center rounded-md bg-wire-primary px-3 py-1.5 text-[13px] font-bold text-wire-surface no-underline shadow-wire-sm transition-transform duration-150 hover:-translate-y-0.5"
             >
               Playground
             </Link>
@@ -86,27 +108,31 @@ function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (t: Theme) =
     <div
       role="group"
       aria-label="Theme"
-      className="inline-flex items-center gap-0.5 rounded-full border border-wire bg-wire-surface p-[3px]"
+      className="inline-flex items-center gap-0.5 rounded-full border border-wire bg-wire-surface p-1"
     >
       <button
         type="button"
+        aria-label="Use light theme"
         aria-pressed={!isDark}
         onClick={() => onChange("light")}
-        className={`rounded-full px-3 py-[5px] text-[11px] font-bold uppercase tracking-[0.08em] transition-colors duration-150 ${
+        className={`inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-[11px] font-bold uppercase tracking-[0.08em] transition-colors duration-150 sm:min-w-[64px] sm:px-3 ${
           !isDark ? "bg-wire-primary text-wire-surface" : "text-wire-tertiary hover:text-wire-primary"
         }`}
       >
-        Light
+        <Sun className="sm:hidden" size={14} aria-hidden strokeWidth={1.9} />
+        <span className="hidden sm:inline">Light</span>
       </button>
       <button
         type="button"
+        aria-label="Use dark theme"
         aria-pressed={isDark}
         onClick={() => onChange("dark")}
-        className={`rounded-full px-3 py-[5px] text-[11px] font-bold uppercase tracking-[0.08em] transition-colors duration-150 ${
+        className={`inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-[11px] font-bold uppercase tracking-[0.08em] transition-colors duration-150 sm:min-w-[64px] sm:px-3 ${
           isDark ? "bg-wire-primary text-wire-surface" : "text-wire-tertiary hover:text-wire-primary"
         }`}
       >
-        Dark
+        <Moon className="sm:hidden" size={14} aria-hidden strokeWidth={1.9} />
+        <span className="hidden sm:inline">Dark</span>
       </button>
     </div>
   );

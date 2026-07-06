@@ -29,8 +29,8 @@ export default function LayoutsExamplePage() {
       eyebrow="Examples"
       title="Layouts"
       description="Same components, three layout directions. Pass the diagram and Wire takes care of routing, spacing, and edges."
-      crumbs={[{ href: "/", label: "Docs" }, { label: "Examples" }, { label: "Layouts" }]}
-      next={{ href: "/examples/click-modal", label: "Click → modal" }}
+      crumbs={[{ href: "/docs", label: "Docs" }, { label: "Examples" }, { label: "Layouts" }]}
+      next={{ href: "/docs/examples/click-modal", label: "Click → modal" }}
     >
       <Prose>
         <h2 id="three-shapes">Three shapes</h2>

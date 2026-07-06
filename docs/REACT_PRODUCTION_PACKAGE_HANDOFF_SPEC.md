@@ -1,5 +1,11 @@
 # React Production Package Handoff Spec
 
+> Status: archived package-planning handoff. Do not use this file as the
+> current public API reference. Current implemented behavior lives in
+> [REACT_COMPONENTS.md](REACT_COMPONENTS.md),
+> [REACT_EDITOR_ARCHITECTURE.md](REACT_EDITOR_ARCHITECTURE.md), and
+> [WIRE_OPTIONS_CATALOG_SPEC.md](WIRE_OPTIONS_CATALOG_SPEC.md).
+
 ## Objective
 
 Make `@aigentive/wire-react` reusable as a production diagram editor package for
